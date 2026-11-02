@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#183f39"><meta name="description" content="Un'estate, tre amici e una band. Un'avventura musicale dalla campagna al festival."><title>Una estate in tour</title><link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="stylesheet" href="./style.css"></head>
+<body>
+<header class="masthead"><a href="./" class="brand"><span class="brand-mark">♪</span><span>STORIE DA SUONARE<small>UN’AVVENTURA DI B3PZ</small></span></a><div class="edition">ESTATE ’99 <span>●</span> PROTOTIPO 0.1</div><button id="settingsBtn" class="quiet" aria-label="Apri impostazioni">Impostazioni ↗</button></header>
+<main>
+<section class="intro"><div><p class="eyebrow">DALLA SALA PROVE AL PALCO PIÙ GRANDE</p><h1>Una estate <em>in tour.</em></h1></div><p class="intro-copy">Tre amici, quattro accordi.<br>E tutta l’estate davanti.</p></section>
+<div class="game-layout">
+<section class="console" aria-label="Gioco">
+<div class="console-top"><span><i class="led"></i> <span id="location">BORGO DELLE CICALE</span></span><span id="season">GIUGNO · GIORNO 01</span></div>
+<div class="screen" id="screen"><canvas id="game" width="960" height="600" tabindex="0" aria-label="Mondo di gioco. Usa frecce o WASD per muoverti, E o Invio per interagire."></canvas><div id="sceneBadge" class="scene-badge">01 / IL PAESE DI CASA</div><div id="prompt" class="prompt" hidden></div><div id="toast" role="status" class="toast" hidden></div>
+<div id="overlay" class="overlay"></div>
+<div id="rhythmHud" class="rhythm-hud" hidden><span id="songLabel"></span><span id="scoreLabel"></span><button id="pauseSong" class="quiet">Pausa Ⅱ</button><button id="exitSong" class="quiet">Esci ×</button></div>
+<div id="laneControls" class="lane-controls" hidden></div>
+</div>
+<div class="console-bottom"><span id="instrumentTag">IL TUO VIAGGIO STA PER INIZIARE</span><span>AUDIO <button id="soundBtn" aria-label="Attiva o disattiva audio">ON ♪</button></span></div>
+</section>
+<aside class="journal"><div class="journal-top"><span class="eyebrow">IL TUO TACCUINO</span><span class="page-number">01—12</span></div><h2>La strada<br>verso settembre.</h2><div class="objective-label">PROSSIMA TAPPA</div><p id="objective">Scegli uno strumento.<br>Il resto lo scopriremo per strada.</p><div class="pass-count"><strong id="passCount">0<span>/8</span></strong><span>PASS CONCERTO<br>VERSO IL FESTIVAL</span></div><div id="passGrid" class="pass-grid"></div><div class="journal-actions"><button id="mapBtn">↗ Mappa della tournée</button><button id="bandBtn">♫ La nostra band</button></div><div class="journal-note">«Prima o poi qualcuno<br>ci chiederà il bis.»</div><p class="save-label" id="saveLabel">Salvataggio automatico sul dispositivo</p></aside>
+</div>
+<div class="below"><div class="keyboard-help"><span><kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd> cammina</span><span><kbd>E</kbd> parla / usa</span><span><kbd>B</kbd> bici</span><span><kbd>M</kbd> mappa</span></div><span class="chapter-note">CAPITOLO PILOTA · IL PRIMO GIORNO</span></div>
+<div class="touch-controls" id="touchControls"><div class="dpad"><button data-move="up" aria-label="Vai su">↑</button><button data-move="left" aria-label="Vai a sinistra">←</button><button data-move="down" aria-label="Vai giù">↓</button><button data-move="right" aria-label="Vai a destra">→</button></div><button id="touchBike">BICI</button><button id="touchAction">PARLA / USA</button></div>
+<footer><span>CAMMINA. ASCOLTA. TROVA IL TUO RITMO.</span><span>Musica sintetizzata originale · Nessun asset esterno</span></footer>
+</main><script type="module" src="./game.js"></script>
+</body></html>
