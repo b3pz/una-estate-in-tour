@@ -1,0 +1,5 @@
+// Two shared raster atlases. Cropping happens at render time; generated originals are preserved.
+function load(url){if(typeof Image==='undefined')return null;const image=new Image();image.src=new URL(url,import.meta.url).href;return image;}
+export const atlases={hero:load('./assets/hero-world-atlas.png'),band:load('./assets/band-instruments-atlas.png'),towns:load('./assets/towns-props-atlas.png')};
+export function drawSprite(ctx,atlas,row,col,x,y,w,h=w,flip=false){const image=atlases[atlas];if(!image||!image.complete||!image.naturalWidth)return false;const cw=image.naturalWidth/4,ch=image.naturalHeight/4;ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';if(flip){ctx.translate(x,y);ctx.scale(-1,1);ctx.drawImage(image,col*cw,row*ch,cw,ch,-w/2,-h*.95,w,h);}else ctx.drawImage(image,col*cw,row*ch,cw,ch,x-w/2,y-h*.95,w,h);ctx.restore();return true;}
+export function spriteCell(direction,moving=false,walk=0){return {row:moving?1+(Math.floor(walk*6)%2):0,col:moving&&direction==='west'?2:({south:0,west:1,east:2,north:3}[direction]??0),flip:moving&&direction==='west'};}

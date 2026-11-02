@@ -16,11 +16,14 @@ export const CITIES=[
 export const EDGES=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[3,6],[5,8],[2,0],[10,6]];
 export const MUSIC_CITIES=CITIES.filter(c=>c.type==='music');
 export const DEFAULT_SETTINGS={volume:.55,offset:0,difficulty:'normal',muted:false};
-export function initialState(instrument='guitar'){return {version:1,instrument,city:0,x:23,y:22,stage:'school',passes:[],puzzles:[],visited:[0],stories:[],bicycle:false,bike:false,boat:false,homeShow:false,finished:false,xp:0,best:{},settings:{...DEFAULT_SETTINGS}};}
+export function initialState(instrument='guitar'){return {version:1,instrument,city:0,x:10.5,y:14,facing:'south',introDone:false,scene:null,stage:'school',passes:[],puzzles:[],visited:[0],stories:[],bicycle:false,bike:false,boat:false,homeShow:false,finished:false,xp:0,best:{},settings:{...DEFAULT_SETTINGS}};}
 export function validateState(s){
  if(!s||s.version!==1||!INSTRUMENTS[s.instrument]||!Number.isInteger(s.city)||!CITIES[s.city])return null;
  const out=initialState(s.instrument);const ids=a=>Array.isArray(a)?[...new Set(a.filter(n=>Number.isInteger(n)&&CITIES[n]))]:[];
- out.city=s.city;out.x=Number.isFinite(s.x)?Math.min(44,Math.max(3,s.x)):23;out.y=Number.isFinite(s.y)?Math.min(29,Math.max(8,s.y)):22;
+ out.city=s.city;out.x=Number.isFinite(s.x)?Math.min(46.7,Math.max(1.3,s.x)):10.5;out.y=Number.isFinite(s.y)?Math.min(32.7,Math.max(1.3,s.y)):14;
+ out.facing=['north','south','east','west'].includes(s.facing)?s.facing:'south';out.introDone=s.introDone===undefined?true:s.introDone===true;
+ if(s.scene?.type==='road'&&s.scene.from===s.city&&neighbors(s.scene.from).includes(s.scene.to))out.scene={type:'road',from:s.scene.from,to:s.scene.to};
+ if(s.scene?.type==='interior'&&typeof s.scene.label==='string'&&s.scene.label.length<80)out.scene={type:'interior',label:s.scene.label};
  out.stage=['school','practice','rival','tour'].includes(s.stage)?s.stage:'school';out.passes=ids(s.passes).filter(id=>CITIES[id].type==='music');out.puzzles=ids(s.puzzles).filter(id=>CITIES[id].type==='music');out.visited=[...new Set([0,...ids(s.visited),out.city])];out.stories=ids(s.stories).filter(id=>CITIES[id].type==='story');
  for(const k of ['bicycle','bike','boat','homeShow','finished'])out[k]=s[k]===true;
  out.xp=Number.isFinite(s.xp)?Math.min(100000,Math.max(0,Math.floor(s.xp))):0;

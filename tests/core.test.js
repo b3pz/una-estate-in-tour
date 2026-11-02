@@ -27,7 +27,7 @@ test('replays do not grant duplicate passes or repeated experience; boat unlocks
 });
 test('corrupted saves are rejected or normalized and fresh saves round trip',()=>{
  assert.equal(validateState(null),null);assert.equal(validateState({version:1,instrument:'flute',city:0}),null);assert.equal(validateState({...initialState(),city:999}),null);assert.deepEqual(validateState(JSON.parse(JSON.stringify(initialState()))),initialState());
- const valid=validateState({...initialState(),x:1000,y:-22,passes:[1,1,0,999],settings:{offset:9999,volume:-4,difficulty:'hack'}});assert.deepEqual(valid.passes,[1]);assert.equal(valid.x,44);assert.equal(valid.y,8);assert.equal(valid.settings.volume,0);assert.equal(valid.settings.offset,250);assert.equal(valid.settings.difficulty,'normal');
+ const valid=validateState({...initialState(),x:1000,y:-22,passes:[1,1,0,999],settings:{offset:9999,volume:-4,difficulty:'hack'}});assert.deepEqual(valid.passes,[1]);assert.equal(valid.x,46.7);assert.equal(valid.y,1.3);assert.equal(valid.settings.volume,0);assert.equal(valid.settings.offset,250);assert.equal(valid.settings.difficulty,'normal');
 });
 test('walking paths route around buildings and reject blocked destinations',()=>{
  const walkable=(x,y)=>x>=0&&x<=8&&y>=0&&y<=8&&!(x>=3&&x<=5&&y>=1&&y<=6);
