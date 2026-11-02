@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import {spriteCell} from '../dist/assets.js';
 import assert from 'node:assert/strict';
-import {CITIES,EDGES,findPath,initialState,validateState} from '../dist/core.js';
+import {CITIES,EDGES,findPath,stepToward,initialState,validateState} from '../dist/core.js';
 import {WIDTH,HEIGHT,OPPOSITE,townGates,townLayout,roadLayout,arrival,isWalkable,gateAt,facingFor,cameraFor} from '../dist/world.js';
 test('all connections have matching entrances, with safe inward spawns on both ends',()=>{
  for(const [a,b]of EDGES)for(const [from,to]of [[a,b],[b,a]]){
@@ -35,3 +35,8 @@ test('walking west is drawn from consistent mirrored east poses, while north and
 });
 
 test('wide viewports center the map rather than leaving a blank strip on the right',()=>{const cam=cameraFor(23,22,1440,600);assert.equal(cam.x,(48*24-1440)/2);assert.ok(cam.y>=0);const narrow=cameraFor(23,22,300,600);assert.ok(narrow.x>=0);});
+test('click walking reaches the garage door even with slow and irregular frames',()=>{
+ const l=townLayout(0),door=l.objects.find(o=>o.kind==='garage'),pos={x:19.2,y:18};const path=findPath(pos,door,(x,y)=>isWalkable(l,x,y),WIDTH,HEIGHT);let frames=0;
+ while(path.length&&frames<500){const target=path[0];if(Math.hypot(pos.x-target.x,pos.y-target.y)<.15)path.shift();else{const delta=stepToward(pos,target,[.54,.08,.4,.12][frames%4]);pos.x+=delta.dx;pos.y+=delta.dy;assert.ok(isWalkable(l,pos.x,pos.y));}frames++;}
+ assert.equal(path.length,0,'must reach the destination rather than oscillating around a waypoint');assert.ok(Math.hypot(pos.x-door.x,pos.y-door.y)<.7,'must enter automatic door trigger');
+});

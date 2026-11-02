@@ -31,6 +31,7 @@ export function validateState(s){
  const st=s.settings||{};out.settings={volume:Number.isFinite(st.volume)?Math.max(0,Math.min(1,st.volume)):.55,offset:Number.isFinite(st.offset)?Math.max(-250,Math.min(250,st.offset)):0,difficulty:['assist','normal','expert'].includes(st.difficulty)?st.difficulty:'normal',muted:st.muted===true};return out;
 }
 export function neighbors(id){return EDGES.filter(e=>e.includes(id)).map(e=>e[0]===id?e[1]:e[0]);}
+export function stepToward(start,target,budget){const dx=target.x-start.x,dy=target.y-start.y,length=Math.hypot(dx,dy);if(!length)return {dx:0,dy:0};const distance=Math.min(Math.max(0,budget),length);return {dx:dx/length*distance,dy:dy/length*distance};}
 export function findPath(start,target,canEnter,maxX=66,maxY=34){
  const from=[Math.round(start.x),Math.round(start.y)],to=[Math.round(target.x),Math.round(target.y)],key=(x,y)=>x+','+y;
  if(!canEnter(to[0],to[1]))return [];
