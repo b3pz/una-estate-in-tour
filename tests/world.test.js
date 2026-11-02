@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import {spriteCell} from '../dist/assets.js';
 import assert from 'node:assert/strict';
 import {CITIES,EDGES,findPath,initialState,validateState} from '../dist/core.js';
-import {WIDTH,HEIGHT,OPPOSITE,townGates,townLayout,roadLayout,arrival,isWalkable,gateAt,facingFor} from '../dist/world.js';
+import {WIDTH,HEIGHT,OPPOSITE,townGates,townLayout,roadLayout,arrival,isWalkable,gateAt,facingFor,cameraFor} from '../dist/world.js';
 test('all connections have matching entrances, with safe inward spawns on both ends',()=>{
  for(const [a,b]of EDGES)for(const [from,to]of [[a,b],[b,a]]){
  const gates=townGates(to),g=gates.find(x=>x.to===from),pos=arrival(to,from),layout=townLayout(to);
@@ -33,3 +33,5 @@ test('walking west is drawn from consistent mirrored east poses, while north and
  for(const walk of [0,.2,.4,.6]){const west=spriteCell('west',true,walk),east=spriteCell('east',true,walk);assert.equal(west.col,east.col);assert.equal(west.flip,true);assert.equal(east.flip,false);}
  assert.equal(spriteCell('west').col,1);assert.equal(spriteCell('north').col,3);assert.equal(spriteCell('south').col,0);
 });
+
+test('wide viewports center the map rather than leaving a blank strip on the right',()=>{const cam=cameraFor(23,22,1440,600);assert.equal(cam.x,(48*24-1440)/2);assert.ok(cam.y>=0);const narrow=cameraFor(23,22,300,600);assert.ok(narrow.x>=0);});
