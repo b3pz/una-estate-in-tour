@@ -15,7 +15,8 @@ import {
 } from './core.js';
 import {
  drawSprite,
- spriteCell
+ spriteCell,
+ hasAtlas
 } from './assets.js';
 export const TILE = 24,
  WIDTH = 48,
@@ -563,7 +564,7 @@ function line(ctx, pts, color, width) {
 }
 
 function label(ctx, s, x, y, size = 11, color = '#445b45') {
- ctx.font = `${size}px Georgia,serif`;
+ ctx.font = `600 ${size}px Fredoka, Nunito, sans-serif`;
  ctx.textAlign = 'center';
  ctx.fillStyle = color;
  ctx.fillText(s, x, y);
@@ -577,8 +578,12 @@ export function drawCharacter(ctx, x, y, {
  walk = 0,
  bike = false
 } = {}) {
- if (portrait !== null && drawSprite(ctx, 'people', Math.floor(portrait / 4), portrait % 4, x, y, 43, 64)) return;
+ const dirCol = { south: 0, west: 1, east: 2, north: 3 } [facing] ?? 0;
+ if (portrait !== null && typeof portrait === 'string' && portrait.startsWith('x') && drawSprite(ctx, 'people2', Math.floor(+portrait.slice(1) / 4), +portrait.slice(1) % 4, x, y, 43, 64)) return;
+ if (portrait !== null && typeof portrait === 'number' && drawSprite(ctx, 'peopleDir' + Math.floor(portrait / 4), portrait % 4, dirCol, x, y, 43, 64)) return;
+ if (portrait !== null && typeof portrait === 'number' && drawSprite(ctx, 'people', Math.floor(portrait / 4), portrait % 4, x, y, 43, 64)) return;
  const cell = spriteCell(facing, moving, walk);
+ if (bike && drawSprite(ctx, 'heroBike', dirCol, moving ? 1 + (Math.floor(walk * 8) % 2) : 0, x, y + 6, 78, 78)) return;
  if (!bike && drawSprite(ctx, variant ? 'band' : 'hero', variant ? Math.min(2, variant - 1) : cell.row, cell.col, x, y, 64, 64, !variant && cell.flip)) return;
  ctx.save();
  ctx.translate(x, y);
@@ -841,6 +846,15 @@ export function stageBox(layout) {
 }
 export function drawStage(ctx, x, y, genre, large = false, scale = null) {
  const s = scale ?? (large ? FESTIVAL_STAGE_SCALE : 1);
+ if (drawSprite(ctx, 'transport', 1, large ? 1 : 0, x, y + 6 * s, 160 * s, 120 * s)) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  rounded(ctx, -52, -82, 104, 16, 4, '#2f4a3e');
+  label(ctx, genre.toUpperCase(), 0, -70, 10, '#f2d28c');
+  ctx.restore();
+  return;
+ }
  ctx.save();
  ctx.translate(x, y);
  ctx.scale(s, s);
@@ -913,7 +927,7 @@ export function bubble(ctx, x, y, time = 0) {
  ctx.fill();
  ctx.stroke();
  ctx.fillStyle = '#2a3b33';
- ctx.font = 'bold 15px Georgia, serif';
+ ctx.font = '600 15px Fredoka, sans-serif';
  ctx.textAlign = 'center';
  ctx.fillText('!', x, y - 7 + bob);
  ctx.textAlign = 'left';
@@ -1285,6 +1299,10 @@ export function renderWorld(ctx, {
 }
 
 function drawTransport(ctx, x, y, kind, title) {
+ if (drawSprite(ctx, 'transport', 0, { metro: 0, cable: 1, ferry: 2, bridge: 3 } [kind] ?? 0, x, y + 22, 96, 96)) {
+  label(ctx, title, x, y + 40, 11);
+  return;
+ }
  ctx.save();
  ctx.translate(x, y);
  if (kind === 'metro') {

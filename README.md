@@ -64,6 +64,12 @@ Ogni città ha anche un brano proprio: giro armonico e pattern di chitarra, bass
 - Salvataggio locale automatico (anche su sentieri e interni), esportazione e importazione JSON.
 - Modalità QA per lo sviluppo: `?qa=1` (vedi sotto).
 
+## Sprite aggiuntivi
+
+Bici, personaggi nelle quattro direzioni, nuovi abitanti, palchi, ingressi dei trasporti, arredi extra e sfondi dei concerti si aggiungono senza toccare il codice: le specifiche e i prompt sono in [docs/SPRITE_PER_CHATGPT.md](docs/SPRITE_PER_CHATGPT.md). Si salvano i file in `dist/assets/extra/` e si lancia `npm run assets`, che li controlla e aggiorna il manifest letto dal gioco. Finché un file manca resta il disegno di riserva.
+
+I testi usano Nunito e Fredoka (SIL Open Font License), inclusi in `dist/assets/fonts/`.
+
 ## Modalità QA
 
 Aprendo il gioco con `?qa=1` compare la striscia «MODALITÀ QA». Usa un salvataggio separato (`b3pz-tour-v1-qa`) e non tocca la partita normale. Durante un brano i pulsanti concludono il concerto con esito fallito, successo o padronanza: il risultato passa dallo stesso flusso di ricompense del gioco. Ogni simulazione è registrata (pulsante Registro, o `window.__qa.log()` in console). Non esistono comandi per aggiungere pass, indizi o sblocchi.

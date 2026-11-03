@@ -50,7 +50,10 @@ import {
  MusicAudio
 } from './audio.js';
 import {
- drawSprite
+ drawSprite,
+ hasAtlas,
+ atlases,
+ loadExtras
 } from './assets.js';
 import {
  TILE,
@@ -427,9 +430,13 @@ function enterCity(id, from = null) {
 }
 
 function roomPlan(entry) {
- return ROOMS[entry.label] || {
+ const plan = ROOMS[entry.label] || {
   items: roomItems(entry.kind)
  };
+ return hasAtlas('interiors2') && plan.extras ? {
+  ...plan,
+  items: plan.items.concat(plan.extras)
+ } : plan;
 }
 
 function setupRoom(entry, reset = true) {
@@ -478,6 +485,16 @@ function setupRoom(entry, reset = true) {
   label: 'Vale',
   sprite: 2
  });
+ if (hasAtlas('people2'))
+  for (const person of plan.people || []) objects.push({
+   x: person.x,
+   y: person.y,
+   kind: 'roomPerson',
+   label: person.label,
+   portrait: 'x' + person.who,
+   text: person.text,
+   facing: 'south'
+  });
  if (plan.spot) objects.push({
   x: plan.spot.x,
   y: plan.spot.y,
@@ -657,6 +674,13 @@ function interact() {
    label: 'Torna a guardarti intorno',
    run: close
   }], room ? room.entry.label.toUpperCase() + ' · ' + CITIES[state.city].name.toUpperCase() : '');
+  return;
+ }
+ if (o.kind === 'roomPerson') {
+  panel(o.label, `<p>${typeof o.text === 'function' ? o.text(state) : o.text}</p>`, [{
+   label: 'Grazie',
+   run: close
+  }], room ? room.entry.label.toUpperCase() : '');
   return;
  }
  if (o.kind === 'archive') {
@@ -1497,7 +1521,7 @@ function rect(x, y, w, h, color) {
 
 function text(s, x, y, color = '#f4e8c8', size = 10, align = 'left') {
  ctx.fillStyle = color;
- ctx.font = `${size}px monospace`;
+ ctx.font = `700 ${size}px Nunito, sans-serif`;
  ctx.textAlign = align;
  ctx.fillText(s, Math.round(x), Math.round(y));
  ctx.textAlign = 'left';
@@ -1571,7 +1595,7 @@ function interactBubble(x, y) {
  ctx.fill();
  ctx.stroke();
  ctx.fillStyle = '#2a3b33';
- ctx.font = 'bold 15px Georgia, serif';
+ ctx.font = '600 15px Fredoka, sans-serif';
  ctx.textAlign = 'center';
  ctx.fillText('!', x, y - 7 + bob);
  ctx.textAlign = 'left';
@@ -1599,7 +1623,7 @@ function drawInterior() {
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
  const actors = items.filter(i => i[0] !== 7).map(([id, x, y, w, h]) => ({
   depth: y * T,
-  draw: () => drawSprite(ctx, 'interiors', Math.floor(id / 4), id % 4, x * T, y * T, w, h)
+  draw: () => id >= 16 ? drawSprite(ctx, 'interiors2', Math.floor((id - 16) / 4), (id - 16) % 4, x * T, y * T, w, h) : drawSprite(ctx, 'interiors', Math.floor(id / 4), id % 4, x * T, y * T, w, h)
  }));
  if (room.entry.kind === 'garage') actors.push({
   depth: 13 * T,
@@ -1910,6 +1934,13 @@ function fitCanvas() {
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
+loadExtras().then(keys => {
+ if (!keys.includes('title')) return;
+ const img = atlases.title;
+ const apply = () => document.body.style.setProperty('--title-art', `url(${img.src})`);
+ if (img.complete) apply();
+ else img.onload = apply;
+});
 setupTown();
 welcome();
 requestAnimationFrame(frame);
