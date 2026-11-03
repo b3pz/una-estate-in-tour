@@ -1709,3 +1709,298 @@ select {
   gap: 3px
  }
 }
+
+/* ---- Interfaccia a schermo pieno (0.6): solo mondo, menu Start e dialoghi ---- */
+.world-hud,
+.objective-card,
+.control-hint,
+.prompt {
+ display: none !important
+}
+
+.game-screen canvas {
+ object-fit: fill;
+ background: #14110e
+}
+
+.area-sign {
+ position: absolute;
+ top: max(14px, env(safe-area-inset-top));
+ left: 14px;
+ z-index: 8;
+ background: #fffdf4;
+ border: 3px solid #2a3b33;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a;
+ border-radius: 10px;
+ padding: 10px 18px 9px;
+ min-width: 180px;
+ max-width: min(420px, calc(100% - 28px));
+ color: #2a3b33;
+ animation: signIn .3s ease-out;
+ pointer-events: none
+}
+
+.area-sign strong {
+ display: block;
+ font: 20px/1.15 Georgia, serif
+}
+
+.area-sign span {
+ display: block;
+ font: 11px monospace;
+ letter-spacing: .5px;
+ margin-top: 3px;
+ text-transform: uppercase;
+ opacity: .75
+}
+
+.area-sign.objective-sign strong {
+ font: bold 11px monospace;
+ letter-spacing: 1px;
+ text-transform: uppercase;
+ color: #8a5b2b
+}
+
+.area-sign.objective-sign span {
+ font: 14px/1.35 Arial, sans-serif;
+ text-transform: none;
+ letter-spacing: 0;
+ opacity: 1
+}
+
+.area-sign.leaving {
+ animation: signOut .35s ease-in forwards
+}
+
+@keyframes signIn {
+ from { transform: translateY(-120%); opacity: 0 }
+ to { transform: none; opacity: 1 }
+}
+
+@keyframes signOut {
+ to { transform: translateY(-120%); opacity: 0 }
+}
+
+/* Avvisi brevi come riquadro di testo in basso */
+.toast {
+ top: auto;
+ bottom: max(16px, env(safe-area-inset-bottom));
+ left: 50%;
+ transform: translateX(-50%);
+ width: min(760px, calc(100% - 24px));
+ max-width: none;
+ background: #fffdf4;
+ border: 3px solid #2a3b33;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a;
+ border-radius: 10px;
+ color: #2a3b33;
+ font: 16px/1.4 Georgia, serif;
+ text-align: left;
+ padding: 14px 20px;
+ z-index: 25
+}
+
+/* Overlay trasparente per dialoghi e menu: il mondo resta visibile */
+.overlay.clear {
+ background: transparent;
+ backdrop-filter: none;
+ pointer-events: none
+}
+
+.overlay.clear>.panel {
+ pointer-events: auto
+}
+
+.overlay:has(.dialogue) {
+ align-items: flex-end
+}
+
+.panel.dialogue {
+ width: min(820px, 100%);
+ max-height: 52%;
+ background: #fffdf4;
+ border: 3px solid #2a3b33;
+ border-radius: 12px;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a, 0 6px 0 #0003;
+ padding: 16px 22px 14px;
+ font: 17px/1.45 Georgia, serif;
+ color: #22322b
+}
+
+.panel.dialogue .eyebrow {
+ display: none
+}
+
+.panel.dialogue h3 {
+ font: bold 13px monospace;
+ letter-spacing: 1px;
+ text-transform: uppercase;
+ color: #8a5b2b;
+ margin: 0 0 6px
+}
+
+.panel.dialogue p {
+ margin: 6px 0
+}
+
+.panel.dialogue .actions {
+ display: flex;
+ flex-wrap: wrap;
+ justify-content: flex-end;
+ gap: 6px;
+ margin-top: 8px
+}
+
+.panel.dialogue .btn {
+ background: transparent;
+ color: #22322b;
+ border: 0;
+ box-shadow: none;
+ font: 15px Georgia, serif;
+ padding: 6px 10px 6px 22px;
+ position: relative
+}
+
+.panel.dialogue .btn:focus-visible,
+.panel.dialogue .btn:hover {
+ outline: none;
+ background: #eef1e2;
+ border-radius: 6px
+}
+
+.panel.dialogue .btn:focus-visible::before,
+.panel.dialogue .btn:hover::before {
+ content: '▶';
+ position: absolute;
+ left: 6px;
+ font-size: 11px;
+ top: 9px
+}
+
+.panel.dialogue .person-card {
+ float: left;
+ margin: 0 14px 4px 0
+}
+
+.panel.dialogue .person-card p {
+ display: none
+}
+
+.panel.dialogue .person-portrait {
+ flex-basis: 64px;
+ width: 64px;
+ height: 80px;
+ display: block
+}
+
+.panel.dialogue .clue-card {
+ clear: both
+}
+
+/* Menu Start */
+.overlay:has(.start-menu) {
+ justify-content: flex-end;
+ align-items: flex-start
+}
+
+.panel.start-menu {
+ width: 230px;
+ padding: 10px 8px;
+ margin-top: max(0px, env(safe-area-inset-top));
+ background: #fffdf4;
+ border: 3px solid #2a3b33;
+ border-radius: 12px;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a, 0 6px 0 #0003
+}
+
+.panel.start-menu h3,
+.panel.start-menu .eyebrow,
+.panel.start-menu .actions {
+ display: none
+}
+
+.start-list {
+ display: grid
+}
+
+.start-item {
+ text-align: left;
+ background: transparent;
+ border: 0;
+ font: 18px/1.2 Georgia, serif;
+ color: #22322b;
+ padding: 9px 12px 9px 28px;
+ border-radius: 6px;
+ position: relative;
+ cursor: pointer
+}
+
+.start-item:focus,
+.start-item:hover {
+ outline: none;
+ background: #eef1e2
+}
+
+.start-item:focus::before,
+.start-item:hover::before {
+ content: '▶';
+ position: absolute;
+ left: 9px;
+ font-size: 12px;
+ top: 13px
+}
+
+/* Controlli touch: croce, START, A e B */
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls {
+  align-items: flex-end
+ }
+
+ .dpad button {
+  background: #1d2a25b3;
+  border-color: #ffffff33
+ }
+
+ .touch-controls .start-btn {
+  height: 26px;
+  border-radius: 14px;
+  padding: 0 14px;
+  font: bold 10px monospace;
+  letter-spacing: 1px;
+  background: #1d2a25b3;
+  margin-bottom: 8px
+ }
+
+ .ab-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end
+ }
+
+ .ab-buttons button {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid #ffffff44;
+  background: #7a2f2fcc;
+  color: #fff5e0;
+  font: bold 20px Georgia, serif
+ }
+
+ .ab-buttons button:last-child {
+  margin-bottom: 26px
+ }
+
+ .toast,
+ .overlay:has(.dialogue) {
+  padding-bottom: 150px
+ }
+
+ .toast {
+  bottom: 150px
+ }
+}
+
+button {
+ -webkit-tap-highlight-color: transparent
+}

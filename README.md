@@ -18,18 +18,18 @@ Apri `http://localhost:8080`. Usa un server HTTP: aprire direttamente il file co
 
 ### Comandi
 
-| Azione | Tastiera |
-|---|---|
-| Cammina | WASD / frecce |
-| Parla, entra, usa | E / Invio |
-| Bicicletta, dopo averla ottenuta | B |
-| Mappa e ritorni nei luoghi visitati | M |
-| Impostazioni | Esc |
-| Chitarra / batteria | D F J K |
-| Basso | D F J |
-| Pausa durante il brano | Spazio |
+Lo schermo mostra solo il mondo, come nei giochi di ruolo classici: la telecamera segue il personaggio e tutto il resto passa dal menu Start. Entrando in un luogo compare per qualche secondo il suo nome; quando cambia l’obiettivo, un breve avviso lo riassume. Un fumetto «!» segnala persone e oggetti con cui interagire.
 
-Puoi anche fare clic o toccare il terreno per camminare; toccando una porta o una persona la raggiungi e interagisci automaticamente. Su touch sono presenti anche frecce, azione, bici e pulsanti musicali. Le note lunghe vanno tenute premute; gli accordi richiedono più tasti insieme. Impostazioni: volume, difficoltà e compensazione input manuale. La musica parte dopo un’interazione.
+| Azione | Tastiera | Touch |
+|---|---|---|
+| Cammina | WASD / frecce | croce, oppure tocca il terreno |
+| Parla, entra, usa | E / Spazio / Z | A |
+| Menu Start (obiettivo, mappa, Musicodex, band, bici, opzioni) | Invio / Esc | START |
+| Bicicletta, dopo averla ottenuta | B | B |
+| Mappa rapida | M | dal menu |
+| Chitarra / batteria | D F J K | pulsanti in basso |
+| Basso | D F J | pulsanti in basso |
+| Pausa durante il brano | Spazio | Pausa |
 
 ### Percorso
 

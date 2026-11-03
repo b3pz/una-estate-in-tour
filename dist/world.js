@@ -412,6 +412,8 @@ export function townLayout(id) {
 export function isWalkable(layout, x, y) {
  if (layout.theme === 'seaBridge' && Math.abs(x - 24) > 1.6) return false;
  if (x < 1 || x > WIDTH - 1 || y < 1 || y > HEIGHT - 1) return false;
+ const sb = stageBox(layout);
+ if (sb && x > sb.x0 && x < sb.x1 && y > sb.y0 && y < sb.y1) return false;
  for (const b of layout.buildings)
   if (x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .2 && y < b.y + b.h + .15) return false;
  for (const w of layout.waters)
@@ -831,8 +833,14 @@ function buildingArt(ctx, b, p) {
   }], '#bdc49c', 2);
  }
 }
-export function drawStage(ctx, x, y, genre, large = false) {
- const s = large ? 1.8 : 1;
+export const STAGE_SCALE = 1.6, FESTIVAL_STAGE_SCALE = 2.5;
+export function stageBox(layout) {
+ if (!layout.stage) return null;
+ const s = layout.theme === 'festival' ? FESTIVAL_STAGE_SCALE : STAGE_SCALE;
+ return { x0: layout.stage.x - 72 * s / TILE, x1: layout.stage.x + 72 * s / TILE, y0: layout.stage.y - 60 * s / TILE, y1: layout.stage.y + .25 };
+}
+export function drawStage(ctx, x, y, genre, large = false, scale = null) {
+ const s = scale ?? (large ? FESTIVAL_STAGE_SCALE : 1);
  ctx.save();
  ctx.translate(x, y);
  ctx.scale(s, s);
@@ -874,6 +882,41 @@ export function drawStage(ctx, x, y, genre, large = false) {
  rounded(ctx, -52, -82, 104, 16, 4, '#2f4a3e');
  label(ctx, genre.toUpperCase(), 0, -70, 10, '#f2d28c');
  ctx.restore();
+}
+
+// Oltre i bordi della mappa: bosco fitto (o mare), così la telecamera centrata non mostra mai il vuoto.
+function borderTrees(ctx, layout, p, cam, W, H) {
+ const x0 = Math.floor(cam.x / TILE) - 2, x1 = Math.ceil((cam.x + W) / TILE) + 2,
+  y0 = Math.floor(cam.y / TILE) - 2, y1 = Math.ceil((cam.y + H) / TILE) + 4;
+ const gap = (x, y) => layout.gates.some(g => (g.side === 'east' || g.side === 'west') ? Math.abs(y - g.y) < 2.4 && ((g.side === 'west' && x < 1) || (g.side === 'east' && x > layout.width - 1)) : Math.abs(x - g.x) < 2.4 && ((g.side === 'north' && y < 1) || (g.side === 'south' && y > layout.height - 1)));
+ for (let y = y0 - (y0 % 2); y <= y1; y += 2)
+  for (let x = x0 - (x0 % 2); x <= x1; x += 2) {
+   const ox = x + (y % 4 ? 1 : 0), oy = y + .6;
+   if (ox > -1 && ox < layout.width + 1 && oy > -.5 && oy < layout.height + 1.5) continue;
+   if (gap(ox, oy)) continue;
+   drawTree(ctx, ox * TILE, oy * TILE, p, Math.abs(ox * 7 + oy * 13), layout.theme === 'island');
+  }
+ for (const g of layout.gates) {
+  const horiz = g.side === 'east' || g.side === 'west';
+  if (horiz) rounded(ctx, (g.side === 'west' ? g.x - 12 : g.x) * TILE, (g.y - .9) * TILE, 12 * TILE, 1.8 * TILE, 8, p.path);
+  else rounded(ctx, (g.x - .9) * TILE, (g.side === 'north' ? g.y - 12 : g.y) * TILE, 1.8 * TILE, 12 * TILE, 8, p.path);
+ }
+}
+
+export function bubble(ctx, x, y, time = 0) {
+ const bob = Math.sin(time / 220) * 2;
+ ctx.fillStyle = '#fffdf4';
+ ctx.strokeStyle = '#2a3b33';
+ ctx.lineWidth = 2;
+ ctx.beginPath();
+ ctx.roundRect(x - 10, y - 22 + bob, 20, 20, 6);
+ ctx.fill();
+ ctx.stroke();
+ ctx.fillStyle = '#2a3b33';
+ ctx.font = 'bold 15px Georgia, serif';
+ ctx.textAlign = 'center';
+ ctx.fillText('!', x, y - 7 + bob);
+ ctx.textAlign = 'left';
 }
 
 function waterArt(ctx, w, time) {
@@ -1039,6 +1082,7 @@ function landmark(ctx, layout, p, time) {
  }
 }
 export function renderWorld(ctx, {
+ cam: camIn = null,
  layout,
  state,
  area,
@@ -1050,11 +1094,13 @@ export function renderWorld(ctx, {
  H = 600
 }) {
  const p = THEMES[layout.theme] || THEMES.country,
-  cam = cameraFor(state.x, state.y, W, H, layout);
- ctx.fillStyle = p.grass;
+  cam = camIn || cameraFor(state.x, state.y, W, H, layout);
+ const seaAround = ['island', 'seaBridge'].includes(layout.theme);
+ ctx.fillStyle = seaAround ? '#75aaa6' : p.grass;
  ctx.fillRect(0, 0, W, H);
  ctx.save();
  ctx.translate(-cam.x, -cam.y);
+ if (!seaAround) borderTrees(ctx, layout, p, cam, W, H);
  ctx.fillStyle = layout.theme === 'seaBridge' ? '#75aaa6' : p.grass;
  ctx.fillRect(0, 0, WIDTH * TILE, HEIGHT * TILE);
  for (let i = 0; i < 190; i++) {
@@ -1159,7 +1205,7 @@ export function renderWorld(ctx, {
  }));
  if (layout.stage) actors.push({
   depth: layout.stage.y * TILE,
-  draw: () => drawStage(ctx, layout.stage.x * TILE, layout.stage.y * TILE, state.city === 0 ? 'Piazza delle Cicale' : CITIES[state.city].genre, layout.theme === 'festival')
+  draw: () => drawStage(ctx, layout.stage.x * TILE, layout.stage.y * TILE, state.city === 0 ? 'Piazza delle Cicale' : CITIES[state.city].genre, layout.theme === 'festival', layout.theme === 'festival' ? FESTIVAL_STAGE_SCALE : STAGE_SCALE)
  });
  for (let i = 0; i < (layout.theme === 'seaBridge' ? 0 : 58); i++) {
   const x = (2 + (i * 7.37) % 44),
@@ -1175,6 +1221,8 @@ export function renderWorld(ctx, {
     return Math.hypot(x - a.x - t * dx, y - a.y - t * dy) < 2.8;
    }))) continue;
   if (layout.gates.some(g => Math.hypot(g.x - x, g.y - y) < 4)) continue;
+  const sbx = stageBox(layout);
+  if (sbx && x > sbx.x0 - 2.5 && x < sbx.x1 + 2.5 && y > sbx.y0 - 1 && y < sbx.y1 + 5) continue;
   if ((layout.from !== undefined && layout.theme === 'river' && x > 6 && x < 15) || (x > 17 && x < 40 && y > 13 && y < 28) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h)) continue;
   actors.push({
    depth: y * TILE,
@@ -1216,18 +1264,7 @@ export function renderWorld(ctx, {
      color: o.color,
      facing: o.facing || 'south'
     });
-    if (near === o || state.stage === 'school' && area === 'town' && state.city === 0) label(ctx, '•', o.x * TILE, o.y * TILE - 55, 20, '#fff0ba');
    }
-  });
- if (state.city === 0 && area === 'town' && state.stage === 'rival')
-  for (let i = 0; i < 3; i++) actors.push({
-   depth: 24 * TILE,
-   draw: () => drawCharacter(ctx, (31 + i * 1.1) * TILE, 24 * TILE, {
-    portrait: i,
-    variant: 1,
-    color: '#7d768c',
-    facing: 'west'
-   })
   });
  actors.push({
   depth: state.y * TILE,

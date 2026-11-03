@@ -38,10 +38,10 @@ export const RESIDENTS = {
 
 // Rivali lungo il viaggio: un piccolo arco che si chiude al concerto a casa.
 export const RIVAL_POSTS = {
- 0: [[0, 32.5, 24], [1, 38.5, 23.5], [2, 30.5, 25.5]],
- 2: [[0, 30, 20]],
- 5: [[1, 31, 20]],
- 8: [[2, 31, 23]],
+ 0: [[0, 27.5, 24.5], [1, 25.5, 26.5], [2, 28.5, 27.5]],
+ 2: [[0, 26, 25.5]],
+ 5: [[1, 28, 19]],
+ 8: [[2, 29.5, 21]],
  11: [[0, 32, 24], [1, 34, 19], [2, 30, 20]]
 };
 export const RIVAL_LINES = {

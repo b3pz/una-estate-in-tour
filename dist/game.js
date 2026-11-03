@@ -79,7 +79,8 @@ const $ = id => document.getElementById(id),
  QA = new URLSearchParams(location.search).get('qa') === '1',
  SAVE = QA ? 'b3pz-tour-v1-qa' : 'b3pz-tour-v1';
 let W = 960,
- H = 600;
+ H = 600,
+ pixelScale = 1;
 const T = 24,
  keys = new Set();
 let state = initialState(),
@@ -176,6 +177,12 @@ function panel(title, body, actions = [], tag = 'IL TACCUINO DELLA BAND') {
   b.addEventListener('click', a.run);
   p.querySelector('.actions').appendChild(b);
  }
+ overlay.classList.remove('clear');
+ const complex = '.blues-grid,.signal-board,.fragments,.groove-grid,.tempo-box,.clave-grid,.planks,.puzzle-sequence,.atlas-scroll,.dex-entries,.metro-stops,.deduce-options,.case-parts,.instrument-choices,select,input,.result-number,.stat-row,.clue-list,.region-map';
+ if (!p.querySelector(complex) && !p.classList.contains('narrative')) {
+  p.classList.add('dialogue');
+  overlay.classList.add('clear');
+ }
  p.querySelector('button')?.focus();
  return p;
 }
@@ -202,6 +209,30 @@ function nextStop() {
  return `Prossima tappa: ${best.m.name} (${best.m.genre.toLowerCase()}). ${first.to === best.m.id ? 'È qui vicino' : 'Passa da ' + CITIES[first.to].name}: ${first.mode === 'Sentiero' ? 'segui i cartelli ai bordi del paese' : first.mode.toLowerCase()}. Itinerario completo nella mappa (M).`;
 }
 
+let lastObjective = '',
+ lastPlace = '',
+ signTimer,
+ pendingSign;
+
+function showAreaSign(name, sub, ms) {
+ clearTimeout(pendingSign);
+ if (!overlay.hidden || mode !== 'world') {
+  pendingSign = setTimeout(() => showAreaSign(name, sub, ms), 300);
+  return;
+ }
+ const el = $('areaSign');
+ el.classList.toggle('objective-sign', !name);
+ $('areaSignName').textContent = name || 'Obiettivo';
+ $('areaSignSub').textContent = sub || '';
+ el.hidden = false;
+ el.classList.remove('leaving');
+ clearTimeout(signTimer);
+ signTimer = setTimeout(() => {
+  el.classList.add('leaving');
+  signTimer = setTimeout(() => el.hidden = true, 350);
+ }, ms);
+}
+
 function fameTitle() {
  return state.xp >= 900 ? 'BAND DA FESTIVAL' : state.xp >= 500 ? 'BAND DELLA REGIONE' : state.xp >= 200 ? 'BAND DI PAESE' : 'BAND DI GARAGE';
 }
@@ -222,6 +253,8 @@ function updateJournal() {
  if (area === 'interior' && state.stage === 'school' && room.entry.kind === 'school') objective = 'Parla con il maestro Riva, davanti alla lavagna. Premi E / PARLA.';
  if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'garage') objective = 'Avvicinati a Nico e Vale e premi E / PARLA per cominciare a provare.';
  if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'school') objective = 'Esci dalla porta in basso. Nico e Vale ti aspettano nel garage, a sud-ovest.';
+ if (objective !== lastObjective && state.introDone && lastObjective && lastPlace) showAreaSign(null, objective, 4200);
+ lastObjective = objective;
  $('objective').textContent = objective;
  $('areaSubtitle').textContent = area === 'interior' ? room.entry.label.toUpperCase() : area === 'road' ? 'SENTIERO · ' + CITIES[road.to].genre.toUpperCase() : ({
   Casa: 'CAMPI, CICALE E IL PRIMO ACCORDO',
@@ -237,11 +270,16 @@ function updateJournal() {
   Archivio: 'LE STORIE RIMASTE A METÀ',
   Festival: 'IL PALCO DI SETTEMBRE'
  })[c.genre];
+ const placeKey = area + ':' + state.city + ':' + (road ? road.from + '-' + road.to : '') + ':' + (room?.entry.label || '');
+ if (placeKey !== lastPlace && state.introDone) {
+  lastPlace = placeKey;
+  showAreaSign(area === 'road' ? CITIES[road.from].name + ' → ' + CITIES[road.to].name : area === 'interior' ? room.entry.label : c.name, area === 'road' ? 'Sentiero' : area === 'interior' ? c.name : $('areaSubtitle').textContent || c.genre, 2600);
+ }
  $('instrumentTag').textContent = `${INSTRUMENTS[state.instrument].name.toUpperCase()} · ${state.bike?'IN BICICLETTA':state.bicycle?'BICI SBLOCCATA · B':'A PIEDI'} · ${fameTitle()}`;
 }
 
 function welcome() {
- const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.5</p>`, [...(saved ? [{
+ const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.6</p>`, [...(saved ? [{
   label: 'Continua',
   run: () => {
    state = saved;
@@ -261,6 +299,8 @@ function welcome() {
   }]) : intro(0)
  }], 'UNA STORIA DI B3PZ');
  p.classList.add('chapter-title');
+ p.classList.remove('dialogue');
+ overlay.classList.remove('clear');
 }
 const maestroPortrait = `<svg viewBox="0 0 130 170" aria-label="Il maestro Riva" role="img"><path d="M17 173Q14 111 65 108Q116 111 113 173" fill="#607e6d"/><path d="M51 109L65 139L80 109" fill="#f6e8ba"/><path d="M56 118L65 147L74 118" fill="#b67d53"/><ellipse cx="65" cy="74" rx="33" ry="42" fill="#e3b68d"/><path d="M30 69Q20 18 65 20Q111 18 100 70L87 43Q63 55 43 42Z" fill="#d1cfb8"/><path d="M31 62Q20 80 35 93M99 62Q111 80 96 93" fill="#e3b68d"/><g fill="none" stroke="#42594f" stroke-width="3"><ellipse cx="51" cy="72" rx="14" ry="11"/><ellipse cx="80" cy="72" rx="14" ry="11"/><path d="M65 70H67"/></g><path d="M50 93Q65 78 81 93Q71 101 65 94Q59 101 50 93" fill="#c3bca3"/><path d="M60 105Q65 108 71 104" fill="none" stroke="#9d765e" stroke-width="2"/></svg>`;
 
@@ -280,6 +320,8 @@ function intro(page) {
   secondary: true
  }] : [])], 'MAESTRO RIVA');
  p.classList.add('narrative');
+ p.classList.remove('dialogue');
+ overlay.classList.remove('clear');
  const content = document.createElement('div');
  content.className = 'narrative-content';
  while (p.firstChild) content.appendChild(p.firstChild);
@@ -460,15 +502,10 @@ function setupRoom(entry, reset = true) {
 }
 
 function cameraNow() {
- if (area !== 'interior') return cameraFor(state.x, state.y, W, H, layout);
- const c = cameraFor(state.x, state.y, W, H),
-  top = 6.4 * T,
-  bottom = 29.8 * T,
-  left = 9.6 * T,
-  right = 38.4 * T;
- if (H >= bottom - top) c.y = (top + bottom) / 2 - H / 2;
- if (W >= right - left) c.x = (left + right) / 2 - W / 2;
- return c;
+ return {
+  x: state.x * T - W / 2,
+  y: state.y * T - H / 2
+ };
 }
 
 function leaveRoom() {
@@ -931,6 +968,7 @@ async function startSong(id, kind) {
  };
  $('rhythmHud').hidden = false;
  $('laneControls').hidden = false;
+ fitCanvas();
  $('sceneBadge').hidden = true;
  $('songLabel').textContent = `${kind==='tutorial'?'TUTORIAL':kind==='final'?'FESTIVAL':CITIES[id].genre.toUpperCase()} / ${INSTRUMENTS[state.instrument].name.toUpperCase()}`;
  $('laneControls').innerHTML = '';
@@ -1042,6 +1080,7 @@ function exitSong(showToast = true) {
  audio.stop();
  song = null;
  mode = 'world';
+ fitCanvas();
  $('screen').classList.remove('in-song');
  $('rhythmHud').hidden = true;
  $('laneControls').hidden = true;
@@ -1345,6 +1384,24 @@ function showBand() {
  }], 'LA NOSTRA BAND');
 }
 
+function startMenu() {
+ if (mode !== 'world' || !overlay.hidden || !state.introDone) return;
+ const items = [
+  ['Obiettivo', () => panel('Obiettivo', `<p>${$('objective').textContent}</p><p class="fine">${chapter(state)} · ${state.passes.length} pass su 8 · ${fameTitle().toLowerCase()}</p>`, [{ label: 'Indietro', run: () => { close(); startMenu(); } }], 'MENU')],
+  ['Mappa', showMap],
+  ['Musicodex', showDex],
+  [state.bandName || 'La band', showBand],
+  ...(state.bicycle ? [[state.bike ? 'Scendi dalla bici' : 'Bici', () => { close(); toggleBike(); }]] : []),
+  ['Opzioni', settings],
+  ['Chiudi', close]
+ ];
+ const p = panel('', `<div class="start-list">${items.map((it, i) => `<button class="start-item" data-i="${i}">${it[0]}</button>`).join('')}</div>`, [], '');
+ p.classList.add('start-menu');
+ overlay.classList.add('clear');
+ p.querySelectorAll('.start-item').forEach(b => b.onclick = () => items[+b.dataset.i][1]());
+ p.querySelector('.start-item')?.focus();
+}
+
 function settings() {
  if (mode === 'rhythm') {
   pauseSong();
@@ -1362,6 +1419,9 @@ function settings() {
  }, {
   label: 'Importa partita',
   run: importSave
+ }, {
+  label: 'Torna al menu',
+  run: () => { close(); startMenu(); }
  }, {
   label: 'Titolo',
   run: () => {
@@ -1501,11 +1561,27 @@ function roomItems(kind) {
  ];
 }
 
+function interactBubble(x, y) {
+ const bob = Math.sin(performance.now() / 220) * 2;
+ ctx.fillStyle = '#fffdf4';
+ ctx.strokeStyle = '#2a3b33';
+ ctx.lineWidth = 2;
+ ctx.beginPath();
+ ctx.roundRect(x - 10, y - 22 + bob, 20, 20, 6);
+ ctx.fill();
+ ctx.stroke();
+ ctx.fillStyle = '#2a3b33';
+ ctx.font = 'bold 15px Georgia, serif';
+ ctx.textAlign = 'center';
+ ctx.fillText('!', x, y - 7 + bob);
+ ctx.textAlign = 'left';
+}
+
 function drawInterior() {
  const cam = cameraNow();
+ rect(0, 0, W, H, '#14110e');
  ctx.save();
  ctx.translate(-cam.x, -cam.y);
- rect(0, 0, WIDTH * T, HEIGHT * T, '#294238');
  const sx = 10 * T,
   sy = 7 * T,
   rw = 28 * T,
@@ -1560,6 +1636,7 @@ function drawInterior() {
   })
  });
  actors.sort((a, b) => a.depth - b.depth).forEach(o => o.draw());
+ if (near && overlay.hidden) interactBubble(near.x * T, near.y * T - (near.prop ? 34 : 70));
  rect(23 * T, 28 * T, 2 * T, 1.2 * T, '#e7c891');
  text('↓ USCITA', 24 * T, 27.8 * T, '#6d7959', 10, 'center');
  ctx.restore();
@@ -1567,17 +1644,28 @@ function drawInterior() {
 
 function drawWorld(ts) {
  if (area === 'interior') drawInterior();
- else renderWorld(ctx, {
-  layout,
-  state,
-  area,
-  walk,
-  moving: hasMoved,
-  near,
-  time: ts,
-  W,
-  H
- });
+ else {
+  const cam = cameraNow();
+  renderWorld(ctx, {
+   cam,
+   layout,
+   state,
+   area,
+   walk,
+   moving: hasMoved,
+   near,
+   time: ts,
+   W,
+   H
+  });
+  if (near && overlay.hidden) {
+   const person = ['npc', 'wanderer', 'resident', 'rivalPerson'].includes(near.kind);
+   ctx.save();
+   ctx.translate(-cam.x, -cam.y);
+   interactBubble(near.x * T, near.y * T - (person ? 70 : 46));
+   ctx.restore();
+  }
+ }
 }
 
 function drawRhythm() {
@@ -1671,8 +1759,8 @@ function update(dt) {
   }
  }
  if (near && (near.kind === 'npc' || area === 'interior')) near.facing = facingFor(state.x - near.x, state.y - near.y);
- $('prompt').hidden = !near;
- if (near) $('prompt').textContent = 'E / PARLA · ' + near.label;
+ $('prompt').hidden = true;
+ if (near) $('prompt').textContent = near.label;
  canvas.setAttribute('aria-label', `Mondo di gioco: ${CITIES[state.city].name}${area==='interior'?', '+room.entry.label:''}. Posizione ${state.x.toFixed(1)}, ${state.y.toFixed(1)}. Direzione ${state.facing}.`);
 }
 
@@ -1680,6 +1768,7 @@ function frame(ts) {
  const dt = Math.min(.12, (ts - last) / 1000);
  last = ts;
  update(dt);
+ ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
  ctx.clearRect(0, 0, W, H);
  if (mode === 'rhythm') drawRhythm(ts);
  else drawWorld(ts);
@@ -1702,14 +1791,28 @@ document.addEventListener('keydown', e => {
   return;
  }
  if (!overlay.hidden) {
+  const menu = overlay.querySelector('.start-menu');
+  if (menu && (key === 'arrowdown' || key === 'arrowup' || key === 's' || key === 'w')) {
+   const list = [...menu.querySelectorAll('.start-item')],
+    i = list.indexOf(document.activeElement);
+   list[(i + (key === 'arrowdown' || key === 's' ? 1 : -1) + list.length) % list.length].focus();
+   return;
+  }
   if (key === 'm' && overlay.querySelector('.map-panel')) close();
   else if (key === 'escape' && !overlay.querySelector('.narrative') && !overlay.querySelector('.chapter-title') && !overlay.querySelector('.instrument-choices')) close();
   return;
  }
- if (key === 'e' || key === 'enter') interact();
+ if (key === 'e' || key === ' ' || key === 'z') interact();
+ else if (key === 'enter') {
+  e.preventDefault();
+  startMenu();
+ }
  else if (key === 'b') toggleBike();
  else if (key === 'm') showMap();
- else if (key === 'escape') settings();
+ else if (key === 'escape') {
+  e.preventDefault();
+  startMenu();
+ }
  else keys.add(key);
 });
 document.addEventListener('keyup', e => {
@@ -1746,6 +1849,7 @@ document.querySelectorAll('[data-move]').forEach(b => {
  b.onpointerup = b.onpointercancel = () => keys.delete(k);
 });
 $('touchAction').onclick = interact;
+$('touchStart').onclick = startMenu;
 $('touchBike').onclick = toggleBike;
 $('mapBtn').onclick = showMap;
 $('bandBtn').onclick = showDex;
@@ -1792,12 +1896,17 @@ canvas.addEventListener('pointerdown', e => {
 });
 
 function fitCanvas() {
- const r = canvas.getBoundingClientRect();
- // In verticale il mondo mostra più caselle: si vede dove si va senza zoomare.
- H = r.height > r.width * 1.15 ? 860 : 600;
+ const r = canvas.getBoundingClientRect(),
+  portrait = r.height > r.width * 1.15;
+ // Mondo: inquadratura ravvicinata e centrata sul personaggio, come nei giochi di ruolo classici.
+ // Concerti: inquadratura più ampia, per leggere la pista.
+ if (mode === 'rhythm') H = portrait ? 860 : 600;
+ else H = portrait ? Math.round(14 * T * r.height / r.width) : 16 * T;
  W = Math.round(H * r.width / r.height);
- canvas.width = W;
- canvas.height = H;
+ // Disegno alla risoluzione reale dello schermo: inquadratura ravvicinata ma immagini nitide.
+ pixelScale = Math.min(4, Math.max(1, r.height / H * (window.devicePixelRatio || 1)));
+ canvas.width = Math.round(W * pixelScale);
+ canvas.height = Math.round(H * pixelScale);
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
