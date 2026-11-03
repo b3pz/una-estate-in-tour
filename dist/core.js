@@ -13,21 +13,25 @@ export const CITIES=[
 {id:10,name:'Notturnia',genre:'Jazz',type:'music',color:'#7e8f9b',roof:'#777396',bpm:100,root:116.54,teacher:'Mina',lesson:'Ascolta gli altri. Una variazione può diventare una risposta.',pattern:[0,2,3,1]},
 {id:11,name:'Settembre',genre:'Festival',type:'final',color:'#99a77a',roof:'#c29c62',month:'SETTEMBRE',text:'Il palco che sembrava lontanissimo. Tutte le strade portano qui.'}
 ];
-export const EDGES=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[3,6],[5,8],[2,0],[10,6]];
+export const EDGES=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[8,9],[9,10],[10,11],[3,6],[5,8],[2,0],[10,6]];
 export const MUSIC_CITIES=CITIES.filter(c=>c.type==='music');
 export const DEFAULT_SETTINGS={volume:.55,offset:0,difficulty:'normal',muted:false};
-export function initialState(instrument='guitar'){return {version:1,instrument,city:0,x:10.5,y:14,facing:'south',introDone:false,scene:null,stage:'school',passes:[],puzzles:[],visited:[0],stories:[],bicycle:false,bike:false,boat:false,homeShow:false,finished:false,xp:0,best:{},settings:{...DEFAULT_SETTINGS}};}
+export function initialState(instrument='guitar'){return {version:1,instrument,starter:instrument,mastery:{},transport:{bike:0,metro:0},city:0,x:10.5,y:14,facing:'south',introDone:false,scene:null,stage:'school',passes:[],puzzles:[],visited:[0],stories:[],memories:[],bicycle:false,bike:false,boat:false,homeShow:false,finished:false,xp:0,best:{},settings:{...DEFAULT_SETTINGS}};}
 export function validateState(s){
  if(!s||s.version!==1||!INSTRUMENTS[s.instrument]||!Number.isInteger(s.city)||!CITIES[s.city])return null;
  const out=initialState(s.instrument);const ids=a=>Array.isArray(a)?[...new Set(a.filter(n=>Number.isInteger(n)&&CITIES[n]))]:[];
+ for(const k of ['bike','metro'])out.transport[k]=Number.isInteger(s.transport?.[k])?Math.max(0,Math.min(3,s.transport[k])):0;
+ out.starter=INSTRUMENTS[s.starter]?s.starter:s.instrument;out.mastery={};if(s.mastery&&typeof s.mastery==='object')for(const [k,v]of Object.entries(s.mastery))if(/^(1|2|4|5|7|8|9|10):(guitar|bass|drums)$/.test(k)&&Number.isFinite(v)&&v>=0&&v<=100)out.mastery[k]=v;
  out.city=s.city;out.x=Number.isFinite(s.x)?Math.min(46.7,Math.max(1.3,s.x)):10.5;out.y=Number.isFinite(s.y)?Math.min(32.7,Math.max(1.3,s.y)):14;
  out.facing=['north','south','east','west'].includes(s.facing)?s.facing:'south';out.introDone=s.introDone===undefined?true:s.introDone===true;
  if(s.scene?.type==='road'&&s.scene.from===s.city&&neighbors(s.scene.from).includes(s.scene.to))out.scene={type:'road',from:s.scene.from,to:s.scene.to};
  if(s.scene?.type==='interior'&&typeof s.scene.label==='string'&&s.scene.label.length<80)out.scene={type:'interior',label:s.scene.label};
+ out.memories=Array.isArray(s.memories)?[...new Set(s.memories.filter(x=>typeof x==='string'&&/^road:[0-9]{1,2}-[0-9]{1,2}$/.test(x)))].slice(0,30):[];
  out.stage=['school','practice','rival','tour'].includes(s.stage)?s.stage:'school';out.passes=ids(s.passes).filter(id=>CITIES[id].type==='music');out.puzzles=ids(s.puzzles).filter(id=>CITIES[id].type==='music');out.visited=[...new Set([0,...ids(s.visited),out.city])];out.stories=ids(s.stories).filter(id=>CITIES[id].type==='story');
- for(const k of ['bicycle','bike','boat','homeShow','finished'])out[k]=s[k]===true;
+ for(const k of ['bicycle','bike','boat','homeShow','finished'])out[k]=s[k]===true;if(out.bicycle)out.transport.bike=3;if(out.transport.bike!==3)out.transport.metro=0;
  out.xp=Number.isFinite(s.xp)?Math.min(100000,Math.max(0,Math.floor(s.xp))):0;
  if(s.best&&typeof s.best==='object')for(const [key,value]of Object.entries(s.best))if(/^\d+$/.test(key)&&Number.isFinite(value))out.best[key]=Math.max(0,Math.min(100,value));
+ if(!s.mastery)for(const id of out.passes)out.mastery[id+':'+out.starter]=out.best[id]??50;
  const st=s.settings||{};out.settings={volume:Number.isFinite(st.volume)?Math.max(0,Math.min(1,st.volume)):.55,offset:Number.isFinite(st.offset)?Math.max(-250,Math.min(250,st.offset)):0,difficulty:['assist','normal','expert'].includes(st.difficulty)?st.difficulty:'normal',muted:st.muted===true};return out;
 }
 export function neighbors(id){return EDGES.filter(e=>e.includes(id)).map(e=>e[0]===id?e[1]:e[0]);}
@@ -76,6 +80,7 @@ export function award(s,id,score,kind){
  if(kind==='tutorial'){s.stage='rival';return {won:true,message:'Ora siete pronti per provare a suonare insieme.'};}
  if(kind==='rival'){s.stage='tour';return {won:true,message:score>=75?'Hai sorpreso i rivali. La band ha ancora strada da fare: loro vincono il confronto, ma ricordano il tuo nome.':'I rivali vincono il confronto. Voi avete appena cominciato: è il momento di partire.'};}
  if(!won)return {won:false,message:'Ci siamo quasi. Puoi allenarti, riprovare o scegliere la modalità accessibile.'};
+ if(['concert','practice'].includes(kind)&&s.puzzles.includes(id)){const key=id+':'+s.instrument;s.mastery[key]=Math.max(s.mastery[key]??0,score);}
  if(kind==='boat'){s.boat=true;return {won:true,message:'Il concerto sul ponte è riuscito. Prossima fermata: Isola Levante.'};}
  if(kind==='home'){s.homeShow=true;return {won:true,message:'Stavolta il paese chiede il bis. Il festival vi aspetta.'};}
  if(kind==='final'){s.finished=true;return {won:true,message:'Dal garage al festival. Questa estate è vostra.'};}

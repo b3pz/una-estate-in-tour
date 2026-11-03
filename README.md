@@ -116,3 +116,19 @@ La revisione migliora esplorazione e orientamento. La scrittura completa delle c
 ## Asset illustrati
 
 Tre tavole raster locali in `dist/assets/`: protagonista con 12 pose, amici e maestro nelle quattro direzioni, strumenti, vegetazione ed edifici delle diverse città. Il motore ritaglia le celle al momento del disegno e conserva gli originali con trasparenza. Le immagini non vengono caricate da servizi esterni. Il disegno procedurale rimane come fallback durante il caricamento e per superfici, percorsi ed effetti. La bicicletta usa ancora un disegno provvisorio. Dettagli: [direzione artistica e tavole](docs/ART_ASSETS.md).
+
+## Revisione 0.3
+
+Arredi illustrati, sprite proporzionati, abitanti e rivali distinti, otto ricostruzioni musicali e il mistero delle Otto Strade. Calendario guidato dagli eventi. Dettagli, fonti e limiti: [REVISIONE_03.md](docs/REVISIONE_03.md).
+
+## Revisione 0.3.1 — concerti
+
+Pista in prospettiva, band illustrata con strumenti assegnati, palette dei generi, pubblico che reagisce alle serie, feedback sui colpi e comandi touch con colori di corsia. Il rendering non modifica partiture, finestre di precisione o punteggio. Movimento decorativo ridotto secondo le preferenze del dispositivo. Verificati renderer largo e stretto; il collaudo audio/multitouch su iPhone resta da fare.
+
+## Revisione 0.4 — atlante, Musicodex e trasporti
+
+L’illustrazione è la mappa principale con 12 luoghi selezionabili, zoom, percorsi e dettaglio progressi. Musicodex: 8 capacità di ascolto e 24 per strumento, completabili in una sola campagna cambiando ruolo nei garage; acquisizione dopo una prova riuscita e padronanza a 85%. I salvataggi precedenti conservano i pass e migrano le capacità guadagnate sullo strumento iniziale.
+
+A Binario Nord due missioni: recuperare la pompa e riportarla ad Arturo per la bici; ricomporre gli annunci in stazione e consegnare il nastro per il pass metro. La metro parte esclusivamente dagli ingressi fisici nelle città servite: Rivafosca, Officina, Binario Nord, Bellavista, Grooveto, Porto del Sol, Notturnia e Settembre. Le destinazioni devono essere già visitate; i requisiti del festival restano validi. Monteferro ha una funivia da Valdaccordo e nessuna metro. L’isola richiede la prima traversata in nave da Porto del Sol, poi si può ripercorrere il pontile tra Notturnia e l’isola; il traghetto resta disponibile. Il pontile è una mappa percorribile sul mare con ringhiere e collisioni.
+
+Gli ingressi dei mezzi sono rappresentati nel mondo; gli edifici usano le tavole tematiche, anche per sale prove urbane, alpine e insulari. L’atlante guida le tipologie e la disposizione generale, ma la ricostruzione dettagliata di tutte le città non è ancora completa. Le strade hanno palette regionali e restano modulari. La metro e la funivia hanno passaggi narrativi, non un interno esplorabile in movimento.
