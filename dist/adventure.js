@@ -1,16 +1,107 @@
-export const PEOPLE=[['Elia','Leader degli Alta Tensione: teme di essere dimenticato.'],['Bea','Bassista rivale. Ascolta prima di giudicare.'],['Tommi','Batterista rivale: scherza per nascondere la paura di sbagliare.'],['Nino','Conserva i manifesti dei concerti sul fiume.'],['Ada','Ripara amplificatori e organizza i concerti del quartiere.'],['Lia','Vuole riaprire il teatro.'],['Tito','Cerca un groove che lasci spazio agli altri.'],['Iris','Preferisce una prova lenta a una nota confusa.'],['Rosa','Unisce percussionisti di generazioni diverse.'],['Teo','Ripara le reti del padre prima delle prove.'],['Mina','Annota anche le idee degli sconosciuti.'],['Emma','Raccoglie testimonianze per la radio del campeggio.'],['Leo','Viaggia in bicicletta con la sua chitarra.'],['Arturo','Ex ferroviere: ricorda la band di Riva.'],['Dario','Custodisce l’archivio e le vecchie scalette.'],['Sami','Registra le voci dei paesi e sogna il festival.']];
-export const TEACHER_ART={1:3,2:4,3:13,4:5,5:6,6:14,7:7,8:8,9:9,10:10,11:15};
-// Fictional story; musical tasks describe these examples, never an entire genre.
-export const CASES={
-1:{title:'Le dodici battute scomparse',scene:'Nino trova la scaletta di un vecchio concerto strappata in tre parti. Ricostruite questo blues in La, poi provate a suonare.',hint:'Questo giro usa quattro battute di La7; Re7, Re7, La7, La7; infine Mi7, Re7, La7, Mi7. Esistono altre varianti.',parts:['La7 · La7 · La7 · La7','Re7 · Re7 · La7 · La7','Mi7 · Re7 · La7 · Mi7'],clue:'Sul retro: un plettro disegnato e «Lato B. Non cercare un assolo».',fact:'Un blues in dodici battute può usare I, IV e V: in La, per esempio, La7, Re7 e Mi7.'},
-2:{title:'Il palco rimasto muto',scene:'Il concerto del quartiere è fermo. Ada chiede di ricostruire il percorso del segnale su un disegno, prima di accendere l’impianto.',hint:'In questo impianto: chitarra nell’amplificatore; microfono davanti al suo altoparlante verso il mixer; uscita del mixer verso casse attive.',parts:['Chitarra → amplificatore','Microfono davanti all’altoparlante → mixer','Mixer → casse attive'],clue:'Nella custodia: Riva e un quarto musicista che manca sulla locandina.',fact:'Un microfono può riprendere l’altoparlante di un amplificatore. È uno dei possibili percorsi del segnale.'},
-4:{title:'Il ritornello senza casa',scene:'Le schede del brano di Lia sono mescolate: partenza, promessa, dubbio e ritorno della promessa.',hint:'In questa canzone: strofa narrativa, ritornello, ponte contrastante e ultimo ritornello. Non è una forma obbligatoria del pop.',parts:['Strofa · partenza','Ritornello · promessa','Ponte · dubbio','Ritornello · promessa ripresa'],clue:'La stessa promessa è nel nastro del teatro, intitolato «Le Otto Strade».',fact:'Strofa, ritornello e ponte possono avere funzioni differenti. Le canzoni non hanno una sola struttura.'},
-5:{title:'Il posto del silenzio',scene:'Nel cortile tutti suonano insieme. Tito mostra quattro coppie di ottavi: ricostruisci la battuta lasciando le pause indicate.',hint:'Conta «1 e 2 e 3 e 4 e». Sul foglio: basso su 1, sul levare di 2 e su 3. Il trattino indica una pausa.',parts:['1 e · BASSO —','2 e · — BASSO','3 e · BASSO —','4 e · — —'],clue:'Il quarto musicista teneva insieme gli altri lasciando spazio. Il plettro era un portafortuna.',fact:'Le pause hanno durata e fanno parte del ritmo; il groove dipende anche dagli spazi tra le note.'},
-7:{title:'La prova nella fortezza',scene:'La registrazione corre troppo. Iris vuole rimettere in ordine i tre appunti di studio prima di affrontare il brano.',hint:'Gli appunti prescrivono 60, poi 80, poi 100 BPM. Volume e velocità della pulsazione sono cose diverse.',parts:['60 BPM · isolare il passaggio','80 BPM · unire le parti','100 BPM · eseguire insieme'],clue:'Nell’astuccio: «A Riva, perché sappia ricominciare». Il plettro non prometteva vittorie.',fact:'BPM significa pulsazioni al minuto. A 60 BPM ogni pulsazione dura un secondo; a 120 dura mezzo secondo.'},
-8:{title:'Due battute per ritrovarsi',scene:'Rosa vuole riunire due percussionisti. Ricostruite le due battute di questo esempio di clave son 3–2 in 4/4.',hint:'Prima battuta: colpi su 1, sul levare di 2 e su 4. Seconda: su 2 e 3. È un esempio di una specifica tradizione afro-cubana.',parts:['Prima battuta · 1, e di 2, 4','Seconda battuta · 2, 3'],clue:'Rosa riconosce la grafia: Andrea suonava con Riva, poi lasciò il circuito.',fact:'La clave son 3–2 è un ciclo di due battute. Non rappresenta tutta la musica latinoamericana.'},
-9:{title:'Il ponte tra i battiti',scene:'Teo indica quattro assi del pontile: ricomponi le suddivisioni della battuta per provare un accompagnamento in levare.',hint:'Conta «1 e 2 e 3 e 4 e». In questo esercizio l’accordo cade su ogni «e», tra due pulsazioni.',parts:['1 → e · accordo','2 → e · accordo','3 → e · accordo','4 → e · accordo'],clue:'Andrea scriveva: «Non volevo diventare una leggenda. Volevo essere ascoltato».',fact:'L’accento sugli ottavi tra le pulsazioni è frequente nell’accompagnamento reggae, che non si riduce a un solo pattern.'},
-10:{title:'La risposta del club',scene:'Mina ritrova l’ultima parte del nastro: ricostruisci l’alternanza dei musicisti seguendo le note del fonico.',hint:'Sul foglio: tema, risposta dell’altro, variazione del tema, conclusione insieme. È un esercizio di dialogo musicale.',parts:['Tema · ascoltare','Risposta · lasciare il turno','Variazione · riprendere un’idea','Conclusione · insieme'],clue:'Il nastro restituisce quattro nomi: Andrea aveva scritto il tema con Riva, ma il manifesto lo aveva dimenticato.',fact:'Nell’improvvisazione si possono sviluppare motivi ascoltati. Il jazz comprende molte forme, non una sola sequenza.'}
+export const PEOPLE = [
+ ['Elia', 'Leader degli Alta Tensione: teme di essere dimenticato.'],
+ ['Bea', 'Bassista rivale. Ascolta prima di giudicare.'],
+ ['Tommi', 'Batterista rivale: scherza per nascondere la paura di sbagliare.'],
+ ['Nino', 'Conserva i manifesti dei concerti sul fiume.'],
+ ['Ada', 'Ripara amplificatori e organizza i concerti del quartiere.'],
+ ['Lia', 'Vuole riaprire il teatro.'],
+ ['Tito', 'Cerca un groove che lasci spazio agli altri.'],
+ ['Iris', 'Preferisce una prova lenta a una nota confusa.'],
+ ['Rosa', 'Unisce percussionisti di generazioni diverse.'],
+ ['Teo', 'Ripara le reti del padre prima delle prove.'],
+ ['Mina', 'Annota anche le idee degli sconosciuti.'],
+ ['Emma', 'Raccoglie testimonianze per la radio del campeggio.'],
+ ['Leo', 'Viaggia in bicicletta con la sua chitarra.'],
+ ['Arturo', 'Ex ferroviere: ricorda la band di Riva.'],
+ ['Dario', 'Custodisce l’archivio e le vecchie scalette.'],
+ ['Sami', 'Registra le voci dei paesi e sogna il festival.']
+];
+export const TEACHER_ART = {
+ 1: 3,
+ 2: 4,
+ 3: 13,
+ 4: 5,
+ 5: 6,
+ 6: 14,
+ 7: 7,
+ 8: 8,
+ 9: 9,
+ 10: 10,
+ 11: 15
 };
-export function chapter(s){return s.finished?'SETTEMBRE · IL BIS':s.homeShow?'SETTEMBRE · VERSO IL FESTIVAL':s.passes.length>=8?'FINE AGOSTO · RITORNO A CASA':s.passes.length>=5?'AGOSTO · IL VIAGGIO CONTINUA':s.passes.length>=2?'LUGLIO · LE STRADE SI APRONO':s.stage==='tour'?'GIUGNO · LA PARTENZA':s.stage==='rival'?'GIUGNO · SERA':s.stage==='practice'?'GIUGNO · POMERIGGIO':'GIUGNO · ULTIMA MATTINA DI SCUOLA';}
-export function caseComplete(parts,answer){return answer.length===parts.length&&answer.every((v,i)=>v===i);}
-export function mysteryEnding(s){return s.puzzles.length===8&&s.stories.includes(6);}
+// Fictional story; musical tasks describe these examples, never an entire genre.
+export const CASES = {
+ 1: {
+  title: 'Le dodici battute scomparse',
+  scene: 'Nino trova la scaletta di un vecchio concerto strappata in tre parti. Ricostruite questo blues in La, poi provate a suonare.',
+  hint: 'Questo giro usa quattro battute di La7; Re7, Re7, La7, La7; infine Mi7, Re7, La7, Mi7. Esistono altre varianti.',
+  parts: ['La7 · La7 · La7 · La7', 'Re7 · Re7 · La7 · La7', 'Mi7 · Re7 · La7 · Mi7'],
+  clue: 'Sul retro: un plettro disegnato e «Lato B. Non cercare un assolo».',
+  fact: 'Un blues in dodici battute può usare I, IV e V: in La, per esempio, La7, Re7 e Mi7.'
+ },
+ 2: {
+  title: 'Il palco rimasto muto',
+  scene: 'Il concerto del quartiere è fermo. Ada chiede di ricostruire il percorso del segnale su un disegno, prima di accendere l’impianto.',
+  hint: 'In questo impianto: chitarra nell’amplificatore; microfono davanti al suo altoparlante verso il mixer; uscita del mixer verso casse attive.',
+  parts: ['Chitarra → amplificatore', 'Microfono davanti all’altoparlante → mixer', 'Mixer → casse attive'],
+  clue: 'Nella custodia: Riva e un quarto musicista che manca sulla locandina.',
+  fact: 'Un microfono può riprendere l’altoparlante di un amplificatore. È uno dei possibili percorsi del segnale.'
+ },
+ 4: {
+  title: 'Il ritornello senza casa',
+  scene: 'Le schede del brano di Lia sono mescolate: partenza, promessa, dubbio e ritorno della promessa.',
+  hint: 'In questa canzone: strofa narrativa, ritornello, ponte contrastante e ultimo ritornello. Non è una forma obbligatoria del pop.',
+  parts: ['Strofa · partenza', 'Ritornello · promessa', 'Ponte · dubbio', 'Ritornello · promessa ripresa'],
+  clue: 'La stessa promessa è nel nastro del teatro, intitolato «Le Otto Strade».',
+  fact: 'Strofa, ritornello e ponte possono avere funzioni differenti. Le canzoni non hanno una sola struttura.'
+ },
+ 5: {
+  title: 'Il posto del silenzio',
+  scene: 'Nel cortile tutti suonano insieme. Tito mostra quattro coppie di ottavi: ricostruisci la battuta lasciando le pause indicate.',
+  hint: 'Conta «1 e 2 e 3 e 4 e». Sul foglio: basso su 1, sul levare di 2 e su 3. Il trattino indica una pausa.',
+  parts: ['1 e · BASSO —', '2 e · — BASSO', '3 e · BASSO —', '4 e · — —'],
+  clue: 'Il quarto musicista teneva insieme gli altri lasciando spazio. Il plettro era un portafortuna.',
+  fact: 'Le pause hanno durata e fanno parte del ritmo; il groove dipende anche dagli spazi tra le note.'
+ },
+ 7: {
+  title: 'La prova nella fortezza',
+  scene: 'La registrazione corre troppo. Iris vuole rimettere in ordine i tre appunti di studio prima di affrontare il brano.',
+  hint: 'Gli appunti prescrivono 60, poi 80, poi 100 BPM. Volume e velocità della pulsazione sono cose diverse.',
+  parts: ['60 BPM · isolare il passaggio', '80 BPM · unire le parti', '100 BPM · eseguire insieme'],
+  clue: 'Nell’astuccio: «A Riva, perché sappia ricominciare». Il plettro non prometteva vittorie.',
+  fact: 'BPM significa pulsazioni al minuto. A 60 BPM ogni pulsazione dura un secondo; a 120 dura mezzo secondo.'
+ },
+ 8: {
+  title: 'Due battute per ritrovarsi',
+  scene: 'Rosa vuole riunire due percussionisti. Ricostruite le due battute di questo esempio di clave son 3–2 in 4/4.',
+  hint: 'Prima battuta: colpi su 1, sul levare di 2 e su 4. Seconda: su 2 e 3. È un esempio di una specifica tradizione afro-cubana.',
+  parts: ['Prima battuta · 1, e di 2, 4', 'Seconda battuta · 2, 3'],
+  clue: 'Rosa riconosce la grafia: Andrea suonava con Riva, poi lasciò il circuito.',
+  fact: 'La clave son 3–2 è un ciclo di due battute. Non rappresenta tutta la musica latinoamericana.'
+ },
+ 9: {
+  title: 'Il ponte tra i battiti',
+  scene: 'Teo indica quattro assi del pontile: ricomponi le suddivisioni della battuta per provare un accompagnamento in levare.',
+  hint: 'Conta «1 e 2 e 3 e 4 e». In questo esercizio l’accordo cade su ogni «e», tra due pulsazioni.',
+  parts: ['1 → e · accordo', '2 → e · accordo', '3 → e · accordo', '4 → e · accordo'],
+  clue: 'Andrea scriveva: «Non volevo diventare una leggenda. Volevo essere ascoltato».',
+  fact: 'L’accento sugli ottavi tra le pulsazioni è frequente nell’accompagnamento reggae, che non si riduce a un solo pattern.'
+ },
+ 10: {
+  title: 'La risposta del club',
+  scene: 'Mina ritrova l’ultima parte del nastro: ricostruisci l’alternanza dei musicisti seguendo le note del fonico.',
+  hint: 'Sul foglio: tema, risposta dell’altro, variazione del tema, conclusione insieme. È un esercizio di dialogo musicale.',
+  parts: ['Tema · ascoltare', 'Risposta · lasciare il turno', 'Variazione · riprendere un’idea', 'Conclusione · insieme'],
+  clue: 'Il nastro restituisce quattro nomi: Andrea aveva scritto il tema con Riva, ma il manifesto lo aveva dimenticato.',
+  fact: 'Nell’improvvisazione si possono sviluppare motivi ascoltati. Il jazz comprende molte forme, non una sola sequenza.'
+ }
+};
+export function chapter(s) {
+ return s.finished ? 'SETTEMBRE · IL BIS' : s.homeShow ? 'SETTEMBRE · VERSO IL FESTIVAL' : s.passes.length >= 8 ? 'FINE AGOSTO · RITORNO A CASA' : s.passes.length >= 5 ? 'AGOSTO · IL VIAGGIO CONTINUA' : s.passes.length >= 2 ? 'LUGLIO · LE STRADE SI APRONO' : s.stage === 'tour' ? 'GIUGNO · LA PARTENZA' : s.stage === 'rival' ? 'GIUGNO · SERA' : s.stage === 'practice' ? 'GIUGNO · POMERIGGIO' : 'GIUGNO · ULTIMA MATTINA DI SCUOLA';
+}
+export function caseComplete(parts, answer) {
+ return answer.length === parts.length && answer.every((v, i) => v === i);
+}
+export function mysteryEnding(s) {
+ return s.puzzles.length === 8 && s.stories.includes(6);
+}
