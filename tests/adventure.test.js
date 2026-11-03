@@ -7,7 +7,7 @@ import {townLayout,isWalkable} from '../dist/world.js';
 
 test('every music city gives a clue, and clues are revealed in story order whatever the route',()=>{
  assert.deepEqual(Object.keys(CLUE_FINDS).map(Number).sort((a,b)=>a-b),MUSIC_CITIES.map(c=>c.id));assert.equal(CLUE_BEATS.length,8);
- const s=initialState();s.puzzles=[10,1];assert.equal(clueIndex(s,10),0);assert.match(clueText(s,10),/plettro disegnato/);assert.doesNotMatch(clueText(s,10),/Andrea/);
+ const s=initialState();s.puzzles=[10,1];assert.equal(clueIndex(s,10),0);assert.match(clueText(s,10),/disegno di un plettro/);assert.doesNotMatch(clueText(s,10),/Andrea/);
  s.puzzles=[1,2,4,5,7,8,9,10];assert.match(clueText(s,10),/Riva \/ Andrea/);assert.equal(cluesFound(s).length,8);
 });
 test('the mystery needs all eight clues and the archive deduction; saves migrate',()=>{

@@ -103,25 +103,25 @@ export const CLUE_FINDS = {
  5: 'Sotto la griglia di Tito',
  7: 'Nell’astuccio di Iris',
  8: 'Sul retro del foglio della clave',
- 9: 'Incisa su un’asse del pontile',
- 10: 'Nell’ultima bobina di Mina'
+ 9: 'Su un biglietto infilato tra le assi del pontile',
+ 10: 'Nella scatola dell’ultima bobina di Mina'
 };
 export const CLUE_BEATS = [
- 'un plettro disegnato e una scritta: «Lato B. Non cercare un assolo».',
- 'una vecchia locandina: la band di Riva era in quattro, ma i nomi stampati sono tre.',
- 'il titolo di una canzone, «Le Otto Strade», scritto da due mani: una precisa, una con la A arricciata come una chiave di violino.',
- 'un appunto: «Il quarto teneva insieme gli altri lasciando spazio. Il plettro era il suo portafortuna».',
- 'una dedica: «A Riva, perché sappia ricominciare». Firmata con una sola lettera arricciata: A.',
- 'finalmente un nome intero: Andrea. Suonava con Riva, poi lasciò il circuito dopo il primo festival.',
- 'una lettera di Andrea: «Non volevo diventare una leggenda. Volevo essere ascoltato».',
- 'il nastro originale: il tema delle Otto Strade è firmato «Riva / Andrea». Il manifesto del festival riportava solo Riva.'
+ 'il disegno di un plettro e una scritta: «Lato B. Non cercare un assolo».',
+ 'la foto di una vecchia locandina: la band di Riva era in quattro, ma i nomi stampati sono tre.',
+ 'il titolo «Le Otto Strade», scritto da due mani: una precisa, una con la A arricciata come una chiave di violino.',
+ 'una frase: «Il quarto teneva insieme gli altri lasciando spazio. Il plettro era il suo portafortuna».',
+ 'una dedica: «A Riva, perché sappia ricominciare», firmata con una sola lettera arricciata: A.',
+ 'un nome finalmente intero, Andrea, e una nota: lasciò il circuito dopo il primo festival.',
+ 'parole di Andrea: «Non volevo diventare una leggenda. Volevo essere ascoltato».',
+ 'la firma del tema delle Otto Strade: «Riva / Andrea». Il manifesto del festival riportava solo Riva.'
 ];
 export function clueIndex(s, city) { const i = s.puzzles.indexOf(city); return i < 0 ? -1 : Math.min(i, CLUE_BEATS.length - 1); }
 export function clueText(s, city) { const i = clueIndex(s, city); return i < 0 ? '' : `${CLUE_FINDS[city] || 'Tra gli appunti'}: ${CLUE_BEATS[i]}`; }
 export function cluesFound(s) { return s.puzzles.filter(id => CLUE_FINDS[id]).map(id => ({ city: id, text: clueText(s, id) })); }
 
 export const DEDUCTION = [
- { q: 'Chi ha scritto il tema delle Otto Strade?', options: ['Riva, da solo', 'Riva e Andrea, insieme', 'Il festival di settembre', 'Andrea, da solo'], answer: 1, why: 'Ricordate la canzone scritta da due mani e la firma sul nastro originale.' },
+ { q: 'Chi ha scritto il tema delle Otto Strade?', options: ['Riva, da solo', 'Riva e Andrea, insieme', 'Il festival di settembre', 'Andrea, da solo'], answer: 1, why: 'Ricordate il titolo scritto da due mani e la firma del tema delle Otto Strade.' },
  { q: 'Perché il nome di Andrea è scomparso?', options: ['Andrea non voleva essere nominato', 'Fu cacciato dalla band', 'Il manifesto lo dimenticò e Andrea si allontanò', 'Riva lo cancellò per invidia'], answer: 2, why: 'Andrea scriveva di voler essere ascoltato, non dimenticato. E il manifesto riportava solo tre nomi.' },
  { q: 'Chi ha scritto la dedica firmata «A»? Confrontate la calligrafia con il registro dei visitatori.', options: ['Arturo, il ferroviere', 'Dario, il custode', 'Mina, del Settimo', 'Riva, per scherzo'], answer: 1, why: 'La A arricciata come una chiave di violino è la stessa del registro dei visitatori.' }
 ];

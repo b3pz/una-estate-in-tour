@@ -141,9 +141,8 @@ function backdrop(ctx, scene, W, H, t, accent, gold) {
   for (let i = 0; i < 12; i++) { const x = i * W / 12, h = 40 + (i * 37 % 50); box(ctx, x, y1 - h, W / 12 - 3, h, 0, sil); for (let j = 0; j < 3; j++) if ((i + j) % 2) box(ctx, x + 6, y1 - h + 8 + j * 12, 5, 5, 0, '#e8c46e66'); }
  } else if (scene === 'final') {
   for (let i = 0; i < 6; i++) { const x = W * (.1 + i * .16), r = 16 + (reduced ? 0 : (t * 30 + i * 20) % 30); ctx.strokeStyle = ['#f2c36b', '#e48ab4', '#82c6d8'][i % 3] + '55'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y0 + 4, r, 0, Math.PI * 2); ctx.stroke(); }
-  box(ctx, W * .25, y0 + 26, W * .5, 30, 6, '#0d1a24', gold); words(ctx, 'FESTIVAL DELLE OTTO STRADE', W / 2, y0 + 46, W < 400 ? 9 : 13, gold);
  } else if (scene === 'rival') {
-  box(ctx, W * .3, y0 + 20, W * .4, 26, 4, '#5c1f1f', '#e0a05a'); words(ctx, '⚡ ALTA TENSIONE ⚡', W / 2, y0 + 38, W < 400 ? 9 : 12, '#f2d08a');
+  for (let i = 0; i < 3; i++) poly(ctx, [[W * (.2 + i * .3), y0 + 4], [W * (.2 + i * .3) + 14, y0 + 4], [W * (.2 + i * .3) + 4, y0 + 22], [W * (.2 + i * .3) + 12, y0 + 22], [W * (.2 + i * .3) - 2, y0 + 44], [W * (.2 + i * .3) + 2, y0 + 26], [W * (.2 + i * .3) - 6, y0 + 26]], '#e0a05a55');
   for (let i = 0; i < 9; i++) box(ctx, i * W / 9 + 8, y1 - 30, W / 9 - 16, 30, 4, sil);
  } else {
   for (let i = 0; i < 9; i++) box(ctx, i * W / 9 + 4, y0 + 20, W / 9 - 8, y1 - y0 - 20, 0, i % 2 ? '#2a2018' : '#30251c');
@@ -204,7 +203,8 @@ export function drawConcert(ctx, {
  box(ctx, W * .07, stageY + H * .08, W * .86, 9, 3, '#b29465');
  const label = s.kind === 'tutorial' ? 'IL GARAGE · LA PRIMA PROVA' : s.kind === 'rival' ? 'ALTA TENSIONE · LA SFIDA' : s.kind === 'final' ? 'FESTIVAL DELLE OTTO STRADE' : s.kind === 'boat' ? 'CONCERTO SUL MARE' : s.kind === 'home' ? 'BORGO DELLE CICALE · IL CONCERTO A CASA' : s.kind === 'practice' ? 'PROVA · ' + city.name.toUpperCase() : city.name.toUpperCase() + ' · LIVE';
  words(ctx, label, W / 2, 85, W < 400 ? 10 : 14, gold);
- words(ctx, inst.name.toUpperCase() + ' · ' + (city.genre === 'Casa' ? 'LA NOSTRA BAND' : city.genre.toUpperCase()), W / 2, 103, 10, '#d3d7c0');
+ const medley = s.kind === 'final' && s.plan ? s.plan[Math.max(0, Math.min(s.plan.length - 1, Math.floor((t - 2) / (s.beat * 4))))].style : null;
+ words(ctx, inst.name.toUpperCase() + ' · ' + (medley ? 'MEDLEY · ' + medley.toUpperCase() : s.kind === 'rival' ? 'ALTA TENSIONE' : city.genre === 'Casa' ? 'LA NOSTRA BAND' : city.genre.toUpperCase()), W / 2, 103, 10, '#d3d7c0');
  const band = Object.keys(INSTRUMENTS).filter(k => k !== instrument);
  musician(ctx, W * .5, stageY - 18, 0, instrument, t, energy, true);
  musician(ctx, W * .28, stageY - 22, 1, band[0], t, energy, false);

@@ -190,6 +190,18 @@ function close() {
  canvas.focus();
 }
 
+function nextStop() {
+ let best = null;
+ for (const m of MUSIC_CITIES) {
+  if (state.passes.includes(m.id)) continue;
+  const r = journeyRoute(state, m.id);
+  if (r && (!best || r.legs.length < best.r.legs.length)) best = { m, r };
+ }
+ if (!best) return 'Otto città, otto pass. Apri la mappa (M) per scegliere la prossima tappa.';
+ const first = best.r.legs[0];
+ return `Prossima tappa: ${best.m.name} (${best.m.genre.toLowerCase()}). ${first.to === best.m.id ? 'È qui vicino' : 'Passa da ' + CITIES[first.to].name}: ${first.mode === 'Sentiero' ? 'segui i cartelli ai bordi del paese' : first.mode.toLowerCase()}. Itinerario completo nella mappa (M).`;
+}
+
 function fameTitle() {
  return state.xp >= 900 ? 'BAND DA FESTIVAL' : state.xp >= 500 ? 'BAND DELLA REGIONE' : state.xp >= 200 ? 'BAND DI PAESE' : 'BAND DI GARAGE';
 }
@@ -201,7 +213,7 @@ function updateJournal() {
  $('sceneBadge').textContent = `${String(state.city+1).padStart(2,'0')} / ${area==='road'?'IN CAMMINO':c.genre.toUpperCase()}`;
  $('passCount').innerHTML = `${state.passes.length}<span>/8</span>`;
  $('passGrid').innerHTML = MUSIC_CITIES.map(c => `<div class="stamp ${state.passes.includes(c.id)?'earned':''}" title="${c.genre}">${c.genre.slice(0,3).toUpperCase()}</div>`).join('');
- let objective = state.stage === 'school' ? 'Ultimo giorno di scuola. Raggiungi la scuola a nord-est del paese.' : state.stage === 'practice' ? 'Gli amici ti aspettano nel garage, a ovest della piazza.' : state.stage === 'rival' ? 'La band rivale è in piazza. È ora della prima sfida.' : state.finished ? 'Il festival è vostro. Puoi tornare nei luoghi del viaggio e suonare ancora.' : state.passes.length === 8 && !state.homeShow ? 'Torna a Borgo delle Cicale: il concerto a casa vi aspetta.' : state.homeShow ? (state.city === 11 ? 'Il palco del festival è a nord della piazza. Emma vi aspetta per presentarvi.' : 'Raggiungi Settembre e sali sul palco del festival.') : c.type === 'music' && !state.puzzles.includes(c.id) ? `Trova ${c.teacher} in piazza e risolvi la prova di ${c.genre.toLowerCase()}.` : c.type === 'music' && !state.passes.includes(c.id) ? 'La prova è superata. Raggiungi il palco e conquista il pass.' : 'Esplora i sentieri e cerca altri musicisti. Otto città, otto pass.';
+ let objective = state.stage === 'school' ? 'Ultimo giorno di scuola. Raggiungi la scuola a nord-est del paese.' : state.stage === 'practice' ? 'Gli amici ti aspettano nel garage, a ovest della piazza.' : state.stage === 'rival' ? 'La band rivale è in piazza. È ora della prima sfida.' : state.finished ? 'Il festival è vostro. Puoi tornare nei luoghi del viaggio e suonare ancora.' : state.passes.length === 8 && !state.homeShow ? (state.city === 0 ? 'Il paese è in piazza: sali sul palco per il concerto a casa.' : 'Torna a Borgo delle Cicale: il concerto a casa vi aspetta.') : state.homeShow ? (state.city === 11 ? 'Il palco del festival è a nord della piazza. Emma vi aspetta per presentarvi.' : 'Raggiungi Settembre e sali sul palco del festival.') : c.type === 'music' && !state.puzzles.includes(c.id) ? `Trova ${c.teacher} in piazza e risolvi la prova di ${c.genre.toLowerCase()}.` : c.type === 'music' && !state.passes.includes(c.id) ? 'La prova è superata. Raggiungi il palco e conquista il pass.' : nextStop();
  if (state.stage === 'tour' && !state.finished && mysteryReady(state) && state.mystery < 2) objective += ' · Gli otto indizi sono completi: Dario vi aspetta all’archivio di Valdaccordo.';
  if (state.city === 3 && state.stage === 'tour') {
   const q = state.transport;
@@ -1148,7 +1160,7 @@ function endingScene(page, score) {
   clues = cluesFound(state).length;
  const pages = [
   ['Ci chiedono il bis.', `<div class="result-number">${score}<span style="font-size:20px">%</span></div><p>Otto città in un brano solo: il blues di Nino, il rock di Ada, la promessa di Lia, il silenzio di Tito, il ferro di Iris, la clave di Rosa, il levare di Teo, la risposta di Mina.</p><p>Tra il pubblico riconoscete Leo, Sami, Emma, Arturo. Elia, Bea e Tommi cantano più forte di tutti.</p>`],
-  mysteryEnding(state) ? ['Quattro nomi.', '<p>Prima del bis Riva sale sul palco. Legge piano: «Le Otto Strade. Musica di Riva e di Andrea.»</p><p>Dario — Andrea — resta immobile. Poi sale anche lui. Nico gli porge il plettro; lui lo rifiuta, sorride, e lo rimette nella mano di Nico: «Adesso è vostro. Suonate per chi non viene ascoltato.»</p>'] : ['Tre nomi, e un fruscio.', `<p>Prima del bis Riva legge i nomi della sua vecchia band. Sono tre. Il quarto resta sospeso, come il fruscio del lato B.</p><p>${clues < 8 ? `Nel taccuino avete ${clues} indizi su 8: qualche città custodisce ancora una testimonianza.` : 'Avete tutti gli indizi: Dario, all’archivio di Valdaccordo, vi aspetta ancora.'}</p>`],
+  mysteryEnding(state) ? ['Quattro nomi.', '<p>Prima del bis Riva sale sul palco e legge piano i quattro nomi della sua vecchia band. Poi aggiunge: «Le Otto Strade. Musica di Riva e di Andrea.»</p><p>Dario — Andrea — resta immobile. Poi sale anche lui. Nico gli porge il plettro; lui lo rifiuta, sorride, e lo rimette nella mano di Nico: «Adesso è vostro. Suonate per chi non viene ascoltato.»</p>'] : ['Tre nomi, e un fruscio.', `<p>Prima del bis Riva legge i nomi della sua vecchia band. Sono tre. Il quarto resta sospeso, come il fruscio del lato B.</p><p>${clues < 8 ? `Nel taccuino avete ${clues} indizi su 8: qualche città custodisce ancora una testimonianza.` : 'Avete tutti gli indizi: Dario, all’archivio di Valdaccordo, vi aspetta ancora.'}</p>`],
   ['Domani dove andiamo?', `<p>Le luci si spengono una alla volta. Nico ride: «Domani dove andiamo?»</p><p class="fine">Pass ${state.passes.length} / 8 · Musicodex ${dex} / 32 · Indizi ${clues} / 8 · Mistero ${mysteryEnding(state) ? 'risolto' : 'aperto'}</p><p>Il viaggio continua: potete tornare in ogni città, completare il Musicodex con gli altri strumenti${mysteryEnding(state) ? '' : ' e chiudere il mistero del plettro'}, rigiocare i concerti.</p>`]
  ];
  const [title, body] = pages[page];
@@ -1202,7 +1214,7 @@ function showMap() {
   selected = id;
   const c = CITIES[id],
    skills = abilityDex(state).filter(a => a.city === id),
-   reason = metroReason(state, id) || (!atMetro() ? 'Raggiungi l’ingresso della metro.' : null);
+   reason = metroReason(state, id) || (!atMetro() ? `Prima raggiungi l’ingresso M di ${CITIES[state.city].name}.` : null);
   p.querySelector('#mapDetail').innerHTML = `<h4>${c.name} · ${c.genre}</h4><p>${id===current?'◆ Sei qui. ':''}${state.visited.includes(id)?'Luogo visitato.':'Fermata da scoprire.'} ${state.passes.includes(id)?'Pass ottenuto.':''}</p><p>${c.text||c.lesson||''}</p>${skills.length?`<p>Abilità acquisite: ${skills.filter(a=>a.learned).length} / ${skills.length}</p>`:''}<button class="btn" id="takeMetro" ${reason?'disabled':''}>${reason||'Raggiungi in metro'}</button>`;
   p.querySelector('#takeMetro').onclick = () => travelMetro(id);
   const route = journeyRoute(state, id),
@@ -1235,7 +1247,7 @@ function showMap() {
 
 function showMetro() {
  const unlocked = state.transport.metro === 3;
- const p = panel('Metro delle Otto Strade', `<p>${unlocked?'Il pass di Arturo permette di tornare nelle città raggiunte. L’isola e la montagna sono servite da pontile, nave e funivia, non dalla metro.':'A Binario Nord completa le missioni di Arturo: prima la bicicletta, poi gli annunci della metro. Le fermate si attivano dopo la prima visita.'}</p><div class="metro-stops">${CITIES.filter(c=>METRO_STOPS.includes(c.id)).map(c=>{const reason=metroReason(state,c.id)||(!atMetro()?'Recati alla stazione metro di questa città.':null);return `<button class="metro-stop ${state.visited.includes(c.id)?'visited':''}" data-stop="${c.id}" ${reason?'disabled':''}><strong>${c.name}</strong><span>${reason||'Fermata aperta · sali a bordo'}</span></button>`;}).join('')}</div>`, [{
+ const p = panel('Metro delle Otto Strade', `<p>${unlocked?'Il pass di Arturo permette di tornare nelle città raggiunte. L’isola e la montagna sono servite da pontile, nave e funivia, non dalla metro.':'A Binario Nord completa le missioni di Arturo: prima la bicicletta, poi gli annunci della metro. Le fermate si attivano dopo la prima visita.'}</p><div class="metro-stops">${CITIES.filter(c=>METRO_STOPS.includes(c.id)).map(c=>{const reason=metroReason(state,c.id)||(!atMetro()?`Prima raggiungi l’ingresso M di ${CITIES[state.city].name}.`:null);return `<button class="metro-stop ${state.visited.includes(c.id)?'visited':''}" data-stop="${c.id}" ${reason?'disabled':''}><strong>${c.name}</strong><span>${reason||'Fermata aperta · sali a bordo'}</span></button>`;}).join('')}</div>`, [{
   label: 'Torna alla mappa',
   run: showMap
  }, {
