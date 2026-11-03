@@ -376,7 +376,7 @@ export function townLayout(id) {
    buildings,
    waters,
    gates
-  }, x, y) && !objects.some(o => Math.hypot(x - o.x, y - o.y) < 2.2));
+  }, x, y) && !buildings.some(b => x > b.x - 2.2 && x < b.x + b.w + 2.2 && y > b.y - 1 && y < b.y + b.h + 1.6) && !objects.some(o => Math.hypot(x - o.x, y - o.y) < 2.2));
   if (point) {
    const [x, y] = point;
    objects.push({
@@ -846,7 +846,6 @@ export function drawStage(ctx, x, y, genre, large = false) {
  }], '#a38d68', 1);
  rounded(ctx, -76, -69, 152, 13, 4, '#ddbe7e');
  rounded(ctx, -70, -58, 140, 34, 3, '#385b50');
- label(ctx, genre.toUpperCase(), 0, -37, 11, '#ead6a7');
  for (const xx of [-58, 58]) {
   rounded(ctx, xx - 10, -26, 20, 31, 3, '#3e4f49');
   oval(ctx, xx, -11, 6, 6, '#6b7a68');
@@ -872,6 +871,8 @@ export function drawStage(ctx, x, y, genre, large = false) {
  drawSprite(ctx, 'band', 3, 3, -57, -1, 26, 30);
  drawSprite(ctx, 'band', 3, 3, 57, -1, 26, 30);
  drawSprite(ctx, 'band', 3, 2, 0, 0, 61, 51);
+ rounded(ctx, -52, -82, 104, 16, 4, '#2f4a3e');
+ label(ctx, genre.toUpperCase(), 0, -70, 10, '#f2d28c');
  ctx.restore();
 }
 
@@ -1105,6 +1106,12 @@ export function renderWorld(ctx, {
   }
  }
  if (layout.plaza) oval(ctx, layout.plaza[0] * TILE, layout.plaza[1] * TILE, 100, 65, p.path);
+ if (layout.from !== undefined && layout.theme === 'river') waterArt(ctx, {
+  x: 7.6,
+  y: -1,
+  w: 5.8,
+  h: HEIGHT + 2
+ }, time);
  if (layout.theme === 'river')
   for (const yy of [18]) {
    if (drawSprite(ctx, 'towns', 3, 3, 10.5 * TILE, (yy + 1) * TILE, 7 * TILE, 92)) continue;
@@ -1117,16 +1124,17 @@ export function renderWorld(ctx, {
     y: yy * TILE + 27
    }], '#d6c39b', 2);
   }
- for (let i = 0; i < 24; i++) {
+ for (let i = 0; i < (layout.theme === 'seaBridge' ? 0 : 24); i++) {
   const x = 3 + (i * 13.3) % 42,
    y = 3 + (i * 7.7) % 27;
-  if (layout.buildings.some(b => x > b.x - 1 && x < b.x + b.w + 1 && y > b.y - 1 && y < b.y + b.h + 2) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) || layout.paths.some(path => path.some(pt => Math.hypot(pt.x - x, pt.y - y) < 3))) continue;
+  if ((layout.from !== undefined && layout.theme === 'river' && x > 6.5 && x < 14.5) || layout.buildings.some(b => x > b.x - 1 && x < b.x + b.w + 1 && y > b.y - 1 && y < b.y + b.h + 2) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) || layout.paths.some(path => path.some(pt => Math.hypot(pt.x - x, pt.y - y) < 3))) continue;
   drawSprite(ctx, 'towns', 3, 2, x * TILE, y * TILE, 35, 27);
  }
  if (layout.from !== undefined && layout.theme !== 'seaBridge') {
   for (let i = 0; i < 18; i++) {
    const xx = (4 + i * 2.3) * TILE,
     yy = (i % 2 ? 8 : 28) * TILE;
+   if (layout.theme === 'river' && xx > 6 * TILE && xx < 14.5 * TILE) continue;
    rounded(ctx, xx, yy, 32, 5, 2, '#aa9167');
    line(ctx, [{
     x: xx + 5,
@@ -1167,7 +1175,7 @@ export function renderWorld(ctx, {
     return Math.hypot(x - a.x - t * dx, y - a.y - t * dy) < 2.8;
    }))) continue;
   if (layout.gates.some(g => Math.hypot(g.x - x, g.y - y) < 4)) continue;
-  if ((x > 17 && x < 40 && y > 13 && y < 28) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h)) continue;
+  if ((layout.from !== undefined && layout.theme === 'river' && x > 6 && x < 15) || (x > 17 && x < 40 && y > 13 && y < 28) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h)) continue;
   actors.push({
    depth: y * TILE,
    draw: () => drawTree(ctx, x * TILE, y * TILE, p, i, layout.theme === 'island')

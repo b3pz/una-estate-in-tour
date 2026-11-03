@@ -33,7 +33,7 @@ export const RESIDENTS = {
  8: [R(15, 19, 22, { start: '«Rosa vuole far suonare insieme i vecchi del porto e i ragazzi delle congas. Si sono offesi per una battuta… letteralmente.»', puzzle: '«Ho registrato la clave! Toc, toc-toc… no aspetta, toc-toc-toc, toc-toc.»', pass: '«Il capitano del traghetto vi cerca: il suo gruppo di apertura non si presenta mai.»' })],
  9: [R(12, 28, 23, { start: '«Sono arrivato col traghetto con la bici in spalla. Teo sta rimettendo in piedi il pontile: ogni asse ha il suo ritmo.»', puzzle: '«Il pontile adesso regge. Domani lo provo in bici… forse.»', pass: '«Dal pontile si arriva a Notturnia: di notte le luci sembrano note sospese.»' })],
  10: [R(11, 19, 22, { start: '«Mina conserva l’ultima bobina del concerto delle Otto Strade. Non la fa ascoltare a nessuno, finora.»', puzzle: '«Quattro nomi sul nastro… Emma, radio del campeggio, è senza parole. Succede raramente.»', pass: '«Dicono che al festival qualcuno dovrà restituire un plettro.»' }), R(15, 28, 23, { start: '«Al Settimo si suona fino alle tre. Io mi addormento sempre al secondo assolo.»', pass: '«Ho la vostra risposta a Mina registrata. Vale ride a metà, si sente benissimo.»' })],
- 11: [R(12, 17, 18, { start: '«Ci siamo tutti! Ho pedalato dal fiume fino a qui.»', final: '«Domani riparto. Voi dove andate?»' }), R(15, 28, 23, { start: '«Settembre… Il registratore è carico. Tocca a voi.»', final: '«È la registrazione più bella dell’estate. Ve la regalo.»' })]
+ 11: [R(3, 21, 18, { start: '«Sono sceso dal fiume apposta. Ricordatevi: l’ultima battuta tira già verso l’inizio.»' }), R(4, 27, 18, { start: '«Ho controllato io l’impianto del festival. Stavolta nessuno stacca i cavi.»' }), R(5, 16, 24, { start: '«Il Teatro Aurora riapre a ottobre. Il primo concerto è vostro, se lo volete.»' }), R(6, 29, 29, { start: '«Stasera lasciate spazio. Il pubblico riempirà il resto.»' }), R(7, 19, 29, { start: '«Prima pulito. Poi veloce. Poi… divertitevi.»' }), R(8, 14, 19, { start: '«I vecchi del porto e i ragazzi delle congas sono venuti insieme. Merito della vostra clave.»' }), R(9, 12, 21, { start: '«Ho portato un’asse del pontile come portafortuna. Battere o levare? Levare, sempre.»' }), R(10, 36, 21, { start: '«Stasera non ripetete niente. Rispondete.»' }), R(12, 17, 18, { start: '«Ci siamo tutti! Ho pedalato dal fiume fino a qui.»', final: '«Domani riparto. Voi dove andate?»' }), R(15, 28, 23, { start: '«Settembre… Il registratore è carico. Tocca a voi.»', final: '«È la registrazione più bella dell’estate. Ve la regalo.»' })]
 };
 
 // Rivali lungo il viaggio: un piccolo arco che si chiude al concerto a casa.
@@ -41,12 +41,13 @@ export const RIVAL_POSTS = {
  0: [[0, 32.5, 24], [1, 38.5, 23.5], [2, 30.5, 25.5]],
  2: [[0, 30, 20]],
  5: [[1, 31, 20]],
- 8: [[2, 31, 23]]
+ 8: [[2, 31, 23]],
+ 11: [[0, 32, 24], [1, 34, 19], [2, 30, 20]]
 };
 export const RIVAL_LINES = {
- 0: { 2: '«Pensavate di essere gli unici in tournée? Gli Alta Tensione suonano stasera al Capannone. Il pubblico rock non perdona.»' },
- 1: { 5: '«Elia non lo ammetterà mai, ma ha copiato il vostro giro della piazza. Io invece sto imparando a tacere: Tito dice che suono troppo.»' },
- 2: { 8: '«Rosa mi ha chiesto di suonare la clave e ho perso il conto dopo due giri. Voi come fate a non correre?»' }
+ 0: { 11: '«L’anno prossimo ci saremo anche noi su quel palco. Ma stasera tocca a voi: spaccate tutto. In senso buono.»', 2: '«Pensavate di essere gli unici in tournée? Gli Alta Tensione suonano stasera al Capannone. Il pubblico rock non perdona.»' },
+ 1: { 11: '«Siamo venuti a sentirvi. Tutti e tre. Elia ha anche comprato la maglietta del festival.»', 5: '«Elia non lo ammetterà mai, ma ha copiato il vostro giro della piazza. Io invece sto imparando a tacere: Tito dice che suono troppo.»' },
+ 2: { 11: '«Le bacchette nuove reggono. Le mie mani un po’ meno. Andate!»', 8: '«Rosa mi ha chiesto di suonare la clave e ho perso il conto dopo due giri. Voi come fate a non correre?»' }
 };
 
 // Interni: arredi [id, x, y, larghezza, altezza] e un punto da esaminare.
@@ -62,7 +63,7 @@ export const ROOMS = {
  'Teatro Aurora': { items: [it(13, 24, 14, 110, 140), it(9, 24, 19, 50, 100), it(7, 24, 23, 190, 100), it(15, 15, 11, 110, 85), it(15, 33, 11, 110, 85), it(3, 15, 22, 100, 130), it(3, 33, 22, 100, 130)], spot: { x: 15, y: 23.6, label: 'L’archivio delle partiture', text: s => s.puzzles.includes(4) ? 'Tra le partiture c’è una canzone intitolata «Le Otto Strade». Due calligrafie si alternano: una precisa, una con le A arricciate.' : 'Scaffali di partiture impolverate. Lia vi chiede di non toccare niente prima di aver sistemato la sua canzone.' } },
  'Mercato': { items: [it(4, 15, 14, 145, 120), it(5, 21, 14, 64, 120), it(6, 30, 17, 120, 100), it(6, 30, 24, 120, 100), it(7, 18, 23, 170, 100)], spot: { x: 30, y: 25.6, label: 'Il banco delle spezie', text: () => 'Il venditore batte il ritmo con un cucchiaio sul bancone: «Sentite? Non riempio tutto: lascio respirare.»' } },
  'Club Elastico': { items: [it(11, 15, 15, 120, 85), it(8, 33, 15, 130, 110), it(9, 24, 15, 50, 100), it(0, 15, 24, 135, 100), it(7, 24, 21, 190, 100), it(0, 33, 24, 135, 100)], spot: { x: 33, y: 16.6, label: 'Il mixer di Tito', text: () => 'Sul mixer un nastro adesivo: «MENO». Tito lo chiama il suo cursore preferito.' } },
- 'Vecchia accademia': { items: [it(3, 14, 14, 100, 130), it(3, 19, 14, 100, 130), it(3, 29, 14, 100, 130), it(3, 34, 14, 100, 130), it(14, 24, 12, 190, 100), it(2, 15, 24, 115, 110), it(13, 33, 24, 110, 140), it(7, 24, 21, 170, 100)], spot: { x: 24, y: 17.6, label: 'Il tavolo dell’archivio', archive: true } },
+ 'Vecchia accademia': { items: [it(3, 14, 14, 100, 130), it(3, 19, 14, 100, 130), it(3, 29, 14, 100, 130), it(3, 34, 14, 100, 130), it(14, 24, 12, 190, 100), it(2, 15, 24, 115, 110), it(13, 33, 24, 110, 140), it(7, 24, 21, 170, 100)], spot: { x: 15, y: 25.6, label: 'Il tavolo dell’archivio', archive: true } },
  'Casa del custode': { items: [it(1, 34, 15, 90, 150), it(2, 15, 15, 115, 110), it(4, 15, 24, 145, 120), it(3, 33, 24, 100, 130), it(7, 24, 21, 170, 100)], spot: { x: 15, y: 16.6, label: 'La scrivania di Dario', text: s => s.mystery === 2 ? 'Sulla scrivania c’è un plettro identico a quello del nastro. Accanto, una lettera mai spedita: «Caro Riva…»' : 'Un registro dei prestiti. Ogni firma ha una A con un ricciolo, come una chiave di violino.' } },
  'Fucina': { items: [it(10, 15, 15, 125, 90), it(11, 33, 15, 120, 85), it(2, 33, 24, 115, 110), it(15, 24, 11, 110, 85), it(7, 20, 22, 170, 100)], spot: { x: 33, y: 16.6, label: 'Gli amplificatori della fucina', text: () => 'Il fabbro costruisce casse per i gruppi della valle. «Il metal è come il ferro: pulito prima, forte dopo.»' } },
  'La Fortezza': { items: [it(11, 14, 14, 120, 85), it(11, 34, 14, 120, 85), it(10, 15, 24, 125, 90), it(10, 33, 24, 125, 90), it(9, 24, 15, 50, 100), it(7, 24, 21, 190, 100)], spot: { x: 24, y: 16.6, label: 'Il metronomo di Iris', text: () => 'Un vecchio metronomo a pendolo. Sulla base qualcuno ha inciso: «60 · 80 · 100».' } },

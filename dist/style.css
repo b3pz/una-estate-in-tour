@@ -1131,7 +1131,7 @@ select {
  width: 100%;
  position: relative;
  line-height: 0;
- min-width: 420px
+ min-width: 0
 }
 
 .atlas-surface>img {

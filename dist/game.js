@@ -78,9 +78,9 @@ const $ = id => document.getElementById(id),
  audio = new MusicAudio(),
  QA = new URLSearchParams(location.search).get('qa') === '1',
  SAVE = QA ? 'b3pz-tour-v1-qa' : 'b3pz-tour-v1';
-let W = 960;
-const H = 600,
- T = 24,
+let W = 960,
+ H = 600;
+const T = 24,
  keys = new Set();
 let state = initialState(),
  saved = null,
@@ -201,7 +201,7 @@ function updateJournal() {
  $('sceneBadge').textContent = `${String(state.city+1).padStart(2,'0')} / ${area==='road'?'IN CAMMINO':c.genre.toUpperCase()}`;
  $('passCount').innerHTML = `${state.passes.length}<span>/8</span>`;
  $('passGrid').innerHTML = MUSIC_CITIES.map(c => `<div class="stamp ${state.passes.includes(c.id)?'earned':''}" title="${c.genre}">${c.genre.slice(0,3).toUpperCase()}</div>`).join('');
- let objective = state.stage === 'school' ? 'Ultimo giorno di scuola. Raggiungi la scuola a nord-est del paese.' : state.stage === 'practice' ? 'Gli amici ti aspettano nel garage, a ovest della piazza.' : state.stage === 'rival' ? 'La band rivale è in piazza. È ora della prima sfida.' : state.finished ? 'Il festival è vostro. Puoi tornare nei luoghi del viaggio e suonare ancora.' : state.passes.length === 8 && !state.homeShow ? 'Torna a Borgo delle Cicale: il concerto a casa vi aspetta.' : state.homeShow ? 'Raggiungi Settembre e sali sul palco del festival.' : c.type === 'music' && !state.puzzles.includes(c.id) ? `Trova ${c.teacher} in piazza e risolvi la prova di ${c.genre.toLowerCase()}.` : c.type === 'music' && !state.passes.includes(c.id) ? 'La prova è superata. Raggiungi il palco e conquista il pass.' : 'Esplora i sentieri e cerca altri musicisti. Otto città, otto pass.';
+ let objective = state.stage === 'school' ? 'Ultimo giorno di scuola. Raggiungi la scuola a nord-est del paese.' : state.stage === 'practice' ? 'Gli amici ti aspettano nel garage, a ovest della piazza.' : state.stage === 'rival' ? 'La band rivale è in piazza. È ora della prima sfida.' : state.finished ? 'Il festival è vostro. Puoi tornare nei luoghi del viaggio e suonare ancora.' : state.passes.length === 8 && !state.homeShow ? 'Torna a Borgo delle Cicale: il concerto a casa vi aspetta.' : state.homeShow ? (state.city === 11 ? 'Il palco del festival è a nord della piazza. Emma vi aspetta per presentarvi.' : 'Raggiungi Settembre e sali sul palco del festival.') : c.type === 'music' && !state.puzzles.includes(c.id) ? `Trova ${c.teacher} in piazza e risolvi la prova di ${c.genre.toLowerCase()}.` : c.type === 'music' && !state.passes.includes(c.id) ? 'La prova è superata. Raggiungi il palco e conquista il pass.' : 'Esplora i sentieri e cerca altri musicisti. Otto città, otto pass.';
  if (state.stage === 'tour' && !state.finished && mysteryReady(state) && state.mystery < 2) objective += ' · Gli otto indizi sono completi: Dario vi aspetta all’archivio di Valdaccordo.';
  if (state.city === 3 && state.stage === 'tour') {
   const q = state.transport;
@@ -229,7 +229,7 @@ function updateJournal() {
 }
 
 function welcome() {
- const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.4.1</p>`, [...(saved ? [{
+ const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.5</p>`, [...(saved ? [{
   label: 'Continua',
   run: () => {
    state = saved;
@@ -1505,7 +1505,7 @@ function drawInterior() {
  rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
  for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
  for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
- text(room.entry.label, 24 * T, 8 * T, '#59745b', 16, 'center');
+ text(room.entry.label, 24 * T, 7.45 * T, '#59745b', 15, 'center');
  const items = roomPlan(room.entry).items;
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
@@ -1781,6 +1781,8 @@ canvas.addEventListener('pointerdown', e => {
 
 function fitCanvas() {
  const r = canvas.getBoundingClientRect();
+ // In verticale il mondo mostra più caselle: si vede dove si va senza zoomare.
+ H = r.height > r.width * 1.15 ? 860 : 600;
  W = Math.round(H * r.width / r.height);
  canvas.width = W;
  canvas.height = H;
