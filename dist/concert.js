@@ -102,6 +102,56 @@ function musician(ctx, x, y, who, instrument, t, energy, player) {
  }
  ctx.restore();
 }
+
+// Scenografia sullo sfondo: un segno riconoscibile per ogni città e occasione.
+function backdrop(ctx, scene, W, H, t, accent, gold) {
+ const y0 = H * .14, y1 = H * .34, sil = accent + '66', mid = accent + '33';
+ const sway = k => reduced ? 0 : Math.sin(t * k);
+ ctx.save();
+ if (scene === 'Blues') {
+  ellipse(ctx, W * .82, y0 + 10, 16, 16, '#e9dcb066');
+  box(ctx, 0, y1 - 18, W, 18, 0, '#20445a');
+  for (let i = 0; i < 8; i++) box(ctx, (i * W / 8 + (reduced ? 0 : t * 20)) % W, y1 - 10, 26, 2, 1, '#6c9cb855');
+  ctx.strokeStyle = sil; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(W * .5, y1 + 30, W * .22, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  for (let i = -3; i <= 3; i++) box(ctx, W * .5 + i * W * .05, y1 - 26 + Math.abs(i) * 3, 3, 24 - Math.abs(i) * 3, 1, sil);
+ } else if (scene === 'Rock') {
+  for (let i = 0; i < 5; i++) { const x = W * (.05 + i * .2); box(ctx, x, y0 + 30, W * .15, y1 - y0, 2, sil); box(ctx, x + W * .1, y0 - 5, 10, 40, 1, sil); ellipse(ctx, x + W * .105 + sway(.7 + i) * 6, y0 - 14, 12, 7, '#8a7a7a33'); for (let j = 0; j < 3; j++) box(ctx, x + 8 + j * W * .04, y0 + 45, 10, 8, 1, '#e0a05a55'); }
+ } else if (scene === 'Pop') {
+  for (let i = 0; i < 6; i++) { const x = W * (.08 + i * .17); ctx.strokeStyle = '#d8b9a044'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y1, W * .06, Math.PI, 0); ctx.stroke(); for (let j = 0; j < 5; j++) ellipse(ctx, x - W * .05 + j * W * .025, y1 - W * .045 - Math.sin(j / 4 * Math.PI) * 6, 3, 3, ['#e48ab4aa', '#f3d58aaa', '#ffffffaa'][j % 3]); }
+ } else if (scene === 'Funk') {
+  for (let i = 0; i < 4; i++) { const x = W * (.04 + i * .25); for (let j = 0; j < 6; j++) poly(ctx, [[x + j * W * .033, y0 + 30], [x + (j + 1) * W * .033, y0 + 30], [x + (j + .5) * W * .033, y0 + 48]], j % 2 ? '#d58f4b88' : '#efe0b688'); box(ctx, x, y0 + 48, W * .2, y1 - y0 - 48, 2, sil); }
+  ctx.strokeStyle = '#ffffff33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, y0 + 8); ctx.quadraticCurveTo(W / 2, y0 + 30, W, y0 + 8); ctx.stroke();
+  for (let i = 0; i < 14; i++) poly(ctx, [[i * W / 14, y0 + 10 + Math.sin(i / 13 * Math.PI) * 18], [i * W / 14 + 12, y0 + 10 + Math.sin(i / 13 * Math.PI) * 18], [i * W / 14 + 6, y0 + 24 + Math.sin(i / 13 * Math.PI) * 18]], ['#e1ac64aa', '#82ae75aa', '#c15d4daa'][i % 3]);
+ } else if (scene === 'Metal') {
+  poly(ctx, [[0, y1], [W * .18, y0 - 10], [W * .35, y1], [W * .55, y0 - 30], [W * .78, y1], [W * .9, y0], [W, y1]], mid);
+  poly(ctx, [[W * .18, y0 - 10], [W * .14, y0 + 8], [W * .22, y0 + 8]], '#dfe6ef66'); poly(ctx, [[W * .55, y0 - 30], [W * .5, y0 - 8], [W * .6, y0 - 8]], '#dfe6ef66');
+  box(ctx, W * .62, y0 + 10, W * .12, y1 - y0 - 10, 1, sil); for (let i = 0; i < 4; i++) box(ctx, W * .62 + i * W * .033, y0 + 2, W * .02, 10, 0, sil);
+ } else if (scene === 'Latino' || scene === 'boat') {
+  ellipse(ctx, W * .2, y0 + 25, 22, 22, '#f2b86466');
+  box(ctx, 0, y1 - 22, W, 22, 0, '#1f5a63');
+  for (let i = 0; i < 10; i++) box(ctx, (i * W / 10 + (reduced ? 0 : t * 14)) % W, y1 - 14 + sway(1.3 + i) * 2, 22, 2, 1, '#9fd3d055');
+  if (scene === 'boat') { box(ctx, W * .5 - 2, y0 - 20, 4, y1 - y0 + 10, 1, sil); ctx.strokeStyle = '#d8c79a66'; ctx.lineWidth = 1; for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(W * .5, y0 - 18); ctx.lineTo(W * .5 + d * W * .3, y1 - 4); ctx.stroke(); } }
+  else for (const x of [.6, .78]) { poly(ctx, [[W * x, y1 - 24], [W * x + 40, y1 - 24], [W * x + 32, y1 - 14], [W * x + 6, y1 - 14]], sil); poly(ctx, [[W * x + 20, y1 - 26], [W * x + 20, y1 - 60], [W * x + 40, y1 - 28]], '#efe3c288'); }
+ } else if (scene === 'Reggae') {
+  box(ctx, 0, y1 - 20, W, 20, 0, '#2a6f6a');
+  ellipse(ctx, W * .7, y1 - 22, 30, 12, '#f2c36b44');
+  for (const x of [.12, .3, .85]) { ctx.strokeStyle = sil; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(W * x, y1); ctx.quadraticCurveTo(W * x + 12, y0 + 40, W * x + 4, y0 + 10); ctx.stroke(); for (let k = 0; k < 5; k++) { const a = -Math.PI * (.1 + k * .2) + sway(.8) * .05; poly(ctx, [[W * x + 4, y0 + 10], [W * x + 4 + Math.cos(a) * 34, y0 + 10 + Math.sin(a) * 14 + 12], [W * x + 4 + Math.cos(a) * 20, y0 + 16 + Math.sin(a) * 8]], '#163a33'); } }
+ } else if (scene === 'Jazz') {
+  ellipse(ctx, W * .85, y0 + 6, 14, 14, '#f0e4bf88');
+  for (let i = 0; i < 12; i++) { const x = i * W / 12, h = 40 + (i * 37 % 50); box(ctx, x, y1 - h, W / 12 - 3, h, 0, sil); for (let j = 0; j < 3; j++) if ((i + j) % 2) box(ctx, x + 6, y1 - h + 8 + j * 12, 5, 5, 0, '#e8c46e66'); }
+ } else if (scene === 'final') {
+  for (let i = 0; i < 6; i++) { const x = W * (.1 + i * .16), r = 16 + (reduced ? 0 : (t * 30 + i * 20) % 30); ctx.strokeStyle = ['#f2c36b', '#e48ab4', '#82c6d8'][i % 3] + '55'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y0 + 4, r, 0, Math.PI * 2); ctx.stroke(); }
+  box(ctx, W * .25, y0 + 26, W * .5, 30, 6, '#0d1a24', gold); words(ctx, 'FESTIVAL DELLE OTTO STRADE', W / 2, y0 + 46, W < 400 ? 9 : 13, gold);
+ } else if (scene === 'rival') {
+  box(ctx, W * .3, y0 + 20, W * .4, 26, 4, '#5c1f1f', '#e0a05a'); words(ctx, '⚡ ALTA TENSIONE ⚡', W / 2, y0 + 38, W < 400 ? 9 : 12, '#f2d08a');
+  for (let i = 0; i < 9; i++) box(ctx, i * W / 9 + 8, y1 - 30, W / 9 - 16, 30, 4, sil);
+ } else {
+  for (let i = 0; i < 9; i++) box(ctx, i * W / 9 + 4, y0 + 20, W / 9 - 8, y1 - y0 - 20, 0, i % 2 ? '#2a2018' : '#30251c');
+  ctx.strokeStyle = '#ffffff22'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, y0 + 12); ctx.quadraticCurveTo(W / 2, y0 + 34, W, y0 + 12); ctx.stroke();
+  for (let i = 0; i < 16; i++) ellipse(ctx, i * W / 15, y0 + 12 + Math.sin(i / 15 * Math.PI) * 22, 3, 3, i % 2 ? '#f6d48daa' : '#f39a6aaa');
+ }
+ ctx.restore();
+}
 export function drawConcert(ctx, {
  song: s,
  time: t,
@@ -112,7 +162,7 @@ export function drawConcert(ctx, {
  const inst = INSTRUMENTS[instrument],
   city = CITIES[s.city],
   g = concertGeometry(W, H, inst.lanes),
-  palette = PALETTES[city.genre] || ['#182a2a', '#779b88', '#e5bd7f'],
+  palette = PALETTES[s.kind === 'final' ? 'Pop' : s.kind === 'rival' ? 'Rock' : (s.genre || city.genre)] || ['#182a2a', '#779b88', '#e5bd7f'],
   [dark, accent, gold] = palette,
   energy = Math.min(1, .25 + s.combo / 30),
   beatPulse = reduced ? .3 : Math.pow(1 - ((Math.max(0, t - 2) / s.beat) % 1), 3),
@@ -124,6 +174,7 @@ export function drawConcert(ctx, {
  sky.addColorStop(1, '#071218');
  ctx.fillStyle = sky;
  ctx.fillRect(0, 0, W, H);
+ backdrop(ctx, s.kind === 'final' ? 'final' : s.kind === 'boat' ? 'boat' : s.kind === 'rival' ? 'rival' : (s.genre || city.genre), W, H, t, accent, gold);
  // Warm theatre curtains, truss and beams: motion is decorative, never applied to notes.
  for (let side = 0; side < 2; side++) {
   const x = side ? W - 40 : 0;
@@ -151,7 +202,7 @@ export function drawConcert(ctx, {
  box(ctx, W * .07, stageY - 9, W * .86, H * .1, 8, '#6d5544');
  for (let i = 0; i < 6; i++) box(ctx, W * .08, stageY + i * 9, W * .84, 1, 0, '#ddbf8130');
  box(ctx, W * .07, stageY + H * .08, W * .86, 9, 3, '#b29465');
- const label = s.kind === 'tutorial' ? 'IL GARAGE · LA PRIMA PROVA' : s.kind === 'rival' ? 'ALTA TENSIONE · LA SFIDA' : s.kind === 'final' ? 'FESTIVAL DELLE OTTO STRADE' : s.kind === 'boat' ? 'CONCERTO SUL MARE' : city.name.toUpperCase() + ' · LIVE';
+ const label = s.kind === 'tutorial' ? 'IL GARAGE · LA PRIMA PROVA' : s.kind === 'rival' ? 'ALTA TENSIONE · LA SFIDA' : s.kind === 'final' ? 'FESTIVAL DELLE OTTO STRADE' : s.kind === 'boat' ? 'CONCERTO SUL MARE' : s.kind === 'home' ? 'BORGO DELLE CICALE · IL CONCERTO A CASA' : s.kind === 'practice' ? 'PROVA · ' + city.name.toUpperCase() : city.name.toUpperCase() + ' · LIVE';
  words(ctx, label, W / 2, 85, W < 400 ? 10 : 14, gold);
  words(ctx, inst.name.toUpperCase() + ' · ' + (city.genre === 'Casa' ? 'LA NOSTRA BAND' : city.genre.toUpperCase()), W / 2, 103, 10, '#d3d7c0');
  const band = Object.keys(INSTRUMENTS).filter(k => k !== instrument);
@@ -289,7 +340,7 @@ export function drawConcert(ctx, {
  const sideX = wide ? W * .17 : W - 32,
   sideY = wide ? H * .48 : H * .54;
  if (s.combo > 1) words(ctx, s.combo + ' ×', sideX, sideY, wide ? 40 : 22, gold);
- else if (wide) words(ctx, 'É IL TUO PALCO', sideX, sideY, 13, gold);
+ else if (wide) words(ctx, 'È IL TUO PALCO', sideX, sideY, 13, gold);
  if (wide) {
   words(ctx, 'SERIE MIGLIORE · ' + s.maxCombo, sideX, sideY + 26, 11, '#bccbc7');
   words(ctx, s.combo >= 20 ? 'IL PUBBLICO È CON VOI' : s.combo >= 10 ? 'LA BAND TROVA IL GROOVE' : 'ASCOLTATEVI', W * .83, H * .48, 12, gold);

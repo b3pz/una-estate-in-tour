@@ -1,3 +1,4 @@
+import { CHORD_TONES } from './music.js';
 export class MusicAudio {
  constructor() {
   this.ctx = null;
@@ -89,24 +90,30 @@ export class MusicAudio {
   const semitones = [0, 5, 7, 12];
   this.tone(root * Math.pow(2, semitones[lane] / 12) * (instrument === 'guitar' ? 2 : 1), time, Math.max(.1, duration), instrument === 'guitar' ? 'sawtooth' : 'triangle', instrument === 'guitar' ? vol * .45 : vol);
  }
- backing(chart, city, bar, start) {
-  const {
-   beat
-  } = chart, root = (city.root || 110) * [1, 1, 4 / 3, 1.5][Math.floor(bar / 4) % 4];
-  for (let b = 0; b < 4; b++) {
-   const t = start + (bar * 4 + b) * beat;
-   if (chart.instrument !== 'drums') {
-    this.drum(b % 2 === 0 ? 0 : 1, t, .075);
-    this.drum(2, t, .025);
-    if (city.genre === 'Metal') this.drum(0, t + beat * .5, .045);
-   }
-   if (chart.instrument !== 'bass' && (b === 0 || b === 2)) this.note('bass', b === 0 ? 0 : 2, root, t, beat * .55, .085);
-   if (chart.instrument !== 'guitar' && (b % 2 === 0 || city.genre === 'Reggae')) {
-    const off = city.genre === 'Reggae' ? beat * .5 : 0;
-    this.tone(root * 2, t + off, beat * .45, 'triangle', .045);
-    this.tone(root * 3, t + off, beat * .4, 'triangle', .025);
-   }
+ // Suono di una nota della partitura: altezza e accordo dipendono dal giro armonico del brano.
+ playNote(instrument, n, base, time, vol = .14) {
+  if (!this.ctx) return;
+  if (instrument === 'drums') {
+   this.drum(n.lane, time, n.lane === 2 ? vol * .35 : vol);
+   return;
   }
+  const f = base * Math.pow(2, (n.pitch || 0) / 12), dur = Math.max(.12, n.duration || .16);
+  if (instrument === 'bass') {
+   this.tone(f, time, dur, 'triangle', vol);
+   this.tone(f * 2, time, dur * .6, 'sine', vol * .25);
+   return;
+  }
+  const tones = CHORD_TONES[n.chord] || [0, 7];
+  const r = base * 2 * Math.pow(2, (n.root || 0) / 12);
+  this.tone(f * 2, time, dur, 'sawtooth', vol * .32);
+  for (const st of tones.slice(1, 3)) this.tone(r * Math.pow(2, st / 12), time, dur * .9, 'triangle', vol * .16);
+ }
+ backing(chart, city, bar, start) {
+  if (!chart.backing) return;
+  const base = city.root || 110, beat = chart.beat, origin = start - 2, from = 2 + bar * 4 * beat, to = from + 4 * beat;
+  for (const [inst, notes] of Object.entries(chart.backing))
+   for (const n of notes)
+    if (n.t >= from && n.t < to) this.playNote(inst, n, base, origin + n.t, inst === 'drums' ? .075 : inst === 'bass' ? .085 : .07);
  }
  stop() {
   for (const src of [...this.scheduled]) try {

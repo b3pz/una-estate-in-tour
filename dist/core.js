@@ -1,3 +1,4 @@
+import { STYLES, songPlan, partNotes } from './music.js';
 export const INSTRUMENTS = {
  guitar: {
   name: 'Chitarra',
@@ -336,47 +337,38 @@ export function gate(s, to) {
 export function month(s) {
  return s.finished || s.city === 11 ? 'SETTEMBRE' : s.passes.length >= 5 ? 'AGOSTO' : s.passes.length >= 2 ? 'LUGLIO' : 'GIUGNO';
 }
+export function chartGenre(city, kind) {
+ if (kind === 'rival') return 'Rock';
+ const c = CITIES[city] || CITIES[0];
+ return STYLES[c.genre] ? c.genre : 'Casa';
+}
 export function makeChart(instrument, city, difficulty = 'normal', kind = 'concert') {
  const c = CITIES[city] || CITIES[1],
-  bpm = c.bpm || 104,
+  genre = chartGenre(city, kind),
+  bpm = kind === 'final' ? 112 : kind === 'rival' ? 120 : c.bpm || 104,
   beat = 60 / bpm,
-  lanes = INSTRUMENTS[instrument].lanes;
- const bars = kind === 'tutorial' ? 6 : kind === 'rival' ? 8 : kind === 'final' ? 24 : 16;
- const notes = [];
- const add = (b, l, d = 0) => notes.push({
-  id: notes.length,
-  t: 2 + b * beat,
-  lane: l % lanes,
-  duration: d * beat
- });
- for (let bar = 0; bar < bars; bar++)
-  for (let b = 0; b < 4; b++) {
-   const pos = bar * 4 + b,
-    root = (bar + Math.floor(bar / 4)) % lanes;
-   if (instrument === 'guitar') {
-    const off = c.genre === 'Reggae' ? .5 : c.genre === 'Jazz' && b % 2 ? 1 / 6 : 0;
-    if (difficulty === 'assist' && b % 2) continue;
-    add(pos + off, (root + b) % lanes, b === 3 && bar % 3 === 1 ? .65 : 0);
-    if (difficulty !== 'assist' && bar % 4 === 3 && b === 0) add(pos + off, (root + b + 2) % lanes);
-    if (difficulty === 'expert' && b % 2 === 0) add(pos + .5, (root + b + 1) % lanes);
-   } else if (instrument === 'bass') {
-    if (b === 0 || b === 2) add(pos, (root + (b === 2 ? 1 : 0)) % lanes, b === 0 && bar % 4 === 1 ? .7 : 0);
-    if (difficulty !== 'assist' && b === 3 && bar % 2 === 1) add(pos + .5, (root + 2) % lanes);
-    if (difficulty === 'expert' && b === 1) add(pos + .5, (root + 1) % lanes);
-   } else {
-    if (b % 2 === 0) add(pos, 0);
-    else add(pos, 1);
-    if (difficulty !== 'assist') add(pos + (c.genre === 'Jazz' ? 1 / 6 : 0), 2);
-    if (bar % 4 === 3 && b === 3) add(pos + .5, 3);
-    if (difficulty === 'expert' && b % 2 === 0) add(pos + .5, 2);
-   }
-  }
- notes.sort((a, b) => a.t - b.t || a.lane - b.lane);
+  plan = songPlan(kind, genre),
+  bars = plan.length;
+ const toNotes = (inst, diff) => partNotes(inst, plan, diff).map(x => ({
+  t: 2 + x.beat * beat,
+  lane: x.lane,
+  duration: x.durBeats * beat,
+  pitch: x.pitch,
+  chord: x.chord,
+  root: x.root
+ })).sort((a, b) => a.t - b.t || a.lane - b.lane);
+ const notes = toNotes(instrument, difficulty).map((n, id) => ({ id, ...n }));
+ const backing = {};
+ for (const other of Object.keys(INSTRUMENTS))
+  if (other !== instrument) backing[other] = toNotes(other, 'normal');
  return {
   notes,
   bpm,
   beat,
   bars,
+  plan,
+  genre,
+  backing,
   duration: 2 + bars * 4 * beat + 1,
   city,
   instrument

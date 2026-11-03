@@ -63,7 +63,8 @@ const $ = id => document.getElementById(id),
  ctx = canvas.getContext('2d'),
  overlay = $('overlay'),
  audio = new MusicAudio(),
- SAVE = 'b3pz-tour-v1';
+ QA = new URLSearchParams(location.search).get('qa') === '1',
+ SAVE = QA ? 'b3pz-tour-v1-qa' : 'b3pz-tour-v1';
 let W = 960;
 const H = 600,
  T = 24,
@@ -826,8 +827,9 @@ function pressLane(lane) {
  $('laneControls').children[lane]?.classList.add('pressed');
  const t = songTime() - state.settings.offset / 1000,
   n = findNote(song.notes, lane, t, hitWindow(state.settings.difficulty));
- audio.note(state.instrument, lane, CITIES[song.city].root || 110, audio.ctx?.currentTime || 0, .12, .12);
+ if (!n) audio.note(state.instrument, lane, CITIES[song.city].root || 110, audio.ctx?.currentTime || 0, .08, .05);
  if (n) {
+  audio.playNote(state.instrument, n, CITIES[song.city].root || 110, audio.ctx?.currentTime || 0, .15);
   song.hitEffects.push({
    lane,
    t: songTime()
@@ -1837,4 +1839,107 @@ function rideCable() {
   label: 'Resta qui',
   run: close
  }], 'COLLEGAMENTO DI MONTAGNA');
+}
+
+// ==== MODALITÀ QA (solo con ?qa=1; non attiva nel gioco normale) ====
+const QA_LOG = 'b3pz-tour-qa-log';
+
+function qaLog(e) {
+ const entry = {
+  ts: new Date().toISOString(),
+  ...e
+ };
+ let l = [];
+ try {
+  l = JSON.parse(localStorage.getItem(QA_LOG)) || [];
+ } catch {}
+ l.push(entry);
+ try {
+  localStorage.setItem(QA_LOG, JSON.stringify(l));
+ } catch {}
+ console.info('[QA]', JSON.stringify(entry));
+ return entry;
+}
+
+function qaFinish(kind) {
+ if (!song) {
+  toast('QA: nessun brano in corso.');
+  return null;
+ }
+ const target = {
+  fail: 20,
+  normal: 65,
+  mastery: 95
+ } [kind];
+ const n = song.notes.length,
+  k = Math.round(n * target / 100);
+ song.notes.forEach((x, i) => {
+  x.status = i < k ? 'hit' : 'miss';
+  x.points = i < k ? 1 : 0;
+ });
+ song.early = 0;
+ const info = {
+  place: CITIES[state.city].name,
+  area,
+  interior: room?.entry?.label || null,
+  songCity: CITIES[song.city].name,
+  trial: song.kind,
+  instrument: state.instrument,
+  difficulty: state.settings.difficulty,
+  simulated: kind,
+  score: accuracy(song.notes)
+ };
+ if (song.paused) {
+  song.paused = false;
+ }
+ endSong();
+ info.outcome = (overlay.innerText || '').split('\n').slice(0, 6).join(' | ');
+ return qaLog(info);
+}
+if (QA) {
+ const b = document.createElement('div');
+ b.id = 'qaBar';
+ b.setAttribute('role', 'region');
+ b.setAttribute('aria-label', 'Strumenti QA');
+ b.style.cssText = 'position:fixed;z-index:9999;left:0;top:50%;transform:translateY(-50%);background:#b3202a;color:#fff;font:700 10px/1.2 monospace;padding:6px 4px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:4px;align-items:stretch;width:74px;box-shadow:0 2px 8px #0006';
+ b.innerHTML = '<span style="text-align:center">MODALITÀ<br>QA</span><button data-qa="fail" title="Concludi il concerto: fallito">Fallito</button><button data-qa="normal" title="Concludi il concerto: successo">Successo</button><button data-qa="mastery" title="Concludi il concerto: padronanza">Padronanza</button><button data-qa="log" title="Registro simulazioni">Registro</button>';
+ document.body.appendChild(b);
+ b.querySelectorAll('button').forEach(x => {
+  x.style.cssText = 'font:inherit;font-weight:600;padding:3px 2px;border-radius:4px;border:0;cursor:pointer';
+  x.onclick = () => {
+   if (x.dataset.qa === 'log') {
+    let l = [];
+    try {
+     l = JSON.parse(localStorage.getItem(QA_LOG)) || [];
+    } catch {}
+    console.table(l);
+    toast('QA: ' + l.length + ' simulazioni registrate (console).');
+   } else qaFinish(x.dataset.qa);
+  };
+ });
+ window.__qa = {
+  finish: qaFinish,
+  state: () => JSON.parse(JSON.stringify(state)),
+  where: () => ({
+   area,
+   mode,
+   room: room?.entry?.label || null,
+   road: road ? {
+    ...road
+   } : null,
+   song: song ? {
+    city: song.city,
+    kind: song.kind,
+    notes: song.notes.length
+   } : null
+  }),
+  log: () => {
+   try {
+    return JSON.parse(localStorage.getItem(QA_LOG)) || [];
+   } catch {
+    return [];
+   }
+  }
+ };
+ document.title = '[QA] ' + document.title;
 }
