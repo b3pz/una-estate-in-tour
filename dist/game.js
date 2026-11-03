@@ -11,11 +11,24 @@ import {
 } from './concert.js';
 import {
  PEOPLE,
- CASES,
+ TEACHER_ART,
+ RIVAL_LINES,
+ ROOMS,
+ ROAD_SCENES,
+ roadKey,
+ DEDUCTION,
+ BAND_NAMES,
  chapter,
- caseComplete,
+ clueText,
+ clueIndex,
+ cluesFound,
+ mysteryReady,
  mysteryEnding
 } from './adventure.js';
+import {
+ openPuzzle,
+ PUZZLE_INFO
+} from './puzzles.js';
 import {
  INSTRUMENTS,
  CITIES,
@@ -123,12 +136,24 @@ function toast(message) {
  toastTimer = setTimeout(() => $('toast').hidden = true, 3500);
 }
 
+let puzzleCleanups = [];
+
+function runPuzzleCleanups() {
+ const list = puzzleCleanups;
+ puzzleCleanups = [];
+ for (const f of list) try {
+  f();
+ } catch {}
+}
+
 function clearPuzzleTimers() {
  puzzleTimers.forEach(clearTimeout);
  puzzleTimers = [];
 }
 
 function panel(title, body, actions = [], tag = 'IL TACCUINO DELLA BAND') {
+ runPuzzleCleanups();
+ clearPuzzleTimers();
  $('screen').classList.add('has-dialog');
  keys.clear();
  path = [];
@@ -157,11 +182,16 @@ function panel(title, body, actions = [], tag = 'IL TACCUINO DELLA BAND') {
 
 function close() {
  $('screen').classList.remove('has-dialog');
+ runPuzzleCleanups();
  clearPuzzleTimers();
  overlay.hidden = true;
  overlay.innerHTML = '';
  keys.clear();
  canvas.focus();
+}
+
+function fameTitle() {
+ return state.xp >= 900 ? 'BAND DA FESTIVAL' : state.xp >= 500 ? 'BAND DELLA REGIONE' : state.xp >= 200 ? 'BAND DI PAESE' : 'BAND DI GARAGE';
 }
 
 function updateJournal() {
@@ -172,9 +202,10 @@ function updateJournal() {
  $('passCount').innerHTML = `${state.passes.length}<span>/8</span>`;
  $('passGrid').innerHTML = MUSIC_CITIES.map(c => `<div class="stamp ${state.passes.includes(c.id)?'earned':''}" title="${c.genre}">${c.genre.slice(0,3).toUpperCase()}</div>`).join('');
  let objective = state.stage === 'school' ? 'Ultimo giorno di scuola. Raggiungi la scuola a nord-est del paese.' : state.stage === 'practice' ? 'Gli amici ti aspettano nel garage, a ovest della piazza.' : state.stage === 'rival' ? 'La band rivale è in piazza. È ora della prima sfida.' : state.finished ? 'Il festival è vostro. Puoi tornare nei luoghi del viaggio e suonare ancora.' : state.passes.length === 8 && !state.homeShow ? 'Torna a Borgo delle Cicale: il concerto a casa vi aspetta.' : state.homeShow ? 'Raggiungi Settembre e sali sul palco del festival.' : c.type === 'music' && !state.puzzles.includes(c.id) ? `Trova ${c.teacher} in piazza e risolvi la prova di ${c.genre.toLowerCase()}.` : c.type === 'music' && !state.passes.includes(c.id) ? 'La prova è superata. Raggiungi il palco e conquista il pass.' : 'Esplora i sentieri e cerca altri musicisti. Otto città, otto pass.';
+ if (state.stage === 'tour' && !state.finished && mysteryReady(state) && state.mystery < 2) objective += ' · Gli otto indizi sono completi: Dario vi aspetta all’archivio di Valdaccordo.';
  if (state.city === 3 && state.stage === 'tour') {
   const q = state.transport;
-  objective = q.bike === 1 ? 'Missione bici: chiedi ai ragazzi in piazza della pompa.' : q.bike === 2 ? 'Missione bici: riporta la pompa ad Arturo.' : q.metro === 1 ? 'Missione metro: entra nella Stazione Nord e ricomponi gli annunci.' : q.metro === 2 ? 'Missione metro: riporta il nastro ad Arturo.' : objective;
+  objective = q.bike === 0 ? 'Arturo, in piazza, cerca qualcuno che lo aiuti a rimettere in strada una vecchia bici.' : q.bike === 1 ? 'Missione bici: chi ha preso la pompa? Chiedi ai ragazzi del campeggio in piazza.' : q.bike === 2 ? 'Missione bici: riporta la pompa ad Arturo.' : q.metro === 1 ? 'Missione metro: entra nella Stazione Nord e ricomponi gli annunci.' : q.metro === 2 ? 'Missione metro: riporta il nastro ad Arturo.' : objective;
  }
  if (area === 'interior' && state.stage === 'school' && room.entry.kind === 'school') objective = 'Parla con il maestro Riva, davanti alla lavagna. Premi E / PARLA.';
  if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'garage') objective = 'Avvicinati a Nico e Vale e premi E / PARLA per cominciare a provare.';
@@ -194,7 +225,7 @@ function updateJournal() {
   Archivio: 'LE STORIE RIMASTE A METÀ',
   Festival: 'IL PALCO DI SETTEMBRE'
  })[c.genre];
- $('instrumentTag').textContent = `${INSTRUMENTS[state.instrument].name.toUpperCase()} · ${state.bike?'IN BICICLETTA':state.bicycle?'BICI SBLOCCATA · B':'A PIEDI'} · LV ${1+Math.floor(state.xp/100)}`;
+ $('instrumentTag').textContent = `${INSTRUMENTS[state.instrument].name.toUpperCase()} · ${state.bike?'IN BICICLETTA':state.bicycle?'BICI SBLOCCATA · B':'A PIEDI'} · ${fameTitle()}`;
 }
 
 function welcome() {
@@ -341,6 +372,12 @@ function enterCity(id, from = null) {
  toast(CITIES[id].name + ' · ' + CITIES[id].genre);
 }
 
+function roomPlan(entry) {
+ return ROOMS[entry.label] || {
+  items: roomItems(entry.kind)
+ };
+}
+
 function setupRoom(entry, reset = true) {
  area = 'interior';
  room = {
@@ -365,22 +402,37 @@ function setupRoom(entry, reset = true) {
   paths: [],
   objects: []
  };
- objects = [{
+ const plan = roomPlan(entry);
+ objects = [];
+ if (entry.kind === 'school') objects.push({
   x: 24,
-  y: entry.kind === 'school' ? 13 : 17,
-  kind: entry.kind,
-  sprite: entry.kind === 'school' ? 3 : 1,
-  label: entry.kind === 'school' ? 'Maestro Riva' : entry.kind === 'garage' ? 'Nico e Vale' : entry.kind === 'house' ? 'A casa' : entry.label,
-  color: '#aa8d68'
- }];
+  y: 15,
+  kind: 'school',
+  sprite: 3,
+  label: 'Maestro Riva'
+ });
  if (entry.kind === 'garage') objects.push({
-  x: 26,
-  y: 17,
+  x: 22.5,
+  y: 18,
+  kind: 'garage',
+  sprite: 1,
+  label: 'Nico'
+ }, {
+  x: 25.5,
+  y: 18,
   kind: 'garage',
   label: 'Vale',
   sprite: 2
  });
- solids = roomItems(entry.kind).filter(i => i[0] !== 7 && i[2] > 12).map(([id, x, y, w, h]) => ({
+ if (plan.spot) objects.push({
+  x: plan.spot.x,
+  y: plan.spot.y,
+  kind: plan.spot.archive ? 'archive' : 'roomSpot',
+  label: plan.spot.label,
+  spot: plan.spot,
+  prop: true
+ });
+ solids = plan.items.filter(i => i[0] !== 7 && i[2] > 12).map(([id, x, y, w, h]) => ({
   x: x - w / T * .36,
   y: y - .9,
   w: w / T * .72,
@@ -393,6 +445,18 @@ function setupRoom(entry, reset = true) {
  }
  updateJournal();
  save();
+}
+
+function cameraNow() {
+ if (area !== 'interior') return cameraFor(state.x, state.y, W, H, layout);
+ const c = cameraFor(state.x, state.y, W, H),
+  top = 6.4 * T,
+  bottom = 29.8 * T,
+  left = 9.6 * T,
+  right = 38.4 * T;
+ if (H >= bottom - top) c.y = (top + bottom) / 2 - H / 2;
+ if (W >= right - left) c.x = (left + right) / 2 - W / 2;
+ return c;
 }
 
 function leaveRoom() {
@@ -419,11 +483,25 @@ function startRoad(to) {
   return;
  }
  if ((state.city === 6 && to === 7) || (state.city === 7 && to === 6)) {
+  const g = townGates(state.city).find(g => g.to === to);
+  if (g) Object.assign(state, {
+   ...pointOnSide(g.side, g.lane, 3.4),
+   facing: OPPOSITE[g.side]
+  });
+  keys.clear();
+  path = [];
+  portalCooldown = 1;
   rideCable();
   return;
  }
  if (to === 9 && !state.boat && state.city !== 8) {
   toast('Prima imbarcati a Porto del Sol: il pontile non è ancora aperto.');
+  const g = townGates(state.city).find(g => g.to === to);
+  if (g) Object.assign(state, {
+   ...pointOnSide(g.side, g.lane, 3.4),
+   facing: OPPOSITE[g.side]
+  });
+  portalCooldown = 1;
   keys.clear();
   path = [];
   return;
@@ -521,6 +599,21 @@ function interact() {
   else startRoad(state.city === 10 ? 9 : 10);
   return;
  }
+ if (o.kind === 'roomSpot') {
+  if (state.city === 3 && room?.entry.label === 'Stazione Nord' && state.transport.metro === 1) {
+   metroAnnouncement();
+   return;
+  }
+  panel(o.label, `<p>${o.spot.text(state)}</p>`, [{
+   label: 'Torna a guardarti intorno',
+   run: close
+  }], room ? room.entry.label.toUpperCase() + ' · ' + CITIES[state.city].name.toUpperCase() : '');
+  return;
+ }
+ if (o.kind === 'archive') {
+  showArchive();
+  return;
+ }
  if (o.kind === 'resident') {
   showResident(o);
   return;
@@ -546,7 +639,7 @@ function interact() {
  }
  if (o.kind === 'garage') {
   if (state.stage === 'school') {
-   toast('Prima vai a scuola: gli amici sono già lì.');
+   toast('Prima la scuola: Nico e Vale ti aspettano in piazza dopo la campanella.');
    return;
   }
   songBrief(state.city, state.stage === 'practice' ? 'tutorial' : 'practice');
@@ -567,7 +660,7 @@ function interact() {
   if (state.city === 0) {
    if (state.stage === 'rival') songBrief(0, 'rival');
    else if (state.stage !== 'tour') toast('Prima raggiungi gli amici in sala prove.');
-   else if (state.passes.length === 8) songBrief(0, 'home');
+   else if (state.passes.length === 8) homeScene(0);
    else panel('Il palco della prima volta.', `<p>Nico: «Quando torniamo, facciamo un concerto per tutti. Ma prima dobbiamo avere qualcosa da raccontare.»</p>`, [{
     label: 'Riparti',
     run: close
@@ -575,17 +668,17 @@ function interact() {
   } else if (c.type === 'final') {
    const reason = gate(state, 11);
    if (reason) toast(reason);
-   else songBrief(11, 'final');
+   else festivalScene(0);
   } else if (c.type === 'music') {
    if (!state.puzzles.includes(c.id)) toast(`Prima parla con ${c.teacher}: ti aspetta in piazza.`);
    else songBrief(c.id, 'concert');
-  } else songBrief(2, 'practice');
+  } else instrumentStudio(state.city);
   return;
  }
  if (o.kind === 'npc') {
   if (state.city === 0) {
    if (state.stage === 'rival') songBrief(0, 'rival');
-   else panel('Nico e Vale', `<p>${state.stage==='school'?'«Non fare tardi! La scuola è dall’altra parte della piazza.»':state.stage==='practice'?'«Il garage è pronto. Vieni a provare con noi!»':state.passes.length===8?'«Ci siamo. Prima suoniamo a casa. Poi andiamo a prenderci settembre.»':'«Ogni città ci ha insegnato qualcosa. E pensa che volevamo soltanto passare un pomeriggio in garage.»'}</p>`, [{
+   else panel('Nico e Vale', `<p>${state.stage==='school'?'«Non fare tardi! La scuola è dall’altra parte della piazza.»':state.stage==='practice'?'«Il garage è pronto. Vieni a provare con noi!»':state.homeShow?'«Il paese ci ha chiesto il bis. Adesso settembre: andiamo a prendercelo.»':state.passes.length===8?'«Ci siamo. Prima suoniamo a casa. Poi andiamo a prenderci settembre.»':'«Ogni città ci ha insegnato qualcosa. E pensa che volevamo soltanto passare un pomeriggio in garage.»'}</p>`, [{
     label: 'Ci vediamo sul palco',
     run: close
    }]);
@@ -593,10 +686,10 @@ function interact() {
   else if (state.city === 3) {
    showTransportQuest();
   } else if (state.city === 6) showArchive();
-  else panel('Il festival di settembre', `<p>«Otto pass, una band e un brano da portare sul palco. Vi aspettavamo.»</p>`, [{
-   label: 'Verso il palco',
+  else panel('Emma · voce del festival', portraitCard(11) + `<p>${state.finished ? '«Che serata! La registrazione andrà in onda tutto l’inverno.»' : state.homeShow ? '«Ho seguito il vostro viaggio città per città. Stasera vi presento io: salite quando volete.»' : '«Il festival apre solo a chi ha gli otto pass e ha suonato per il proprio paese. Le regole non le ho scritte io!»'}</p>`, [{
+   label: state.homeShow && !state.finished ? 'Verso il palco' : 'A più tardi',
    run: close
-  }]);
+  }], 'SETTEMBRE');
   return;
  }
  if (o.kind === 'lore') {
@@ -605,7 +698,7 @@ function interact() {
    return;
   }
   if (state.city === 6) showArchive();
-  else panel('Storie dietro le note.', `<p>${c.text||c.lesson}</p><p>Una locandina racconta la scena musicale del posto. Nel prototipo le storie locali sono ancora brevi: qui troveranno spazio persone, piccoli concerti e ritorni.</p>`, [{
+  else panel('Storie dietro le note.', `<p>${c.text||c.lesson}</p>`, [{
    label: 'Torna fuori',
    run: close
   }]);
@@ -615,122 +708,156 @@ function interact() {
   showRoadEncounter(o);
   return;
  }
- if (o.kind === 'sign') panel('Qualcuno è passato di qui.', `<p>«Non serve suonare più forte di tutti. Basta trovare qualcuno che abbia voglia di ascoltare.»</p><p>Più avanti, una freccia indica ${CITIES[road.to].name}. Le cicale accompagnano l’ultimo tratto di strada.</p>`, [{
+ if (o.kind === 'sign') panel('Appunti di viaggio', `<p>${SIGN_NOTES[roadKey(road.from, road.to)] || '«Non serve suonare più forte di tutti. Basta trovare qualcuno che abbia voglia di ascoltare.»'}</p><p>Più avanti, una freccia indica ${CITIES[road.to].name}.</p>`, [{
   label: 'Continua a camminare',
   run: close
  }]);
 }
 
+const SIGN_NOTES = {
+ '0-1': 'Sul cartello qualcuno ha inciso tre accordi: La, Re, Mi. Sotto: «per la strada del fiume».',
+ '1-2': 'Un adesivo strappato: «ALTA TENS…». Qualcuno è passato prima di voi.',
+ '0-2': 'Una scritta a gesso: «Prima si ascolta, poi si alza il volume».',
+ '2-3': 'Un orario dei treni del 1989. La fermata «Otto Strade» è cancellata a penna.',
+ '3-4': 'Un volantino: «Riapriamo il Teatro Aurora. Firma anche tu».',
+ '4-5': 'Qualcuno ha disegnato una griglia: «1 e 2 e 3 e 4 e». Metà delle caselle è vuota apposta.',
+ '5-6': '«All’archivio si entra in silenzio. Si esce cantando.» — firmato con una A arricciata.',
+ '3-6': 'Una freccia per Valdaccordo e un plettro disegnato con il pennarello.',
+ '5-8': 'Profumo di mare. Sul cartello, la clave scritta come un codice: X . . X . . X . | . . X . X . . .',
+ '6-10': 'Un lampione acceso anche di giorno. Sotto, un biglietto: «Al Settimo si risponde, non si ripete».',
+ '9-10': 'Sulle assi del pontile, segni di gesso tra un battito e l’altro.',
+ '10-11': 'Un manifesto nuovo: «Festival delle Otto Strade · ultimo nome da confermare».',
+ '6-7': 'Orari della funivia: ultima corsa alle otto. Ritardi frequenti per concerti improvvisati.',
+ '8-9': 'Sul traghetto, un cartello: «Si accettano musicisti al posto del biglietto».'
+};
+
 function showArchive() {
  if (!state.stories.includes(6)) {
   state.stories.push(6);
   state.xp += 40;
-  save();
-  updateJournal();
  }
- panel('Il lato B della cassetta.', `<p>Dietro una fotografia trovate tre ragazzi, un garage e un palco di paese. Uno di loro è il vostro insegnante.</p><p>Vale: «Pensavo che i grandi fossero sempre stati grandi.»</p><p>Un plettro è incollato nella custodia. Sul nastro Riva dice: «Questa è anche la tua canzone». Ma il quarto nome è coperto da un fruscio.</p><p>${mysteryEnding(state)?'Le otto testimonianze restituiscono il nome di Andrea. Non era scomparso: aveva lasciato una scena che non gli riconosceva il suo lavoro. Riportare il suo nome sul palco è il vero significato del plettro.':'Le testimonianze degli altri paesi potranno completare la storia. Gli indizi restano nel taccuino della band.'}</p>`, [{
-  label: 'Portiamo avanti la storia',
-  run: close
- }], 'VALDACCORDO / UNA BAND PRIMA DI VOI');
-}
-
-function showTeacher(c) {
- if (CASES[c.id]) {
-  showCase(c);
+ if (state.mystery < 1) state.mystery = 1;
+ save();
+ updateJournal();
+ const n = cluesFound(state).length;
+ if (state.mystery === 2) {
+  panel('Il nastro è completo.', portraitCard(14) + '<p>Andrea — Dario per tutti, ormai — fa girare il nastro restaurato. Sul lato B, quattro voci contano fino a quattro.</p><p>«Al festival leggete tutti e quattro i nomi. Io sarò in prima fila. Forse.»</p>', [{
+   label: 'Ci vediamo a settembre',
+   run: close
+  }], 'VALDACCORDO · ARCHIVIO');
   return;
  }
- if (state.puzzles.includes(c.id)) {
-  panel(c.teacher + ' · ' + c.genre, `<p>«${c.lesson}»</p><p>Hai superato la prova. ${state.passes.includes(c.id)?'Il tuo pass è nel taccuino. Il palco è sempre aperto per una nuova esibizione.':'Il palco è pronto: conquistati il pass del locale.'}</p>`, [{
-   label: 'Ripassa la sequenza',
-   run: () => startPuzzle(c)
-  }, {
-   label: 'Torna in piazza',
-   run: close,
-   secondary: true
-  }]);
- } else panel(c.teacher + ' · Ascolta prima di suonare.', `<p>«${c.lesson}»</p><p>Prima del concerto, riproduci una breve frase su quattro note. Puoi ascoltarla e leggere gli indizi tutte le volte che vuoi.</p>`, [{
-  label: 'Comincia la prova',
-  run: () => startPuzzle(c)
+ const intro = '<p>Dario vi fa firmare il registro dei visitatori. Lui firma per primo: una <strong>A</strong> arricciata come una chiave di violino, poi «Dario».</p><p>Su uno scaffale c’è una foto: tre ragazzi su un palco di paese, uno è Riva da giovane. Accanto, una cassetta con il lato B rovinato. Sul nastro Riva dice: «Questa è anche la tua canzone», ma il nome che segue è coperto dal fruscio.</p>';
+ if (!mysteryReady(state)) {
+  panel('L’archivio di Valdaccordo', portraitCard(14) + intro + `<p>Dario: «Le testimonianze sono sparse nelle città della musica: ogni insegnante ne custodisce una. Me ne avete portate ${n} su 8. Il nastro si capisce solo intero.»</p>`, [{
+   label: 'Torneremo con gli indizi',
+   run: close
+  }], 'VALDACCORDO · ARCHIVIO');
+  return;
+ }
+ panel('L’archivio di Valdaccordo', portraitCard(14) + intro + '<p>Dario: «Otto testimonianze. Allora possiamo ascoltare il nastro insieme. Ma prima ditemi voi cosa avete capito.»</p>', [{
+  label: 'Ricostruiamo la storia',
+  run: () => deduction(0)
  }, {
   label: 'Più tardi',
   run: close,
   secondary: true
- }], 'LA PROVA DI ' + c.genre.toUpperCase());
+ }], 'VALDACCORDO · ARCHIVIO');
 }
 
-function startPuzzle(c) {
- clearPuzzleTimers();
- let index = 0,
-  busy = false;
- const p = panel('Una frase da ricordare.', `<p id="puzzleInfo">Ascolta i quattro suoni. Poi ripeti la sequenza.</p><div class="puzzle-sequence">${[0,1,2,3].map(i=>`<button class="puzzle-key" data-note="${i}" aria-label="Nota ${i+1}">${i+1}</button>`).join('')}</div><p class="fine" id="puzzleProgress">0 / 4</p>`, [{
-  label: 'Riascolta',
-  run: play
- }, {
-  label: 'Indizio visivo',
-  run: () => {
-   p.querySelector('#puzzleInfo').textContent = 'Sequenza: ' + c.pattern.map(n => n + 1).join(' → ');
-  }
- }, {
-  label: 'Torna fuori',
+function deduction(step) {
+ const d = DEDUCTION[step],
+  clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city)).map(c => `<li>${c.text}</li>`).join('');
+ const p = panel('Ricostruire il nastro', `<p><strong>Domanda ${step + 1} di ${DEDUCTION.length}.</strong> ${d.q}</p><details class="clue-details"><summary>Rileggi gli indizi</summary><ol class="clue-list">${clues}</ol></details><div class="deduce-options"></div><p class="puzzle-feedback" aria-live="polite"></p>`, [{
+  label: 'Più tardi',
   run: close,
   secondary: true
- }], 'ENIGMA MUSICALE / ' + c.genre.toUpperCase());
-
- function flash(i) {
-  const b = p.querySelector(`[data-note="${i}"]`);
-  b.classList.add('lit');
-  try {
-   audio.tone((c.root || 110) * 2 * Math.pow(2, [0, 4, 7, 12][i] / 12), audio.ctx.currentTime, .3, 'triangle', .14);
-  } catch {}
-  puzzleTimers.push(setTimeout(() => b.classList.remove('lit'), 260));
- }
- async function play() {
-  if (busy) return;
-  try {
-   await audio.init();
-  } catch {}
-  busy = true;
-  index = 0;
-  p.querySelector('#puzzleProgress').textContent = 'Ascolta…';
-  c.pattern.forEach((n, i) => puzzleTimers.push(setTimeout(() => flash(n), i * 550 + 150)));
-  puzzleTimers.push(setTimeout(() => {
-   busy = false;
-   p.querySelector('#puzzleProgress').textContent = 'Ora tocca a te · 0 / 4';
-  }, 2500));
- }
- p.querySelectorAll('[data-note]').forEach(b => b.onclick = async () => {
-  if (busy) return;
-  try {
-   await audio.init();
-  } catch {}
-  const n = Number(b.dataset.note);
-  flash(n);
-  if (n === c.pattern[index]) {
-   index++;
-   p.querySelector('#puzzleProgress').textContent = index + ' / 4';
-   if (index === 4) {
-    busy = true;
-    if (!state.puzzles.includes(c.id)) {
-     state.puzzles.push(c.id);
-     state.xp += 25;
-    }
-    save();
-    updateJournal();
-    puzzleTimers.push(setTimeout(() => {
-     clearPuzzleTimers();
-     panel('La frase è completa.', `<p>${c.teacher}: «Ecco. Te lo porterai dietro anche nel prossimo pezzo.»</p><p>Ora puoi affrontare il concerto di ${c.name}.</p><p><strong>Indizio nel taccuino:</strong> ${CASES[c.id]?.clue||''}</p>`, [{
-      label: 'Verso il palco',
-      run: close
-     }], 'PROVA SUPERATA');
-    }, 500));
-   }
-  } else {
-   index = 0;
-   p.querySelector('#puzzleProgress').textContent = 'Riprova dall’inizio. Puoi usare l’indizio.';
-  }
+ }], 'VALDACCORDO · L’ARCHIVIO DI DARIO');
+ d.options.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.className = 'btn secondary';
+  b.textContent = t;
+  b.onclick = () => {
+   if (i === d.answer) step < DEDUCTION.length - 1 ? deduction(step + 1) : revelation(0);
+   else p.querySelector('.puzzle-feedback').textContent = 'Dario scuote la testa. ' + d.why;
+  };
+  p.querySelector('.deduce-options').appendChild(b);
  });
- play();
 }
+
+function revelation(page) {
+ const pages = [
+  ['Una A arricciata.', portraitCard(14) + '<p>Dario posa la penna. Guarda a lungo la vostra lista.</p><p>«Avete letto bene. Mi chiamo Andrea Dario. Dopo il primo festival il manifesto portava solo il nome di Riva. Nessuno l’aveva fatto apposta, ed è stato peggio. Ho smesso di firmarmi Andrea e sono venuto a custodire le canzoni degli altri.»</p>'],
+  ['Una telefonata.', '<p>Vale presta il telefono. Dopo mezz’ora una macchina si ferma davanti all’accademia: è il maestro Riva.</p><p>Riva: «Ho lasciato che succedesse. Era più comodo che rimettere tutto in discussione. Andrea, mi dispiace.»</p><p>Andrea non risponde. Poi prende il plettro dalla custodia e lo mette nella mano di Nico.</p>'],
+  ['Il plettro delle Otto Strade.', '<p>Riva: «Il plettro non porta fortuna. Porta una promessa: chi lo usa suona anche per chi non è stato ascoltato.»</p><p>«Al festival suonerete il tema delle Otto Strade. E io leggerò tutti e quattro i nomi.»</p><p class="fine">Mistero risolto · Il plettro delle Otto Strade è nel taccuino della band.</p>']
+ ];
+ if (page === pages.length - 1 && state.mystery < 2) {
+  state.mystery = 2;
+  state.xp += 100;
+  save();
+  updateJournal();
+ }
+ const [title, body] = pages[page];
+ panel(title, body, [{
+  label: page < pages.length - 1 ? 'Continua →' : 'Fino a settembre',
+  run: () => page < pages.length - 1 ? revelation(page + 1) : close()
+ }], 'VALDACCORDO · IL NOME CHE MANCAVA');
+}
+
+function showTeacher(c) {
+ const info = PUZZLE_INFO[c.id],
+  done = state.puzzles.includes(c.id),
+  passed = state.passes.includes(c.id);
+ panel(c.teacher + ' · ' + info.title, portraitCard(TEACHER_ART[c.id]) + `<p>«${c.lesson}»</p><p>${done ? passed ? 'Il pass è nel taccuino. Potete rifare la prova o tornare sul palco quando volete.' : 'La prova è superata: il palco del concerto vi aspetta.' : info.scene}</p><p class="fine">La prova: ${info.mech.toLowerCase()}.</p>`, [{
+  label: done ? 'Rifai la prova' : 'Comincia la prova',
+  run: () => openPuzzle(c.id, puzzleApi(c))
+ }, {
+  label: done && !passed ? 'Verso il palco' : 'Più tardi',
+  run: close,
+  secondary: true
+ }], 'INDAGINE MUSICALE · ' + c.genre.toUpperCase());
+}
+
+function puzzleApi(c) {
+ return {
+  panel,
+  close,
+  audio,
+  toast,
+  later: (fn, ms) => puzzleTimers.push(setTimeout(fn, ms)),
+  onClose: fn => puzzleCleanups.push(fn),
+  back: () => showTeacher(c),
+  solved: () => puzzleSolved(c)
+ };
+}
+
+const TEACHER_THANKS = {
+ 1: 'Adesso il nastro e la scaletta dicono la stessa cosa. Tenetevi la cassetta: nella custodia c’è qualcosa per voi.',
+ 2: 'L’impianto canta. Prendete quel flight case, è vuoto… quasi.',
+ 4: 'La canzone è tornata a casa. Il teatro riaprirà, me lo sento.',
+ 5: 'Avete trovato il posto del silenzio. Sotto la griglia c’era un foglietto, guardate.',
+ 7: 'Pulito, poi veloce. Ecco: questo astuccio era di un vecchio amico di Riva.',
+ 8: 'Il cerchio si è chiuso. Girate il foglio della clave.',
+ 9: 'Il pontile regge. Su un’asse c’è un’incisione vecchia di trent’anni.',
+ 10: 'Mi avete risposto davvero. Questa bobina l’aspettavo da tanto.'
+};
+
+function puzzleSolved(c) {
+ const first = !state.puzzles.includes(c.id);
+ if (first) {
+  state.puzzles.push(c.id);
+  state.xp += 25;
+ }
+ save();
+ updateJournal();
+ const n = clueIndex(state, c.id) + 1,
+  ready = first && mysteryReady(state) && state.mystery < 2;
+ panel(first ? 'Prova superata.' : 'Ancora una volta, e meglio.', portraitCard(TEACHER_ART[c.id]) + `<p>${c.teacher}: «${TEACHER_THANKS[c.id]}»</p><p class="fine">${PUZZLE_INFO[c.id].fact}</p>${first ? `<div class="clue-card"><span>IL PLETTRO DELLE OTTO STRADE · INDIZIO ${n} / 8</span><p>${clueText(state, c.id)}</p></div>` : ''}${ready ? '<p><strong>Le otto testimonianze sono complete.</strong> Dario, all’archivio di Valdaccordo, saprà leggerle insieme a voi.</p>' : ''}<p>${state.passes.includes(c.id) ? 'Il palco è sempre aperto per un altro concerto.' : `Ora il palco di ${c.name} vi aspetta.`}</p>`, [{
+  label: 'Verso il palco',
+  run: close
+ }], 'PROVA SUPERATA · ' + c.genre.toUpperCase());
+}
+
 
 function songBrief(id, kind) {
  if (kind === 'practice' && !song) {
@@ -745,7 +872,7 @@ function openSongBrief(id, kind) {
   c = CITIES[id],
   short = kind === 'tutorial';
  let title = short ? 'La prima prova insieme.' : kind === 'rival' ? 'Alta Tensione vi aspetta.' : kind === 'boat' ? 'Un palco in mezzo al mare.' : kind === 'home' ? 'Il concerto a casa.' : kind === 'final' ? 'Questa è la vostra estate.' : `Suona a ${c.name}.`;
- const p = panel(title, `<p>${short?'Suona quando le note raggiungono la linea dorata. Le note lunghe vanno tenute premute fino alla fine.':kind==='rival'?'È il primo confronto della band. Il tuo punteggio è reale; i rivali vincono la valutazione complessiva prevista dal prologo.':kind==='final'?'Nico guarda Vale, poi guarda te. Il pubblico aspetta il primo accordo.':c.lesson||'La band è pronta. Adesso tocca a voi.'}</p><p><strong>${inst.name}</strong> · ${inst.role}<br>Tasti: <strong>${inst.labels.join(' · ')}</strong>. Su touch usa i pulsanti. ${state.instrument==='drums'?'D = cassa, F = rullante, J = charleston, K = piatto.':''}</p><label>Difficoltà <select id="songDifficulty"><option value="assist">Accessibile · soglia 35%</option><option value="normal">Normale · soglia 50%</option><option value="expert">Virtuoso · soglia 50%</option></select></label><p class="fine">Pausa con Spazio. Puoi uscire senza perdere i pass ottenuti.<br>${short?'Il tutorial introduce i comandi e può essere completato senza una soglia minima.':'Un errore non interrompe il brano. Puoi riprovare subito.'}</p>`, [{
+ const p = panel(title, `<p>${short?'Suona quando le note raggiungono la linea dorata. Le note lunghe vanno tenute premute fino alla fine.':kind==='rival'?'Gli Alta Tensione suonano insieme da anni. Voi da un pomeriggio. Stasera conta arrivare in fondo insieme: il pubblico ricorderà chi ci ha provato.':kind==='final'?'Un medley di tutta l’estate: otto città, otto accenti. Nico guarda Vale, poi guarda te.':kind==='home'?(state.rivalsJoined?'Tutto il paese in piazza. Per l’ultimo pezzo salgono anche gli Alta Tensione.':'Tutto il paese in piazza. Stasera suonate per chi vi ha visti partire.'):kind==='boat'?'Il capitano vi presta il ponte. Le onde fanno da metronomo, più o meno.':kind==='practice'?'Una prova senza pubblico, nello stile di '+c.name+'. Le abilità del Musicodex si ottengono anche qui, dopo la prova locale.':c.lesson||'La band è pronta. Adesso tocca a voi.'}</p><p><strong>${inst.name}</strong> · ${inst.role}<br>Tasti: <strong>${inst.labels.join(' · ')}</strong>. Su touch usa i pulsanti. ${state.instrument==='drums'?'D = cassa, F = rullante, J = charleston, K = piatto.':''}</p><label>Difficoltà <select id="songDifficulty"><option value="assist">Accessibile · soglia 35%</option><option value="normal">Normale · soglia 50%</option><option value="expert">Virtuoso · soglia 50%</option></select></label><p class="fine">Pausa con Spazio. Puoi uscire senza perdere i pass ottenuti.<br>${short?'Il tutorial introduce i comandi e può essere completato senza una soglia minima.':'Un errore non interrompe il brano. Puoi riprovare subito.'}</p>`, [{
   label: 'Conta fino a quattro…',
   run: () => {
    state.settings.difficulty = p.querySelector('select').value;
@@ -756,7 +883,7 @@ function openSongBrief(id, kind) {
   label: 'Non ancora',
   run: close,
   secondary: true
- }], 'SALA PROVE / ' + inst.name.toUpperCase());
+ }], (kind === 'practice' || kind === 'tutorial' ? 'SALA PROVE' : kind === 'rival' ? 'LA PIAZZA · LA SFIDA' : kind === 'boat' ? 'IL TRAGHETTO' : kind === 'home' ? 'BORGO DELLE CICALE · IL CONCERTO A CASA' : kind === 'final' ? 'FESTIVAL DELLE OTTO STRADE' : 'CONCERTO · ' + c.name.toUpperCase()) + ' / ' + inst.name.toUpperCase());
  p.querySelector('select').value = state.settings.difficulty;
 }
 async function startSong(id, kind) {
@@ -914,11 +1041,17 @@ function exitSong(showToast = true) {
 
 function endSong() {
  const completed = song;
- const score = Math.max(0, accuracy(completed.notes) - Math.floor(completed.early / 3)),
+ const acc = accuracy(completed.notes),
+  penalty = Math.floor(completed.early / 3),
+  score = Math.max(0, acc - penalty),
   result = award(state, completed.city, score, completed.kind);
  exitSong(false);
  save();
  updateJournal();
+ if (completed.kind === 'final' && result.won) {
+  endingScene(0, score);
+  return;
+ }
  const actions = [{
   label: result.won ? 'Torna al viaggio' : 'Riprova',
   run: () => {
@@ -935,7 +1068,94 @@ function endSong() {
   run: close,
   secondary: true
  });
- panel(completed.kind === 'final' && result.won ? 'Ci chiedono il bis.' : result.won ? 'Questo suono è vostro.' : 'Un’altra prova?', `<div class="result-number">${score}<span style="font-size:20px">%</span></div><p>${result.message}</p><p class="fine">Precisione ${accuracy(completed.notes)}% · Serie migliore ${completed.maxCombo}<br>Note fuori tempo: ${completed.early}</p>${completed.kind==='final'&&result.won?`<p>${mysteryEnding(state)?'Prima del bis, Riva legge quattro nomi. Anche Andrea torna autore delle Otto Strade. Il plettro passa tra le mani dei ragazzi.':'Nel taccuino restano indizi da collegare. Puoi tornare a Valdaccordo e nelle città dopo il festival.'}</p><p>Le luci si accendono. Tra il pubblico ci sono facce incontrate lungo tutta l’estate. Nico ride: «Domani dove andiamo?»</p><p class="fine">Fine del percorso del prototipo. Le storie e i concerti potranno essere ampliati senza cambiare il salvataggio.</p>`:''}`, actions, completed.kind === 'final' ? 'SETTEMBRE / FINE DELLA PRIMA ESTATE' : 'DOPO IL CONCERTO');
+ const title = completed.kind === 'tutorial' ? score >= 50 ? 'Ottimo inizio.' : 'Il primo rumore.' : completed.kind === 'rival' ? 'Il primo confronto.' : completed.kind === 'home' && result.won ? 'Il paese chiede il bis.' : result.won ? 'Questo suono è vostro.' : 'Un’altra prova?';
+ const extra = completed.kind === 'home' && result.won ? `<p>${state.rivalsJoined ? 'Per l’ultimo pezzo Elia, Bea e Tommi salgono sul palco. Due batterie, tre chitarre, nessuno che vince: la piazza canta lo stesso.' : 'Gli Alta Tensione applaudono dalla prima fila. Elia alza il pollice, poi fa finta di niente.'}</p>${mysteryEnding(state) ? '<p>In fondo alla piazza, Riva e Dario ascoltano vicini. Nessuno dei due parla.</p>' : ''}` : completed.kind === 'rival' ? `<p>${score >= 60 ? 'Elia vi guarda di traverso, poi vi stringe la mano: «Non male, per essere al primo concerto.»' : 'Elia ride, Bea no: «Il basso c’era. Il resto arriverà.»'}</p>` : '';
+ panel(title, `<div class="result-number">${score}<span style="font-size:20px">%</span></div><p>${result.message}</p>${extra}<p class="fine">Precisione ${acc}%${penalty ? ` · −${penalty} per ${completed.early} colpi fuori tempo` : ''} · serie migliore ${completed.maxCombo}</p>`, actions, completed.kind === 'tutorial' ? 'SALA PROVE · LA PRIMA PROVA' : 'DOPO IL CONCERTO');
+}
+
+function homeScene(page) {
+ const pages = [
+  ['La piazza è piena.', `<p>Sami ha montato il registratore sul muretto. Emma trasmette in diretta. La mamma è in prima fila con un cartello fatto a mano.</p><p>Nico: «Tre mesi fa qui non ci ascoltava nessuno.»</p>`],
+  ['Elia vi aspetta dietro il palco.', portraitCard(0) + '<p>«Vi devo una cosa. Quella sera ho riso di voi. Però… l’ultimo pezzo potremmo suonarlo insieme. Se vi va.»</p>']
+ ];
+ if (page === 0) {
+  panel(...pages[0], [{
+   label: 'Continua →',
+   run: () => homeScene(1)
+  }], 'BORGO DELLE CICALE · FINE AGOSTO');
+  return;
+ }
+ panel(...pages[1], [{
+  label: 'Suoniamo insieme',
+  run: () => {
+   state.rivalsJoined = true;
+   save();
+   songBrief(0, 'home');
+  }
+ }, {
+  label: 'Stasera tocca a noi',
+  run: () => {
+   state.rivalsJoined = false;
+   save();
+   songBrief(0, 'home');
+  }
+ }], 'BORGO DELLE CICALE · I RIVALI');
+}
+
+function festivalScene(page) {
+ if (page === 0) {
+  panel('Settembre.', portraitCard(11) + `<p>Emma prende il microfono: «Arrivano da un garage di Borgo delle Cicale. Hanno attraversato otto città, un fiume, una montagna e un pezzo di mare.»</p><p>«Ma come si chiamano?» Silenzio. Vale vi guarda: non ci avete mai pensato.</p>`, [{
+   label: state.bandName ? 'Siamo «' + state.bandName + '»' : 'Scegliamo un nome',
+   run: () => state.bandName ? festivalScene(2) : festivalScene(1)
+  }], 'FESTIVAL DELLE OTTO STRADE');
+  return;
+ }
+ if (page === 1) {
+  const p = panel('Il nome della band.', `<p>Nico propone, Vale corregge, tu decidi.</p><div class="deduce-options"></div><label>Oppure scrivilo tu <input id="bandNameInput" maxlength="30" placeholder="Il nostro nome"></label>`, [{
+   label: 'Usa questo nome',
+   run: () => {
+    const v = p.querySelector('#bandNameInput').value.trim();
+    if (!v) {
+     toast('Scrivi un nome o scegline uno.');
+     return;
+    }
+    state.bandName = v.slice(0, 30);
+    save();
+    festivalScene(2);
+   }
+  }], 'FESTIVAL DELLE OTTO STRADE');
+  BAND_NAMES.forEach(n => {
+   const b = document.createElement('button');
+   b.className = 'btn secondary';
+   b.textContent = n;
+   b.onclick = () => {
+    state.bandName = n;
+    save();
+    festivalScene(2);
+   };
+   p.querySelector('.deduce-options').appendChild(b);
+  });
+  return;
+ }
+ panel('«' + state.bandName + '».', `<p>Emma: «Signore e signori: ${state.bandName}!»</p><p>${mysteryEnding(state) ? 'In prima fila, Riva stringe il braccio di Dario. Nico ha il plettro delle Otto Strade tra le dita.' : 'In prima fila c’è il maestro Riva. Guarda il palco come se ricordasse qualcosa.'}</p>`, [{
+  label: 'Saliamo sul palco',
+  run: () => songBrief(11, 'final')
+ }], 'FESTIVAL DELLE OTTO STRADE');
+}
+
+function endingScene(page, score) {
+ const dex = abilityDex(state).filter(a => a.learned).length,
+  clues = cluesFound(state).length;
+ const pages = [
+  ['Ci chiedono il bis.', `<div class="result-number">${score}<span style="font-size:20px">%</span></div><p>Otto città in un brano solo: il blues di Nino, il rock di Ada, la promessa di Lia, il silenzio di Tito, il ferro di Iris, la clave di Rosa, il levare di Teo, la risposta di Mina.</p><p>Tra il pubblico riconoscete Leo, Sami, Emma, Arturo. Elia, Bea e Tommi cantano più forte di tutti.</p>`],
+  mysteryEnding(state) ? ['Quattro nomi.', '<p>Prima del bis Riva sale sul palco. Legge piano: «Le Otto Strade. Musica di Riva e di Andrea.»</p><p>Dario — Andrea — resta immobile. Poi sale anche lui. Nico gli porge il plettro; lui lo rifiuta, sorride, e lo rimette nella mano di Nico: «Adesso è vostro. Suonate per chi non viene ascoltato.»</p>'] : ['Tre nomi, e un fruscio.', `<p>Prima del bis Riva legge i nomi della sua vecchia band. Sono tre. Il quarto resta sospeso, come il fruscio del lato B.</p><p>${clues < 8 ? `Nel taccuino avete ${clues} indizi su 8: qualche città custodisce ancora una testimonianza.` : 'Avete tutti gli indizi: Dario, all’archivio di Valdaccordo, vi aspetta ancora.'}</p>`],
+  ['Domani dove andiamo?', `<p>Le luci si spengono una alla volta. Nico ride: «Domani dove andiamo?»</p><p class="fine">Pass ${state.passes.length} / 8 · Musicodex ${dex} / 32 · Indizi ${clues} / 8 · Mistero ${mysteryEnding(state) ? 'risolto' : 'aperto'}</p><p>Il viaggio continua: potete tornare in ogni città, completare il Musicodex con gli altri strumenti${mysteryEnding(state) ? '' : ' e chiudere il mistero del plettro'}, rigiocare i concerti.</p>`]
+ ];
+ const [title, body] = pages[page];
+ panel(title, body, [{
+  label: page < pages.length - 1 ? 'Continua →' : 'Continua il viaggio',
+  run: () => page < pages.length - 1 ? endingScene(page + 1, score) : close()
+ }], 'SETTEMBRE · FINE DELLA PRIMA ESTATE');
 }
 
 function tickSong() {
@@ -1102,8 +1322,9 @@ function instrumentStudio(id) {
 
 function showBand() {
  if (mode === 'rhythm') return;
- const missing = Object.keys(INSTRUMENTS).filter(id => id !== state.instrument);
- panel('Ancora senza nome.', `<p>Una band nata in un garage. Il nome lo troveremo per strada.</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Esperienza / livello</span><strong>${state.xp} / ${1+Math.floor(state.xp/100)}</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><div class="stat-row"><span>Ricordi</span><strong>${state.stories.includes(6)?'La cassetta del lato B':'Un’estate da riempire'}</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p><h4>Il plettro delle Otto Strade</h4><p>Il tempo avanza con gli eventi della storia. Esplorare e riprovare non fa scadere l’estate.</p>${state.puzzles.map(id=>`<p><strong>${CITIES[id].name}</strong> · ${CASES[id]?.clue||''}</p>`).join('')}${mysteryEnding(state)?'<p><strong>Il nastro è ricostruito.</strong> Andrea non cercava un trofeo: chiedeva di restituire il suo nome alla canzone scritta con Riva. Il plettro era il simbolo di quella promessa.</p>':'<p>Raccogli le testimonianze nelle città e confrontale con il nastro di Valdaccordo.</p>'}<p class="fine">Nel prototipo il livello registra i traguardi. Le nuove meccaniche musicali arrivano nei brani, senza bonus che correggano gli errori.</p>`, [{
+ const missing = Object.keys(INSTRUMENTS).filter(id => id !== state.instrument),
+  clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
+ panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p><h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
   label: 'Musicodex · abilità',
   run: showDex
  }, {
@@ -1187,7 +1408,7 @@ function importSave() {
 function toggleBike() {
  if (mode !== 'world' || !overlay.hidden) return;
  if (!state.bicycle) {
-  toast('Una vecchia bici ti aspetta a Binario Nord.');
+  toast(state.city === 3 ? 'La bici è di Arturo: parlagli in piazza.' : 'Una vecchia bici ti aspetta a Binario Nord.');
   return;
  }
  state.bike = !state.bike;
@@ -1269,7 +1490,7 @@ function roomItems(kind) {
 }
 
 function drawInterior() {
- const cam = cameraFor(state.x, state.y, W, H);
+ const cam = cameraNow();
  ctx.save();
  ctx.translate(-cam.x, -cam.y);
  rect(0, 0, WIDTH * T, HEIGHT * T, '#294238');
@@ -1285,7 +1506,7 @@ function drawInterior() {
  for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
  for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
  text(room.entry.label, 24 * T, 8 * T, '#59745b', 16, 'center');
- const items = roomItems(room.entry.kind);
+ const items = roomPlan(room.entry).items;
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
  const actors = items.filter(i => i[0] !== 7).map(([id, x, y, w, h]) => ({
@@ -1296,7 +1517,21 @@ function drawInterior() {
   depth: 13 * T,
   draw: () => smoothStage(ctx, 24 * T, 13 * T, 'SALA PROVE')
  });
- for (const o of objects) actors.push({
+ for (const o of objects.filter(o => o.prop)) actors.push({
+  depth: o.y * T + 1,
+  draw: () => {
+   const pulse = .6 + Math.sin(performance.now() / 300) * .4;
+   ctx.fillStyle = `rgba(242,200,108,${.35 + pulse * .45})`;
+   ctx.beginPath();
+   ctx.moveTo(o.x * T, o.y * T - 26);
+   ctx.lineTo(o.x * T + 7, o.y * T - 19);
+   ctx.lineTo(o.x * T, o.y * T - 12);
+   ctx.lineTo(o.x * T - 7, o.y * T - 19);
+   ctx.closePath();
+   ctx.fill();
+  }
+ });
+ for (const o of objects.filter(o => !o.prop)) actors.push({
   depth: o.y * T,
   draw: () => drawCharacter(ctx, o.x * T, o.y * T, {
    variant: o.sprite || 1,
@@ -1520,10 +1755,10 @@ canvas.addEventListener('pointerdown', e => {
  const px = (e.clientX - r.left - ox) / scale,
   py = (e.clientY - r.top - oy) / scale;
  if (px < 0 || px > W || py < 0 || py > H) return;
- const cam = cameraFor(state.x, state.y, W, H, layout),
+ const cam = cameraNow(),
   x = (px + cam.x) / T,
   y = (py + cam.y) / T;
- const object = objects.find(o => Math.hypot(o.x - x, o.y - y) < 1.7 || o.building && x > o.building.x && x < o.building.x + o.building.w && y > o.building.y && y < o.building.y + o.building.h);
+ const object = objects.filter(o => Math.hypot(o.x - x, o.y - y) < 1.7).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0] || objects.find(o => o.building && x > o.building.x && x < o.building.x + o.building.w && y > o.building.y && y < o.building.y + o.building.h);
  const edge = layout.gates.find(g => Math.hypot(g.x - x, g.y - y) < 2);
  const target = object ? {
   x: object.x,
@@ -1561,30 +1796,47 @@ function portraitCard(id) {
 }
 
 function showResident(o) {
+ const c = CITIES[state.city];
  if (state.city === 3 && state.transport.bike === 1) {
-  state.transport.bike = 2;
-  save();
-  updateJournal();
-  panel('Una pompa per ripartire', portraitCard(o.portrait ?? 11) + '<p>«Arturo cerca questa? L’avevo portata al campeggio. Ecco la pompa: riportagliela e sistemate la bici insieme.»</p>', [{
-   label: 'Riporta la pompa ad Arturo',
+  if (o.portrait === 11) {
+   state.transport.bike = 2;
+   save();
+   updateJournal();
+   panel('Una pompa per ripartire', portraitCard(11) + '<p>«La pompa di Arturo? Colpa mia: mi serviva per le ruote del carretto della radio. Eccola, e scusatemi con lui.»</p>', [{
+    label: 'Riporta la pompa ad Arturo',
+    run: close
+   }], 'MISSIONE · LA BICI DEL CAMPEGGIO');
+  } else panel(o.label, portraitCard(o.portrait) + '<p>«La pompa? L’ultima volta l’ho vista attaccata al carretto della radio. Chiedete a Emma, quella con l’impermeabile giallo.»</p>', [{
+   label: 'Cerchiamo Emma',
    run: close
   }], 'MISSIONE · LA BICI DEL CAMPEGGIO');
   return;
  }
- const id = o.portrait ?? 15,
-  c = CASES[state.city];
- panel(o.label, portraitCard(id) + `<p>${state.city===0?'«Il maestro Riva suonava qui con altri tre ragazzi. Al mercatino ho visto una custodia con un plettro disegnato: chiedi a Nino, sul fiume.»':c?c.scene:'«Una vecchia band percorse queste stesse strade. All’archivio di Valdaccordo c’è ancora il loro nastro.»'}</p>`, [{
-  label: c ? 'Annota e cerca l’insegnante' : 'Annota il racconto',
+ const L = o.lines || {};
+ let key = 'start';
+ if (state.finished && L.final) key = 'final';
+ else if (state.city === 0) key = state.passes.length === 8 && L.home ? 'home' : state.stage === 'tour' && L.tour ? 'tour' : 'start';
+ else if (c.type === 'music') key = state.passes.includes(c.id) && L.pass ? 'pass' : state.puzzles.includes(c.id) && L.puzzle ? 'puzzle' : 'start';
+ else key = state.stage === 'tour' && L.tour ? 'tour' : state.passes.length >= 2 && L.pass ? 'pass' : state.puzzles.length && L.puzzle ? 'puzzle' : 'start';
+ panel(o.label, portraitCard(o.portrait ?? 15) + `<p>${L[key] || L.start || '«Buon viaggio!»'}</p>`, [{
+  label: 'Ci vediamo in giro',
   run: close
- }], 'VOCI DEL PAESE');
+ }], 'VOCI DI ' + c.name.toUpperCase());
 }
 
 function showRival(o) {
  const id = o.portrait;
- const text = state.stage === 'rival' ? ['«La piazza è pronta. Vediamo se sapete ascoltarvi quando arrivano gli errori.»', '«Elia esagera. Io voglio sentire il vostro basso. Ci vediamo davanti al palco.»', '«Prima di salire conto quattro volte. Se perdo il conto faccio finta fosse un fill.»'][id] : state.passes.length >= 5 ? ['«Vi ho sentiti alla radio. Quando tornate su quel palco voglio esserci.»', '«Il vostro suono è cambiato. Avete imparato a lasciare spazio.»', '«Mi insegnate quel passaggio? Senza dirlo a Elia.»'][id] : ['«Il festival è lontano per tutti. Anche noi dobbiamo allenarci.»', '«Un consiglio: ascolta Vale quando smette di suonare. Anche le pause dicono qualcosa.»', '«Ho rotto una bacchetta. La tengo per ricordarmi di non stringere troppo.»'][id];
+ let text;
+ if (state.city !== 0) text = RIVAL_LINES[id]?.[state.city] || '«Ci vediamo al festival.»';
+ else if (state.stage === 'school' || state.stage === 'practice') text = ['«Una band, voi? Stasera in piazza vi facciamo vedere come si fa. Portate i tappi.»', '«Elia fa il duro con tutti. Io sono curiosa di sentirvi, in realtà. Ma non diteglielo.»', '«Stasera suoniamo noi per primi. Credo. Spero. Qualcuno ha visto le mie bacchette?»'][id];
+ else if (state.stage === 'rival') text = ['«La piazza è pronta. Vediamo se sapete ascoltarvi quando arrivano gli errori.»', '«Elia esagera. Io voglio sentire il vostro basso. Ci vediamo davanti al palco.»', '«Prima di salire conto quattro volte. Se perdo il conto faccio finta fosse un fill.»'][id];
+ else if (state.homeShow) text = ['«Al festival fate rumore anche per noi. E non cambiate niente.»', '«Grazie per l’ultimo pezzo. È stata la prima volta che ho ascoltato davvero mentre suonavo.»', '«Ho tenuto il tempo per tutto il brano. Merito vostro, o della clave di Rosa.»'][id];
+ else if (state.passes.length >= 8) text = ['«Il concerto a casa è vostro. Però… l’ultimo pezzo potremmo suonarlo insieme. Se vi va.»', '«Elia vuole chiedervi una cosa e non ha il coraggio. Ve lo dico io: vorrebbe salire con voi.»', '«Ho le bacchette nuove. Le ho provate sul tavolo di cucina per un mese.»'][id];
+ else if (state.passes.length >= 4) text = ['«Vi ho sentiti alla radio di Emma. Non male. Cioè: bene. Ok, molto bene.»', '«Il vostro suono è cambiato. Avete imparato a lasciare spazio.»', '«Mi insegnate quel passaggio? Senza dirlo a Elia.»'][id];
+ else text = ['«Il festival è lontano per tutti. Anche noi ci alleniamo, sapete?»', '«Un consiglio: ascolta Vale quando smette di suonare. Anche le pause dicono qualcosa.»', '«Ho rotto una bacchetta. La tengo per ricordarmi di non stringere troppo.»'][id];
  panel(o.label + ' · Alta Tensione', portraitCard(id) + `<p>${text}</p>`, [{
-  label: state.stage === 'rival' ? 'Verso la sfida' : 'Ci vediamo per strada',
-  run: () => state.stage === 'rival' ? songBrief(0, 'rival') : close()
+  label: state.stage === 'rival' && state.city === 0 ? 'Verso la sfida' : 'Ci vediamo per strada',
+  run: () => state.stage === 'rival' && state.city === 0 ? songBrief(0, 'rival') : close()
  }], 'I RIVALI');
 }
 
@@ -1598,22 +1850,20 @@ function rememberRoad() {
 }
 
 function showRoadEncounter(o) {
- const key = 'road:' + Math.min(road.from, road.to) + '-' + Math.max(road.from, road.to),
-  scenes = ['Un acquazzone vi ferma sotto una tettoia. Nico protegge lo strumento con la felpa. Qualcuno tiene il tempo sulle gocce.', 'Una catena è saltata vicino al campeggio. Vale tiene la bici mentre il viaggiatore cerca il suo provino nella custodia.', 'La radio del chiosco perde il segnale. Sami vuole registrare una piccola esibizione prima che il proprietario chiuda.', 'Un musicista ha dimenticato il resto del gruppo. Aspettando, vi propone di accompagnare la melodia che ricorda.', 'Il traghetto è in ritardo. I passeggeri sono stanchi; un piccolo concerto può cambiare l’attesa.'];
- const event = scenes[(road.from + road.to) % scenes.length];
- const id = o.portrait ?? 12,
-  c = CASES[road.to] || CASES[road.from];
- panel(o.label + ' · Una sosta lungo il viaggio', portraitCard(id) + `<p>${state.memories.includes(key)?'«Vi ricordate la nostra sosta? Ho ancora quella registrazione.»':event}</p><p>Vale posa lo zaino: «Possiamo fermarci. Non tutte le cose importanti sono su un palco.»</p>`, [{
+ const key = 'road:' + roadKey(road.from, road.to),
+  scene = ROAD_SCENES[roadKey(road.from, road.to)],
+  info = PUZZLE_INFO[road.to] || PUZZLE_INFO[road.from];
+ panel(o.label + ' · Una sosta lungo il viaggio', portraitCard(o.portrait ?? 12) + `<p>${state.memories.includes(key) ? '«Vi ricordate la nostra sosta? Ho ancora quella registrazione.»' : scene ? scene[1] : 'Un incontro lungo la strada.'}</p><p>Vale posa lo zaino: «Possiamo fermarci. Non tutte le cose importanti sono su un palco.»</p>`, [{
   label: 'Fermiamoci a provare',
   run: () => {
    rememberRoad();
-   songBrief(CITIES[road.to].type === 'music' ? road.to : 1, 'practice');
+   songBrief(CITIES[road.to].type === 'music' ? road.to : CITIES[road.from].type === 'music' ? road.from : 1, 'practice');
   }
  }, {
-  label: 'Ascolta la testimonianza',
+  label: 'Due parole sulla strada',
   run: () => {
    rememberRoad();
-   panel('Un nome sul nastro', `<p>«Riva vi ha parlato del plettro? Chiedete delle Otto Strade. Il mistero non riguarda chi suonava più veloce, ma un nome che manca.»</p><p>${c?.fact||'Nel taccuino potete ritrovare le testimonianze raccolte.'}</p>`, [{
+   panel('Lungo la strada', `<p>«${CITIES[road.to].name}? ${info ? 'Ho sentito dire che laggiù ' + info.mech.toLowerCase() + ' è la prova del posto.' : 'È una tappa tranquilla, ma piena di storie.'}»</p><p>${info?.fact || 'Nel taccuino potete ritrovare le testimonianze raccolte.'}</p>`, [{
     label: 'Riprendiamo il viaggio',
     run: close
    }]);
@@ -1625,75 +1875,19 @@ function showRoadEncounter(o) {
  }], 'INCONTRO SUL SENTIERO');
 }
 
-function showCase(c) {
- const q = CASES[c.id];
- panel(q.title, portraitCard(({
-  1: 3,
-  2: 4,
-  4: 5,
-  5: 6,
-  7: 7,
-  8: 8,
-  9: 9,
-  10: 10
- })[c.id]) + `<p>${q.scene}</p><p><strong>Gli appunti trovati:</strong> ${q.hint}</p><p class="fine">${q.fact}</p>`, [{
-  label: state.puzzles.includes(c.id) ? 'Riapri il laboratorio' : 'Esamina gli appunti',
-  run: () => orderCase(c)
- }, {
-  label: 'Torna in città',
-  run: close,
-  secondary: true
- }], 'INDAGINE MUSICALE · ' + c.genre.toUpperCase());
-}
 
-function orderCase(c) {
- const q = CASES[c.id],
-  answer = [],
-  order = q.parts.map((_, i) => i).reverse();
- const p = panel(q.title, `<p>${q.scene}</p><p id="caseHint">${q.hint}</p><div class="case-parts"></div><ol id="caseAnswer"></ol><p id="caseFeedback" aria-live="polite">Scegli i frammenti nell’ordine indicato dagli indizi.</p>`, [{
-  label: 'Ricomincia',
-  run: () => orderCase(c)
- }, {
-  label: 'Confronta gli appunti',
-  run: () => {
-   if (caseComplete(q.parts, answer)) {
-    panel('Il disegno torna. Ora ascoltiamo.', `<p>${q.fact}</p><p>Avete ricostruito gli appunti: prima del concerto l’insegnante propone una breve verifica di ascolto e memoria. Questa seconda prova usa quattro suoni simbolici.</p>`, [{
-     label: 'Ascolta e rispondi',
-     run: () => startPuzzle(c)
-    }]);
-   } else p.querySelector('#caseFeedback').textContent = 'Qualcosa non coincide. Rileggi gli appunti e ricostruisci la sequenza: nessun indizio va perso.';
-  }
- }, {
-  label: 'Esci dal laboratorio',
-  run: close,
-  secondary: true
- }], 'RICOSTRUZIONE · POI PROVA DI ASCOLTO');
- for (const id of order) {
-  const b = document.createElement('button');
-  b.className = 'btn secondary';
-  b.textContent = q.parts[id];
-  b.onclick = () => {
-   answer.push(id);
-   b.disabled = true;
-   const li = document.createElement('li');
-   li.textContent = q.parts[id];
-   p.querySelector('#caseAnswer').appendChild(li);
-  };
-  p.querySelector('.case-parts').appendChild(b);
- }
-}
 
 function showTransportQuest() {
  const q = state.transport;
  if (q.bike === 0) {
-  panel('La bici del campeggio', portraitCard(13) + '<p>«Questa bici è ferma da mesi. La pompa l’ha presa qualcuno al campeggio: chiedete ai ragazzi in piazza e riportatemela. La sistemiamo insieme.»</p>', [{
+  panel('La bici del campeggio', portraitCard(13) + '<p>«Questa bici era della band di Riva: ci portavano gli amplificatori. Ma la pompa è sparita. Qualcuno del campeggio l’ha presa in prestito: chiedete ai ragazzi in piazza.»</p>', [{
    label: 'Accetta · cerca la pompa',
    run: () => {
     q.bike = 1;
     save();
     updateJournal();
     close();
-    toast('Missione: chiedi ai ragazzi in piazza della pompa.');
+    toast('Missione: chi ha preso la pompa? Chiedi in piazza.');
    }
   }, {
    label: 'Più tardi',
@@ -1703,7 +1897,7 @@ function showTransportQuest() {
   return;
  }
  if (q.bike === 1) {
-  panel('Manca ancora la pompa', '<p>«Chiedete ai ragazzi del campeggio, qui in piazza. Senza quella non possiamo ripartire.»</p>', [{
+  panel('Manca ancora la pompa', '<p>«Chiedete ai ragazzi del campeggio, qui in piazza. Qualcuno avrà visto la pompa.»</p>', [{
    label: 'Cerchiamola',
    run: close
   }]);
@@ -1766,18 +1960,19 @@ function showTransportQuest() {
 
 function metroAnnouncement() {
  let index = 0;
- const sequence = [0, 2, 1, 3];
- const p = panel('Il nastro degli annunci', '<p>Sulla custodia: «Partenza: campi. Poi il ponte, quindi le officine. Ultima fermata: i binari». Quattro frammenti sono fuori ordine.</p><p>Ogni frammento ha un segnale sonoro: ascoltalo toccando la scheda. Ricostruisci il percorso indicato sulla custodia.</p><div class="case-parts"></div><p id="metroAnswer" aria-live="polite">0 / 4 annunci ordinati</p>', [{
+ const names = ['Ponte · Rivafosca', 'Officine · Officina', 'Binari · Binario Nord', 'Giardini · Bellavista'],
+  sequence = [0, 1, 2, 3];
+ const p = panel('Il nastro degli annunci', '<p>La custodia del nastro è strappata. Restano tre righe, scritte da Arturo tanti anni fa:</p><ul class="clue-list"><li>«La linea parte dal ponte.»</li><li>«Le officine non sono mai l’ultima fermata.»</li><li>«I giardini arrivano subito dopo i binari.»</li></ul><p>Ogni frammento ha il suo segnale: toccalo per ascoltarlo e mettilo in coda.</p><div class="case-parts"></div><p id="metroAnswer" aria-live="polite">0 / 4 annunci ordinati</p>', [{
   label: 'Riparti dall’inizio',
   run: metroAnnouncement
  }, {
   label: 'Torna in stazione',
   run: close
  }], 'MISSIONE · LE VOCI DELLE OTTO STRADE');
- for (const i of [3, 1, 0, 2]) {
+ for (const i of [3, 1, 2, 0]) {
   const b = document.createElement('button');
   b.className = 'btn secondary';
-  b.textContent = ['Campi · Borgo delle Cicale', 'Officine · Officina', 'Ponte · Rivafosca', 'Binari · Binario Nord'][i];
+  b.textContent = names[i];
   b.onclick = async () => {
    try {
     await audio.init();
@@ -1785,19 +1980,21 @@ function metroAnnouncement() {
    } catch {}
    if (i === sequence[index]) {
     index++;
+    b.disabled = true;
     p.querySelector('#metroAnswer').textContent = index + ' / 4 annunci ordinati';
     if (index === 4) {
      state.transport.metro = 2;
      save();
      updateJournal();
-     panel('Il nastro è pronto', '<p>Le fermate tornano nell’ordine della vecchia linea. Avete recuperato gli annunci: ora riportate il nastro ad Arturo in piazza.</p>', [{
+     panel('Il nastro è pronto', '<p>Ponte, officine, binari, giardini: le fermate tornano nell’ordine della vecchia linea. Riportate il nastro ad Arturo in piazza.</p>', [{
       label: 'Torna da Arturo',
       run: close
      }], 'MISSIONE · ULTIMO PASSAGGIO');
     }
    } else {
     index = 0;
-    p.querySelector('#metroAnswer').textContent = 'Questo annuncio non segue il precedente. Riparti dai campi e rileggi la custodia.';
+    p.querySelectorAll('.case-parts button').forEach(x => x.disabled = false);
+    p.querySelector('#metroAnswer').textContent = 'Questo annuncio non torna con la custodia. Si riparte dal primo.';
    }
   };
   p.querySelector('.case-parts').appendChild(b);
@@ -1832,7 +2029,7 @@ function rideCable() {
   return;
  }
  const to = state.city === 7 ? 6 : 7;
- panel('La funivia di Monteferro', '<p>Una cabina risale il versante oltre l’accademia. Sotto scorrono il bosco e i tornanti; in alto vi aspettano le case di pietra e la fortezza.</p>', [{
+ panel('La funivia di Monteferro', to === 7 ? '<p>Una cabina risale il versante oltre l’accademia. Sotto scorrono il bosco e i tornanti; in alto vi aspettano le case di pietra e la fortezza.</p>' : '<p>La cabina scende verso Valdaccordo. Il vento della montagna lascia il posto al profumo dei tigli dell’accademia.</p>', [{
   label: 'Sali · ' + CITIES[to].name,
   run: () => travelConnection(to, 'Funivia')
  }, {

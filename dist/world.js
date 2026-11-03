@@ -3,7 +3,12 @@ import {
 } from './progress.js';
 import {
  TEACHER_ART,
- PEOPLE
+ PEOPLE,
+ RESIDENTS,
+ RIVAL_POSTS,
+ NPC_NAMES,
+ ROAD_SCENES,
+ roadKey
 } from './adventure.js';
 import {
  CITIES
@@ -127,8 +132,8 @@ export function roadLayout(from, to) {
    x: ([from, to].includes(9) && [from, to].includes(10)) ? 24 : 22,
    y: 19,
    kind: 'wanderer',
-   label: PEOPLE[(from + to) % 4 + 11][0],
-   portrait: (from + to) % 4 + 11,
+   label: PEOPLE[(ROAD_SCENES[roadKey(from, to)] || [12])[0]][0],
+   portrait: (ROAD_SCENES[roadKey(from, to)] || [12])[0],
    color: '#b98762',
    facing: 'south'
   }, {
@@ -272,7 +277,7 @@ export function townLayout(id) {
   x: spec.teacher[0],
   y: spec.teacher[1],
   kind: 'npc',
-  label: CITIES[id].teacher || (id === 0 ? 'Nico e Vale' : id === 3 ? 'Arturo' : id === 6 ? 'Il custode' : 'Organizzatrice'),
+  label: CITIES[id].teacher || NPC_NAMES[id],
   color: id === 7 ? '#6d6b7c' : '#bf8d69',
   facing: 'south',
   portrait: TEACHER_ART[id] ?? null
@@ -280,7 +285,7 @@ export function townLayout(id) {
   x: spec.stage[0],
   y: spec.stage[1] + 1.2,
   kind: 'stage',
-  label: id === 0 ? 'Palco della piazza' : id === 11 ? 'Palco del festival' : 'Concerto ' + CITIES[id].genre
+  label: id === 0 ? 'Palco della piazza' : id === 11 ? 'Palco del festival' : id === 3 ? 'Palco del campeggio' : id === 6 ? 'Cortile dell’accademia' : 'Concerto ' + CITIES[id].genre
  });
  if (id === 0) {
   objects[objects.length - 2].label = 'Nico';
@@ -295,31 +300,21 @@ export function townLayout(id) {
    sprite: 2
   });
  }
- objects.push({
-  x: 19,
-  y: 22,
+ for (const r of RESIDENTS[id] || []) objects.push({
+  x: r.x,
+  y: r.y,
   kind: 'resident',
-  label: PEOPLE[id === 0 ? 11 : 15][0],
-  portrait: id === 0 ? 11 : 15,
+  label: PEOPLE[r.who][0],
+  portrait: r.who,
+  lines: r.lines,
   facing: 'south'
  });
- if (id === 0)
-  for (let i = 0; i < 3; i++) objects.push({
-   x: 32 + i * 1.8,
-   y: 21,
-   kind: 'rivalPerson',
-   label: PEOPLE[i][0],
-   portrait: i
-  });
- for (const [x, y, portrait] of [
-   [17, 18, 12],
-   [28, 23, 11]
-  ]) objects.push({
+ for (const [who, x, y] of RIVAL_POSTS[id] || []) objects.push({
   x,
   y,
-  kind: 'resident',
-  label: PEOPLE[portrait][0],
-  portrait,
+  kind: 'rivalPerson',
+  label: PEOPLE[who][0],
+  portrait: who,
   facing: 'south'
  });
  const paths = gates.map(g => [g, {

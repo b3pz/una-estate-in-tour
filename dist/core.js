@@ -211,6 +211,9 @@ export function initialState(instrument = 'guitar') {
   visited: [0],
   stories: [],
   memories: [],
+  mystery: 0,
+  bandName: null,
+  rivalsJoined: false,
   bicycle: false,
   bike: false,
   boat: false,
@@ -253,7 +256,10 @@ export function validateState(s) {
  out.puzzles = ids(s.puzzles).filter(id => CITIES[id].type === 'music');
  out.visited = [...new Set([0, ...ids(s.visited), out.city])];
  out.stories = ids(s.stories).filter(id => CITIES[id].type === 'story');
- for (const k of ['bicycle', 'bike', 'boat', 'homeShow', 'finished']) out[k] = s[k] === true;
+ for (const k of ['bicycle', 'bike', 'boat', 'homeShow', 'finished', 'rivalsJoined']) out[k] = s[k] === true;
+ out.mystery = Number.isInteger(s.mystery) ? Math.max(0, Math.min(2, s.mystery)) : out.stories.includes(6) ? 1 : 0;
+ if (out.mystery && !out.stories.includes(6)) out.stories.push(6);
+ out.bandName = typeof s.bandName === 'string' && s.bandName.trim() && s.bandName.length <= 30 ? s.bandName.trim() : null;
  if (out.bicycle) out.transport.bike = 3;
  if (out.transport.bike !== 3) out.transport.metro = 0;
  out.xp = Number.isFinite(s.xp) ? Math.min(100000, Math.max(0, Math.floor(s.xp))) : 0;
@@ -398,7 +404,7 @@ export function award(s, id, score, kind) {
   s.stage = 'rival';
   return {
    won: true,
-   message: 'Ora siete pronti per provare a suonare insieme.'
+   message: score >= 50 ? 'Ottimo inizio: Nico e Vale si guardano stupiti. Adesso la piazza.' : 'Per ora è soprattutto rumore, ma è il vostro rumore. Vale: «Domani suona meglio. Stasera, intanto, la piazza.»'
   };
  }
  if (kind === 'rival') {
@@ -410,7 +416,7 @@ export function award(s, id, score, kind) {
  }
  if (!won) return {
   won: false,
-  message: 'Ci siamo quasi. Puoi allenarti, riprovare o scegliere la modalità accessibile.'
+  message: score >= 35 ? 'Ci siamo quasi: ancora qualche colpo a tempo. Puoi riprovare subito.' : 'Il brano vi è sfuggito. Riprova, allenati in sala prove o scegli la modalità accessibile.'
  };
  if (['concert', 'practice'].includes(kind) && s.puzzles.includes(id)) {
   const key = id + ':' + s.instrument;
@@ -420,7 +426,7 @@ export function award(s, id, score, kind) {
   s.boat = true;
   return {
    won: true,
-   message: 'Il concerto sul ponte è riuscito. Prossima fermata: Isola Levante.'
+   message: 'Il concerto sul ponte è riuscito. I passeggeri ballano fino all’attracco. Prossima fermata: Isola Levante.'
   };
  }
  if (kind === 'home') {
@@ -444,9 +450,15 @@ export function award(s, id, score, kind) {
  if (!s.passes.includes(id)) {
   s.passes.push(id);
   s.xp += 100;
- } else if (first) s.xp += 10;
+  return {
+   won: true,
+   newPass: true,
+   message: `Pass ${CITIES[id].genre} ottenuto. Un altro pezzo di estate da portare con voi.`
+  };
+ }
+ if (first) s.xp += 10;
  return {
   won: true,
-  message: `Pass ${CITIES[id].genre} ottenuto. Un altro pezzo di estate da portare con voi.`
+  message: `Un altro concerto a ${CITIES[id].name}: il pubblico vi riconosce. Il pass è già nel taccuino.`
  };
 }

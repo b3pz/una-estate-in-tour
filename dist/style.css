@@ -1379,3 +1379,333 @@ select {
  color: #a05d36;
  font-size: 12px
 }
+/* ---- Prove musicali (0.5) ---- */
+.puzzle-hint {
+ background: #f3e7c3;
+ border-left: 4px solid var(--gold);
+ padding: 10px 14px;
+ border-radius: 6px;
+ font-size: 15px
+}
+
+.puzzle-feedback {
+ min-height: 1.4em;
+ color: #8a4a33
+}
+
+.puzzle-feedback.good {
+ color: #2f6b4c;
+ font-weight: bold
+}
+
+.blues-grid {
+ display: grid;
+ grid-template-columns: repeat(4, 1fr);
+ gap: 8px;
+ margin: 14px 0
+}
+
+.blues-bar,
+.groove-grid button,
+.fragment {
+ border: 1px solid #acc59a;
+ background: #3c614e;
+ color: #fae6b4;
+ border-radius: 10px;
+ padding: 8px 4px;
+ cursor: pointer;
+ font: 15px Georgia, serif;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ gap: 2px
+}
+
+.blues-bar small,
+.groove-grid small {
+ opacity: .7;
+ font: 11px monospace
+}
+
+.blues-bar.given {
+ background: #e9d9a8;
+ color: #3c4a3a;
+ cursor: default
+}
+
+.blues-bar.playing,
+.groove-grid button.playing,
+.fragment.playing {
+ outline: 3px solid #f2c86c;
+ box-shadow: 0 0 14px #f1c976
+}
+
+.signal-board {
+ display: grid;
+ gap: 8px;
+ margin: 14px 0
+}
+
+.signal-row {
+ display: grid;
+ grid-template-columns: minmax(120px, 1fr) minmax(150px, 1.2fr);
+ gap: 8px;
+ align-items: center;
+ margin: 0
+}
+
+.signal-row select {
+ padding: 6px;
+ border-radius: 6px;
+ border: 1px solid #b9b08a;
+ background: #fffaf0
+}
+
+.fragments {
+ display: grid;
+ grid-template-columns: repeat(4, 1fr);
+ gap: 8px;
+ margin: 12px 0
+}
+
+.fragment svg {
+ width: 100%;
+ height: 30px;
+ color: #f2c86c
+}
+
+.groove-grid {
+ display: grid;
+ grid-template-columns: repeat(8, 1fr);
+ gap: 6px;
+ margin: 16px 0
+}
+
+.groove-grid button {
+ min-height: 54px
+}
+
+.groove-grid button.on {
+ background: #f2c86c;
+ color: #314d3b
+}
+
+.tempo-box {
+ text-align: center;
+ margin: 12px 0
+}
+
+.tempo-stage {
+ display: flex;
+ justify-content: center;
+ gap: 8px;
+ margin-bottom: 12px
+}
+
+.tempo-stage span {
+ padding: 4px 10px;
+ border-radius: 20px;
+ border: 1px solid #b9b08a;
+ font: 13px monospace
+}
+
+.tempo-stage span.now {
+ background: #3c614e;
+ color: #fae6b4
+}
+
+.tempo-stage span.done {
+ background: #c9dcb8;
+ text-decoration: line-through
+}
+
+.tap-pad {
+ width: 140px;
+ height: 140px;
+ border-radius: 50%;
+ border: 3px solid #e9b85f;
+ background: radial-gradient(#4c7560, #2b4a3c);
+ color: #fae6b4;
+ font: bold 20px Georgia, serif;
+ touch-action: none;
+ cursor: pointer;
+ display: block;
+ margin: 6px auto
+}
+
+.tap-pad small {
+ font: 11px monospace;
+ opacity: .8
+}
+
+.tap-pad.hit {
+ transform: scale(.95);
+ background: radial-gradient(#f2c86c, #b9853b);
+ color: #2b4a3c
+}
+
+.tempo-readout {
+ text-align: center;
+ font: 14px monospace;
+ min-height: 1.4em
+}
+
+.clave-grid {
+ display: grid;
+ gap: 6px;
+ margin: 12px 0
+}
+
+.clave-bar {
+ display: grid;
+ grid-template-columns: repeat(8, 1fr);
+ gap: 4px
+}
+
+.clave-bar span {
+ border: 1px solid #b9b08a;
+ border-radius: 6px;
+ text-align: center;
+ padding: 6px 0;
+ font: 11px monospace;
+ background: #fffaf0
+}
+
+.clave-bar span.now {
+ background: #3c614e;
+ color: #fae6b4
+}
+
+.clave-bar span.clave {
+ box-shadow: inset 0 0 0 3px #e48a3c
+}
+
+.planks {
+ display: grid;
+ grid-template-columns: repeat(6, 1fr);
+ gap: 4px;
+ margin: 14px 0;
+ height: 30px
+}
+
+.planks span {
+ border: 2px dashed #9fb6b0;
+ border-radius: 4px
+}
+
+.planks span.levare {
+ background: #b58a54;
+ border: 2px solid #7a5a35
+}
+
+.planks span.battere {
+ background: #d9c9a7;
+ border: 2px solid #a99470
+}
+
+.planks span.wrong {
+ background: #d98a74
+}
+
+.levare-lamps {
+ display: flex;
+ justify-content: center;
+ align-items: center;
+ gap: 10px;
+ margin: 8px 0
+}
+
+.levare-lamps i {
+ width: 16px;
+ height: 16px;
+ border-radius: 50%;
+ background: #c9c3a8
+}
+
+.levare-lamps i.off {
+ width: 10px;
+ height: 10px
+}
+
+.levare-lamps i.lit {
+ background: #f2c86c;
+ box-shadow: 0 0 12px #f2c86c
+}
+
+.rule {
+ background: #eef0dc;
+ padding: 8px 12px;
+ border-radius: 6px
+}
+
+.clue-card {
+ background: #2f4a3e;
+ color: #f8ecc8;
+ border-radius: 10px;
+ padding: 12px 16px;
+ margin: 12px 0
+}
+
+.clue-card span {
+ font: 11px monospace;
+ letter-spacing: 1px;
+ color: #f2c86c
+}
+
+.clue-card p {
+ margin: 6px 0 0
+}
+
+.clue-list {
+ padding-left: 22px;
+ font-size: 14px
+}
+
+.clue-list li {
+ margin: 4px 0
+}
+
+.clue-details summary {
+ cursor: pointer;
+ font-weight: bold;
+ margin: 8px 0
+}
+
+.deduce-options {
+ display: grid;
+ gap: 8px;
+ margin: 12px 0
+}
+
+.deduce-options .btn {
+ text-align: left;
+ white-space: normal
+}
+
+#bandNameInput {
+ display: block;
+ width: 100%;
+ margin-top: 6px;
+ padding: 8px;
+ border-radius: 6px;
+ border: 1px solid #b9b08a
+}
+
+@media (max-width: 560px) {
+ .fragments {
+  grid-template-columns: repeat(2, 1fr)
+ }
+
+ .blues-grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px
+ }
+
+ .signal-row {
+  grid-template-columns: 1fr
+ }
+
+ .groove-grid {
+  gap: 3px
+ }
+}
