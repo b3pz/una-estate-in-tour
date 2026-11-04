@@ -28,3 +28,8 @@ test('narrative interiors are all different and have something to examine',()=>{
 });
 test('sprite boxes preserve original aspect ratios for people and furniture',async()=>{const {spriteFit}=await import('../dist/assets.js');for(const [sw,sh,w,h]of [[100,300,64,64],[300,100,100,160],[100,100,50,94]]){const fit=spriteFit(sw,sh,w,h);assert.ok(fit.w<=w&&fit.h<=h);assert.ok(Math.abs(fit.w/fit.h-sw/sh)<1e-9);}});
 test('extra sprite manifest only lists known files that exist',async()=>{const fs=await import('node:fs');const {EXTRA_FILES}=await import('../dist/assets.js');const m=JSON.parse(fs.readFileSync(new URL('../dist/assets/extra/manifest.json',import.meta.url)));assert.ok(Array.isArray(m.files));for(const f of m.files){assert.ok(EXTRA_FILES[f],f);assert.ok(fs.existsSync(new URL('../dist/assets/extra/'+f,import.meta.url)),f);}});
+test('phone messages arrive with the story and side quests complete on game events',async()=>{const {MESSAGES,newMessages,questsFor}=await import('../dist/adventure.js');
+ assert.equal(new Set(MESSAGES.map(m=>m.id)).size,MESSAGES.length);for(const m of MESSAGES){assert.ok(m.text);if(m.quest){assert.ok(m.reply);assert.equal(typeof m.done,'function');}}
+ const s=initialState();assert.equal(newMessages(s).length,0);s.stage='tour';assert.ok(newMessages(s).some(m=>m.id==='mamma-partenza'));
+ s.passes=[1,2];s.msgs={'elia-rivincita':{r:true,d:false}};assert.equal(questsFor(s,{type:'song',city:2,won:true,difficulty:'normal',score:90}).length,0);assert.equal(questsFor(s,{type:'song',city:2,won:true,difficulty:'expert',score:75})[0].id,'elia-rivincita');
+ assert.deepEqual(validateState(JSON.parse(JSON.stringify(s))).msgs,s.msgs);});

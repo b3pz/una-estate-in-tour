@@ -2058,3 +2058,294 @@ button {
 .overlay:has(.chapter-title) {
  background: var(--title-art, none) center/cover no-repeat, #132b2cbb
 }
+
+/* ---- Telefono (0.7): unica interfaccia del giocatore ---- */
+.overlay:has(.phone) {
+ justify-content: flex-end;
+ align-items: center;
+ padding: 16px clamp(16px, 4vw, 48px)
+}
+
+.panel.phone {
+ width: min(330px, 100%);
+ height: min(640px, 100%);
+ max-height: none;
+ display: flex;
+ flex-direction: column;
+ padding: 12px 12px 10px;
+ border-radius: 42px;
+ border: 0;
+ background: #101614;
+ box-shadow: 0 0 0 2px #3a4a44, 0 0 0 9px #1d2622, 0 24px 60px #0008;
+ color: #f7f3e6;
+ font: 15px/1.4 var(--font-text);
+ overflow: hidden
+}
+
+.panel.phone .eyebrow,
+.panel.phone h3,
+.panel.phone .actions {
+ display: none
+}
+
+.phone-status {
+ display: flex;
+ justify-content: space-between;
+ font: 700 11px var(--font-text);
+ letter-spacing: .5px;
+ padding: 6px 16px 4px;
+ opacity: .85;
+ text-transform: uppercase
+}
+
+.panel.phone-home-screen {
+ background: linear-gradient(160deg, #2f6c5f 0%, #d9965a 72%, #f2c86c 100%)
+}
+
+.phone-clock {
+ text-align: center;
+ margin: 22px 0 18px
+}
+
+.phone-clock b {
+ display: block;
+ font: 600 26px/1.1 var(--font-title);
+ text-shadow: 0 2px 8px #0005
+}
+
+.phone-clock span {
+ font: 700 12px var(--font-text);
+ opacity: .9
+}
+
+.apps {
+ display: grid;
+ grid-template-columns: repeat(3, 1fr);
+ gap: 18px 6px;
+ padding: 4px 8px;
+ align-content: start;
+ flex: 1
+}
+
+.app {
+ background: none;
+ border: 0;
+ color: #fff;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ gap: 6px;
+ cursor: pointer;
+ border-radius: 16px;
+ padding: 4px 0
+}
+
+.app .icon {
+ width: 58px;
+ height: 58px;
+ border-radius: 16px;
+ display: grid;
+ place-items: center;
+ font: 600 26px var(--font-title);
+ color: #fff;
+ box-shadow: 0 3px 8px #0004, inset 0 1px 0 #ffffff55;
+ position: relative;
+ background: #48756a
+}
+
+.app small {
+ font: 700 11px var(--font-text);
+ text-shadow: 0 1px 3px #0008
+}
+
+.app:focus-visible,
+.app:hover {
+ outline: none;
+ background: #ffffff26
+}
+
+.app-map .icon { background: linear-gradient(#5fa58d, #2e6d5c) }
+.app-notes .icon { background: linear-gradient(#f6d77b, #e4a93c); color: #6a4a12 }
+.app-msg .icon { background: linear-gradient(#7ad28b, #33a157) }
+.app-dex .icon { background: linear-gradient(#e2789b, #b34066) }
+.app-band .icon { background: linear-gradient(#9b8fd8, #5b4fa8) }
+.app-metro .icon { background: linear-gradient(#5b8fd8, #2c5ea8) }
+.app-bike .icon { background: linear-gradient(#a5c46a, #6b8c34) }
+.app-save .icon { background: linear-gradient(#8fa7b4, #50687a) }
+.app-opt .icon { background: linear-gradient(#a3a3a3, #5d5d5d) }
+
+.badge {
+ position: absolute;
+ top: -6px;
+ right: -6px;
+ min-width: 20px;
+ height: 20px;
+ border-radius: 10px;
+ background: #e5483b;
+ color: #fff;
+ font: 800 11px/20px var(--font-text);
+ font-style: normal;
+ padding: 0 5px
+}
+
+.phone-home {
+ align-self: center;
+ width: 120px;
+ height: 6px;
+ border: 0;
+ border-radius: 3px;
+ background: #f7f3e6aa;
+ margin-top: 8px;
+ cursor: pointer;
+ flex: none
+}
+
+.app-head {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ padding: 6px 8px 10px;
+ border-bottom: 1px solid #ffffff1f;
+ font: 600 18px var(--font-title)
+}
+
+.phone-back {
+ background: none;
+ border: 0;
+ color: #8fd3a5;
+ font: 600 28px/1 var(--font-title);
+ cursor: pointer;
+ padding: 0 6px
+}
+
+.app-text {
+ padding: 12px;
+ opacity: .9
+}
+
+.threads,
+.bubbles,
+.notes {
+ overflow: auto;
+ flex: 1;
+ padding: 6px 4px
+}
+
+.thread {
+ width: 100%;
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ background: none;
+ border: 0;
+ border-bottom: 1px solid #ffffff14;
+ color: inherit;
+ text-align: left;
+ padding: 10px 6px;
+ cursor: pointer;
+ position: relative
+}
+
+.thread:focus-visible,
+.thread:hover {
+ outline: none;
+ background: #ffffff12;
+ border-radius: 10px
+}
+
+.thread b {
+ display: block;
+ font: 700 15px var(--font-text)
+}
+
+.thread small {
+ display: block;
+ opacity: .7;
+ font-size: 12px
+}
+
+.thread .dot {
+ margin-left: auto;
+ width: 10px;
+ height: 10px;
+ border-radius: 50%;
+ background: #4fc36b;
+ flex: none
+}
+
+.avatar {
+ width: 40px;
+ height: 40px;
+ border-radius: 50%;
+ flex: none;
+ background: #f2e6c8 url('./assets/people-atlas.png') var(--px) var(--py)/400% 400% no-repeat;
+ background-size: 400% 400%;
+ box-shadow: inset 0 0 0 2px #ffffff33
+}
+
+.avatar.letter {
+ background: #d98a5f;
+ display: grid;
+ place-items: center;
+ font: 600 18px var(--font-title);
+ color: #fff
+}
+
+.bubble {
+ max-width: 85%;
+ margin: 10px 4px;
+ padding: 10px 13px;
+ border-radius: 18px 18px 18px 6px;
+ background: #2b3a35;
+ font-size: 14px
+}
+
+.bubble.note {
+ margin: 6px auto;
+ max-width: 92%;
+ border-radius: 10px;
+ background: #f2c86c22;
+ border: 1px solid #f2c86c66;
+ color: #f6dc9c;
+ font-size: 13px;
+ text-align: center
+}
+
+.notes h5 {
+ margin: 14px 6px 4px;
+ font: 800 11px var(--font-text);
+ letter-spacing: 1px;
+ text-transform: uppercase;
+ color: #8fd3a5
+}
+
+.notes p,
+.notes ul,
+.notes ol {
+ margin: 4px 6px;
+ font-size: 13px
+}
+
+.notes li {
+ margin: 4px 0
+}
+
+@media (max-width: 700px) {
+ .overlay:has(.phone) {
+  justify-content: center;
+  padding: 10px
+ }
+
+ .panel.phone {
+  height: min(640px, calc(100% - 20px))
+ }
+}
+
+.panel.phone p,
+.panel.phone li {
+ color: #f3efe2
+}
+
+.panel.phone .bubble.note {
+ color: #f6dc9c
+}

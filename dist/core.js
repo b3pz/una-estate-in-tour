@@ -214,6 +214,7 @@ export function initialState(instrument = 'guitar') {
   mystery: 0,
   bandName: null,
   rivalsJoined: false,
+  msgs: {},
   bicycle: false,
   bike: false,
   boat: false,
@@ -259,6 +260,10 @@ export function validateState(s) {
  for (const k of ['bicycle', 'bike', 'boat', 'homeShow', 'finished', 'rivalsJoined']) out[k] = s[k] === true;
  out.mystery = Number.isInteger(s.mystery) ? Math.max(0, Math.min(2, s.mystery)) : out.stories.includes(6) ? 1 : 0;
  if (out.mystery && !out.stories.includes(6)) out.stories.push(6);
+ out.msgs = {};
+ if (s.msgs && typeof s.msgs === 'object')
+  for (const [k, v] of Object.entries(s.msgs))
+   if (/^[a-z-]{3,30}$/.test(k) && v && typeof v === 'object') out.msgs[k] = { r: v.r === true, d: v.d === true };
  out.bandName = typeof s.bandName === 'string' && s.bandName.trim() && s.bandName.length <= 30 ? s.bandName.trim() : null;
  if (out.bicycle) out.transport.bike = 3;
  if (out.transport.bike !== 3) out.transport.metro = 0;

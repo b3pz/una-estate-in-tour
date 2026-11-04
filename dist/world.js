@@ -733,11 +733,9 @@ const BUILDING_SPRITES = {
 function buildingArt(ctx, b, p) {
  const cell = BUILDING_SPRITES[b.style];
  if (cell && drawSprite(ctx, 'towns', cell[0], cell[1], (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE, b.w * TILE + 26, (b.w * TILE + 26) * .92)) {
-  label(ctx, b.label, (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE + 19, 10, p === THEMES.night ? '#e7deb8' : '#3b5946');
   return;
  }
  if ((b.style === 'cottage' || b.style === 'barn' || b.kind === 'garage') && drawSprite(ctx, 'hero', 3, b.kind === 'garage' || b.style === 'barn' ? 3 : 2, (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE, b.w * TILE + 26, (b.w * TILE + 26) * .9)) {
-  label(ctx, b.label, (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE + 19, 10, '#3b5946');
   return;
  }
  const x = b.x * TILE,
@@ -815,8 +813,6 @@ function buildingArt(ctx, b, p) {
  if (['club', 'night', 'theatre', 'school', 'academy', 'station'].includes(b.style)) {
   rounded(ctx, door - 50, y + 34, 100, 19, 4, night ? '#b78c71' : '#f2e4bc');
   label(ctx, b.label.toUpperCase(), door, y + 47, 9, night ? '#fff0bb' : '#6c6e56');
- } else {
-  label(ctx, b.label, door, y + h + 19, 10, '#3b5946');
  }
  if (b.style === 'market') {
   for (let i = 0; i < w / 20; i++) rounded(ctx, x + i * 20, y + 34, 20, 17, 4, i % 2 ? '#dfac6d' : '#ece0b7');
@@ -1243,26 +1239,6 @@ export function renderWorld(ctx, {
    draw: () => drawTree(ctx, x * TILE, y * TILE, p, i, layout.theme === 'island')
   });
  }
- for (const g of layout.gates) {
-  const sign = {
-   x: g.x + (g.side === 'east' ? -1.2 : g.side === 'west' ? 1.2 : 2),
-   y: g.y + (g.side === 'north' ? 1.5 : g.side === 'south' ? -1.5 : -1.6)
-  };
-  rounded(ctx, sign.x * TILE - 20, sign.y * TILE - 24, 40, 20, 4, '#f0d8a9');
-  line(ctx, [{
-   x: sign.x * TILE,
-   y: sign.y * TILE - 4
-  }, {
-   x: sign.x * TILE,
-   y: sign.y * TILE + 12
-  }], '#9b8058', 4);
-  label(ctx, {
-   east: '→',
-   west: '←',
-   north: '↑',
-   south: '↓'
-  } [g.side], sign.x * TILE, sign.y * TILE - 9, 15, '#6d7b54');
- }
  for (const o of layout.objects)
   if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) actors.push({
    depth: o.y * TILE,
@@ -1300,7 +1276,6 @@ export function renderWorld(ctx, {
 
 function drawTransport(ctx, x, y, kind, title) {
  if (drawSprite(ctx, 'transport', 0, { metro: 0, cable: 1, ferry: 2, bridge: 3 } [kind] ?? 0, x, y + 22, 96, 96)) {
-  label(ctx, title, x, y + 40, 11);
   return;
  }
  ctx.save();
@@ -1376,6 +1351,5 @@ function drawTransport(ctx, x, y, kind, title) {
    }], '#c1a879', 3);
   }
  }
- label(ctx, title, 0, 42, 10, '#304e42');
  ctx.restore();
 }

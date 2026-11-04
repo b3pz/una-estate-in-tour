@@ -18,6 +18,9 @@ import {
  roadKey,
  DEDUCTION,
  BAND_NAMES,
+ MESSAGES,
+ newMessages,
+ questsFor,
  chapter,
  clueText,
  clueIndex,
@@ -207,9 +210,9 @@ function nextStop() {
   const r = journeyRoute(state, m.id);
   if (r && (!best || r.legs.length < best.r.legs.length)) best = { m, r };
  }
- if (!best) return 'Otto città, otto pass. Apri la mappa (M) per scegliere la prossima tappa.';
+ if (!best) return 'Otto città, otto pass. La Mappa del telefono aiuta a scegliere la prossima tappa.';
  const first = best.r.legs[0];
- return `Prossima tappa: ${best.m.name} (${best.m.genre.toLowerCase()}). ${first.to === best.m.id ? 'È qui vicino' : 'Passa da ' + CITIES[first.to].name}: ${first.mode === 'Sentiero' ? 'segui i cartelli ai bordi del paese' : first.mode.toLowerCase()}. Itinerario completo nella mappa (M).`;
+ return `Prossima tappa: ${best.m.name} (${best.m.genre.toLowerCase()}). ${first.to === best.m.id ? 'È qui vicino' : 'Passa da ' + CITIES[first.to].name}: ${first.mode === 'Sentiero' ? 'segui la strada che esce dal paese' : first.mode.toLowerCase()}. L’itinerario è nella Mappa del telefono.`;
 }
 
 let lastObjective = '',
@@ -217,14 +220,14 @@ let lastObjective = '',
  signTimer,
  pendingSign;
 
-function showAreaSign(name, sub, ms) {
+function showAreaSign(name, sub, ms, note = false) {
  clearTimeout(pendingSign);
  if (!overlay.hidden || mode !== 'world') {
-  pendingSign = setTimeout(() => showAreaSign(name, sub, ms), 300);
+  pendingSign = setTimeout(() => showAreaSign(name, sub, ms, note), 300);
   return;
  }
  const el = $('areaSign');
- el.classList.toggle('objective-sign', !name);
+ el.classList.toggle('objective-sign', !name || note);
  $('areaSignName').textContent = name || 'Obiettivo';
  $('areaSignSub').textContent = sub || '';
  el.hidden = false;
@@ -253,11 +256,12 @@ function updateJournal() {
   const q = state.transport;
   objective = q.bike === 0 ? 'Arturo, in piazza, cerca qualcuno che lo aiuti a rimettere in strada una vecchia bici.' : q.bike === 1 ? 'Missione bici: chi ha preso la pompa? Chiedi ai ragazzi del campeggio in piazza.' : q.bike === 2 ? 'Missione bici: riporta la pompa ad Arturo.' : q.metro === 1 ? 'Missione metro: entra nella Stazione Nord e ricomponi gli annunci.' : q.metro === 2 ? 'Missione metro: riporta il nastro ad Arturo.' : objective;
  }
- if (area === 'interior' && state.stage === 'school' && room.entry.kind === 'school') objective = 'Parla con il maestro Riva, davanti alla lavagna. Premi E / PARLA.';
- if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'garage') objective = 'Avvicinati a Nico e Vale e premi E / PARLA per cominciare a provare.';
- if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'school') objective = 'Esci dalla porta in basso. Nico e Vale ti aspettano nel garage, a sud-ovest.';
+ if (area === 'interior' && state.stage === 'school' && room.entry.kind === 'school') objective = 'Il maestro Riva ti aspetta davanti alla lavagna.';
+ if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'garage') objective = 'Nico e Vale ti aspettano per la prima prova.';
+ if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'school') objective = 'Nico e Vale ti aspettano nella sala prove, a sud-ovest della piazza.';
  if (objective !== lastObjective && state.introDone && lastObjective && lastPlace) showAreaSign(null, objective, 4200);
  lastObjective = objective;
+ checkMessages();
  $('objective').textContent = objective;
  $('areaSubtitle').textContent = area === 'interior' ? room.entry.label.toUpperCase() : area === 'road' ? 'SENTIERO · ' + CITIES[road.to].genre.toUpperCase() : ({
   Casa: 'CAMPI, CICALE E IL PRIMO ACCORDO',
@@ -352,7 +356,7 @@ function chooseInstrument() {
    } catch {}
    setupTown();
    save();
-   panel('Oggi finisce la scuola.', `<p>«Ti aspettiamo nel pomeriggio. Ho trovato un posto per provare!»</p><p>Nico e Vale hanno lasciato un biglietto sul cancello. Prima però c’è l’ultima mattinata di scuola.</p><p class="fine">Muoviti con WASD / frecce. Avvicinati a porte e persone, poi premi E o PARLA / USA. La scuola è a nord-est. Cammina fino alla porta: entrerai automaticamente.</p>`, [{
+   panel('Oggi finisce la scuola.', `<p>«Ti aspettiamo nel pomeriggio. Ho trovato un posto per provare!»</p><p>Nico e Vale hanno lasciato un biglietto sul cancello. Prima però c’è l’ultima mattinata di scuola.</p><p class="fine">Frecce o WASD per camminare, E o A per parlare. Il telefono — Invio o START — ha mappa, note e messaggi.</p>`, [{
     label: 'Esci di casa',
     run: close
    }], 'BORGO DELLE CICALE / ORE 08:00');
@@ -513,6 +517,10 @@ function setupRoom(entry, reset = true) {
   state.x = 24;
   state.y = 26;
   state.facing = 'north';
+  questEvent({
+   type: 'room',
+   label: entry.label
+  });
  }
  updateJournal();
  save();
@@ -639,7 +647,6 @@ function automaticPassages() {
 function interact() {
  if (mode !== 'world' || !overlay.hidden) return;
  if (!near) {
-  toast('Avvicinati a una porta, a un musicista o a un cartello.');
   return;
  }
  const o = near,
@@ -1121,6 +1128,15 @@ function endSong() {
   score = Math.max(0, acc - penalty),
   result = award(state, completed.city, score, completed.kind);
  exitSong(false);
+ questEvent({
+  type: 'song',
+  city: completed.city,
+  kind: completed.kind,
+  won: result.won,
+  score,
+  difficulty: state.settings.difficulty,
+  instrument: state.instrument
+ });
  save();
  updateJournal();
  if (completed.kind === 'final' && result.won) {
@@ -1346,6 +1362,10 @@ function travelMetro(to) {
   portalCooldown = 1;
   setupTown();
   save();
+  questEvent({
+   type: 'metro',
+   to
+  });
   toast('Metro: ' + CITIES[from].name + ' → ' + CITIES[to].name + (to === 9 ? ' · coincidenza traghetto' : ''));
  });
 }
@@ -1408,22 +1428,96 @@ function showBand() {
  }], 'LA NOSTRA BAND');
 }
 
+function senderName(m) {
+ return typeof m.from === 'number' ? PEOPLE[m.from][0] : m.from;
+}
+
+function avatar(m) {
+ return typeof m.from === 'number' ? `<span class="avatar" style="--px:${m.from % 4 * 100 / 3}%;--py:${Math.floor(m.from / 4) * 100 / 3}%"></span>` : `<span class="avatar letter">${m.from[0]}</span>`;
+}
+
+function unreadCount() {
+ return Object.values(state.msgs || {}).filter(v => !v.r).length;
+}
+
+let messagePlace = '',
+ msgClock = 0;
+
+function checkMessages() {
+ if (!state.introDone || state.stage === 'school' || messagePlace === lastPlace) return;
+ // Un messaggio alla volta: il prossimo arriva quando si cambia zona.
+ for (const m of newMessages(state).slice(0, 1)) {
+  messagePlace = lastPlace;
+  state.msgs[m.id] = { r: false, d: false };
+  save();
+  showAreaSign('✉ ' + senderName(m), m.text.length > 70 ? m.text.slice(0, 68) + '…' : m.text, 4200, true);
+ }
+}
+
+function questEvent(event) {
+ for (const m of questsFor(state, event)) {
+  state.msgs[m.id] = { r: false, d: true };
+  state.xp += m.xp || 0;
+  save();
+  updateJournal();
+  showAreaSign('Missione completata · ' + senderName(m), m.reply, 4600, true);
+ }
+}
+
+function phonePanel(title, body, back = openPhone) {
+ const p = panel(title, `<div class="phone-status"><span>${chapter(state).split(' · ')[0]}</span><span>${state.bandName || 'Band'}</span><span>▮▮▮ ▰</span></div>${body}<button class="phone-home" aria-label="Chiudi il telefono"></button>`, [], '');
+ p.classList.remove('dialogue');
+ p.classList.add('phone');
+ overlay.classList.add('clear');
+ p.querySelector('.phone-home').onclick = close;
+ p.querySelector('.phone-back')?.addEventListener('click', back);
+ return p;
+}
+
 function startMenu() {
  if (mode !== 'world' || !overlay.hidden || !state.introDone) return;
- const items = [
-  ['Obiettivo', () => panel('Obiettivo', `<p>${$('objective').textContent}</p><p class="fine">${chapter(state)} · ${state.passes.length} pass su 8 · ${fameTitle().toLowerCase()}</p>`, [{ label: 'Indietro', run: () => { close(); startMenu(); } }], 'MENU')],
-  ['Mappa', showMap],
-  ['Musicodex', showDex],
-  [state.bandName || 'La band', showBand],
-  ...(state.bicycle ? [[state.bike ? 'Scendi dalla bici' : 'Bici', () => { close(); toggleBike(); }]] : []),
-  ['Opzioni', settings],
-  ['Chiudi', close]
+ openPhone();
+}
+
+function openPhone() {
+ const unread = unreadCount();
+ const apps = [
+  ['map', 'Mappa', '⌖', showMap],
+  ['notes', 'Note', '✎', notesApp],
+  ['msg', 'Messaggi', '✉', messagesApp, unread],
+  ['dex', 'Musicodex', '♪', showDex],
+  ['band', 'Band', '★', showBand],
+  ['metro', 'Metro', 'M', () => state.transport.metro === 3 ? showMetro() : phonePanel('Metro', '<div class="app-head"><button class="phone-back">‹</button><b>Metro</b></div><p class="app-text">Il pass non c’è ancora. A Binario Nord, Arturo cerca qualcuno che lo aiuti.</p>')],
+  ...(state.bicycle ? [['bike', state.bike ? 'A piedi' : 'Bici', '⚙', () => { close(); toggleBike(); }]] : []),
+  ['save', 'Salva', '⤓', () => { save(); close(); toast('Partita salvata su questo dispositivo.'); }],
+  ['opt', 'Impostazioni', '☰', settings]
  ];
- const p = panel('', `<div class="start-list">${items.map((it, i) => `<button class="start-item" data-i="${i}">${it[0]}</button>`).join('')}</div>`, [], '');
- p.classList.add('start-menu');
- overlay.classList.add('clear');
- p.querySelectorAll('.start-item').forEach(b => b.onclick = () => items[+b.dataset.i][1]());
- p.querySelector('.start-item')?.focus();
+ const p = phonePanel('', `<div class="phone-clock"><b>${chapter(state).split(' · ')[1] || ''}</b><span>${state.passes.length} pass su 8</span></div><div class="apps">${apps.map((a, i) => `<button class="app app-${a[0]}" data-i="${i}"><span class="icon">${a[2]}${a[4] ? `<i class="badge">${a[4]}</i>` : ''}</span><small>${a[1]}</small></button>`).join('')}</div>`);
+ p.classList.add('phone-home-screen');
+ p.querySelectorAll('.app').forEach(b => b.onclick = () => apps[+b.dataset.i][3]());
+ p.querySelector('.app')?.focus();
+}
+
+function messagesApp() {
+ const got = MESSAGES.filter(m => state.msgs?.[m.id]).reverse();
+ const rows = got.length ? got.map(m => { const st = state.msgs[m.id]; return `<button class="thread" data-id="${m.id}">${avatar(m)}<span><b>${senderName(m)}</b><small>${m.quest ? (st.d ? '✓ Missione completata' : '◆ Missione in corso') : m.text.slice(0, 40) + '…'}</small></span>${st.r ? '' : '<i class="dot"></i>'}</button>`; }).join('') : '<p class="app-text">Nessun messaggio, per ora. Le persone che incontrate in viaggio vi scriveranno.</p>';
+ const p = phonePanel('', `<div class="app-head"><button class="phone-back">‹</button><b>Messaggi</b></div><div class="threads">${rows}</div>`);
+ p.querySelectorAll('.thread').forEach(b => b.onclick = () => conversation(b.dataset.id));
+ p.querySelector('.thread, .phone-back')?.focus();
+}
+
+function conversation(id) {
+ const m = MESSAGES.find(x => x.id === id),
+  st = state.msgs[id];
+ st.r = true;
+ save();
+ phonePanel('', `<div class="app-head"><button class="phone-back">‹</button>${avatar(m)}<b>${senderName(m)}</b></div><div class="bubbles"><p class="bubble in">${m.text}</p>${m.quest ? `<p class="bubble note">${st.d ? '✓' : '◆'} ${m.quest}</p>` : ''}${st.d && m.reply ? `<p class="bubble in">${m.reply}</p>` : ''}</div>`, messagesApp).querySelector('.phone-back').focus();
+}
+
+function notesApp() {
+ const quests = MESSAGES.filter(m => m.quest && state.msgs?.[m.id] && !state.msgs[m.id].d),
+  clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
+ phonePanel('', `<div class="app-head"><button class="phone-back">‹</button><b>Note</b></div><div class="notes"><h5>Adesso</h5><p>${$('objective').textContent}</p><h5>Missioni secondarie</h5>${quests.length ? `<ul>${quests.map(m => `<li><b>${senderName(m)}:</b> ${m.quest}</li>`).join('')}</ul>` : '<p>Nessuna in corso.</p>'}<h5>Il plettro delle Otto Strade · ${clues.length} / 8</h5>${clues.length ? `<ol>${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Ancora nessun indizio.</p>'}</div>`).querySelector('.phone-back').focus();
 }
 
 function settings() {
@@ -1617,10 +1711,18 @@ function drawInterior() {
  rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
  for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
  for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
- text(room.entry.label, 24 * T, 7.45 * T, '#59745b', 15, 'center');
  const items = roomPlan(room.entry).items;
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
+ // Porta d’uscita nella parete in basso, con zerbino: si capisce senza scritte.
+ rect(10 * T, 29 * T - 6, 28 * T, 14, '#9c8a68');
+ rect(22.6 * T, 29 * T - 8, 2.8 * T, 22, '#3a2c20');
+ rect(22.75 * T, 29 * T - 6, 2.5 * T, 18, '#1c140e');
+ ctx.fillStyle = '#a4503d';
+ ctx.beginPath();
+ ctx.roundRect(22.8 * T, 27.7 * T, 2.4 * T, 1.05 * T, 5);
+ ctx.fill();
+ for (let i = 0; i < 5; i++) rect(23 * T + i * 11, 27.85 * T, 5, .75 * T, '#c9785e');
  const actors = items.filter(i => i[0] !== 7).map(([id, x, y, w, h]) => ({
   depth: y * T,
   draw: () => id >= 16 ? drawSprite(ctx, 'interiors2', Math.floor((id - 16) / 4), (id - 16) % 4, x * T, y * T, w, h) : drawSprite(ctx, 'interiors', Math.floor(id / 4), id % 4, x * T, y * T, w, h)
@@ -1661,8 +1763,6 @@ function drawInterior() {
  });
  actors.sort((a, b) => a.depth - b.depth).forEach(o => o.draw());
  if (near && overlay.hidden) interactBubble(near.x * T, near.y * T - (near.prop ? 34 : 70));
- rect(23 * T, 28 * T, 2 * T, 1.2 * T, '#e7c891');
- text('↓ USCITA', 24 * T, 27.8 * T, '#6d7959', 10, 'center');
  ctx.restore();
 }
 
@@ -1715,6 +1815,11 @@ function update(dt) {
  }
  hasMoved = false;
  if (!overlay.hidden || transitioning) return;
+ msgClock += dt;
+ if (msgClock > 2) {
+  msgClock = 0;
+  checkMessages();
+ }
  portalCooldown = Math.max(0, portalCooldown - dt);
  let dx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0),
   dy = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
@@ -1815,11 +1920,12 @@ document.addEventListener('keydown', e => {
   return;
  }
  if (!overlay.hidden) {
-  const menu = overlay.querySelector('.start-menu');
-  if (menu && (key === 'arrowdown' || key === 'arrowup' || key === 's' || key === 'w')) {
-   const list = [...menu.querySelectorAll('.start-item')],
-    i = list.indexOf(document.activeElement);
-   list[(i + (key === 'arrowdown' || key === 's' ? 1 : -1) + list.length) % list.length].focus();
+  const phone = overlay.querySelector('.phone');
+  if (phone && ['arrowdown', 'arrowup', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+   const list = [...phone.querySelectorAll('.app, .thread, .phone-back')],
+    i = Math.max(0, list.indexOf(document.activeElement)),
+    step = phone.querySelector('.app') ? ({ arrowdown: 3, s: 3, arrowup: -3, w: -3, arrowright: 1, d: 1, arrowleft: -1, a: -1 })[key] : ({ arrowdown: 1, s: 1, arrowup: -1, w: -1 })[key] || 0;
+   list[(i + step + list.length) % list.length]?.focus();
    return;
   }
   if (key === 'm' && overlay.querySelector('.map-panel')) close();
@@ -2011,6 +2117,10 @@ function showRoadEncounter(o) {
   label: 'Fermiamoci a provare',
   run: () => {
    rememberRoad();
+   questEvent({
+    type: 'roadPractice',
+    road: roadKey(road.from, road.to)
+   });
    songBrief(CITIES[road.to].type === 'music' ? road.to : CITIES[road.from].type === 'music' ? road.from : 1, 'practice');
   }
  }, {
@@ -2173,6 +2283,9 @@ function travelConnection(to, label) {
   setupTown();
   portalCooldown = 1;
   save();
+  if (label === 'Funivia') questEvent({
+   type: 'cable'
+  });
   toast(label + ' · ' + CITIES[to].name);
  });
 }
