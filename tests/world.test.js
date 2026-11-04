@@ -49,3 +49,13 @@ test('cities have blocks and passers-by, villages do not; every door stays reach
   if(w.TOWN_SIZE[id]==='city'){assert.ok(blocks>=3,`${id} isolati`);assert.ok(pb>=1,`${id} passanti`);}else{assert.equal(blocks,0);assert.equal(pb,0);}
   const can=(x,y)=>w.isWalkable(L,x,y),start={x:Math.round(L.plaza[0]),y:Math.round(L.plaza[1])};
   for(const o of L.objects.filter(o=>o.building))assert.ok(findPath(start,{x:Math.round(o.x),y:Math.round(o.y+.4)},can,48,34).length>0||Math.hypot(start.x-o.x,start.y-o.y)<1,`${id} porta ${o.label}`);}});
+test('no town road junction forms a pinwheel (arms all turning the same way)',async()=>{const w=await import('../dist/world.js');
+ const set=pts=>new Set(pts.map(([x,y])=>x+','+y)),line=(x0,y0,x1,y1)=>{const o=[];for(let x=Math.min(x0,x1);x<=Math.max(x0,x1);x++)for(let y=Math.min(y0,y1);y<=Math.max(y0,y1);y++)o.push([x,y]);return o;};
+ const bad=set([...line(10,4,10,16),...line(4,10,16,10),...line(10,4,14,4),...line(16,10,16,14),...line(10,16,6,16),...line(4,10,4,6)]);
+ assert.equal(w.pinwheels(bad).length,1,'il rilevatore riconosce la forma');
+ const ok=set([...line(10,4,10,16),...line(4,10,16,10),...line(10,4,14,4),...line(16,10,16,14),...line(10,16,14,16),...line(4,10,4,14)]);
+ assert.equal(w.pinwheels(ok).length,0);
+ for(let id=0;id<12;id++)assert.equal(w.roadReport(id).pinwheels.length,0,`città ${id}`);});
+test('town roads cross water only on bridges',async()=>{const w=await import('../dist/world.js');
+ for(let id=0;id<12;id++){const L=w.townLayout(id);for(const p of L.paths)for(let i=1;i<p.length;i++)for(let k=0;k<=10;k++){const x=p[i-1].x+(p[i].x-p[i-1].x)*k/10,y=p[i-1].y+(p[i].y-p[i-1].y)*k/10;
+  if(L.waters.some(wt=>x>wt.x&&x<wt.x+wt.w&&y>wt.y&&y<wt.y+wt.h))assert.ok(L.gates.some(g=>(g.side==='east'||g.side==='west')&&Math.abs(y-g.y)<1),`${id} ${x.toFixed(1)},${y.toFixed(1)}`);}}});

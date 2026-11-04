@@ -471,6 +471,7 @@ export function townLayout(id) {
  paths = townRoads({ id, gates, objects, buildings, waters, center, stage: { x: spec.stage[0], y: spec.stage[1] }, festival: spec.theme === 'festival' });
  if (TOWN_SIZE[id] === 'city') for (const pb of passersby(id, paths, objects)) objects.push(pb);
  return {
+  coast: id === 1 ? 'south' : undefined,
   size: TOWN_SIZE[id],
   width: WIDTH,
   height: HEIGHT,
@@ -490,10 +491,10 @@ export function townLayout(id) {
 // Ricerca A* su una griglia di caselle, con un costo per ogni curva per ottenere tracciati puliti.
 const ROAD_HALF = 1.45;
 
-function roadRoute(from, to, blocked, cost) {
+function roadRoute(from, to, blocked, cost, flip = false) {
  const W = WIDTH + 1, H = HEIGHT + 1, key = (x, y, d) => (y * W + x) * 5 + d;
  const sx = Math.round(from.x), sy = Math.round(from.y), tx = Math.round(to.x), ty = Math.round(to.y);
- const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+ const dirs = flip ? [[0, 1], [0, -1], [1, 0], [-1, 0]] : [[1, 0], [-1, 0], [0, 1], [0, -1]];
  const open = [[0, sx, sy, 4]], best = new Map([[key(sx, sy, 4), 0]]), parent = new Map();
  while (open.length) {
   let bi = 0;
@@ -511,7 +512,7 @@ function roadRoute(from, to, blocked, cost) {
   }
   for (let nd = 0; nd < 4; nd++) {
    const nx = x + dirs[nd][0], ny = y + dirs[nd][1];
-   if (nx < 0 || ny < 0 || nx > WIDTH || ny > HEIGHT) continue;
+   if (nx < 1 || ny < 1 || nx > WIDTH - 1 || ny > HEIGHT - 1) continue;
    if (blocked(nx, ny) && !(nx === tx && ny === ty)) continue;
    const ng = g + cost(nx, ny) + (d !== 4 && d !== nd ? 6 : 0), nk = key(nx, ny, nd);
    if (ng < (best.get(nk) ?? Infinity)) {
@@ -536,44 +537,106 @@ function simplifyRoute(pts) {
 const roadCache = new Map();
 export function townRoads(args) {
  const id = args.id;
- if (id !== undefined && roadCache.has(id)) return roadCache.get(id).map(r => r.map(p => ({ ...p })));
- const roads = computeRoads(args);
- if (id !== undefined) roadCache.set(id, roads);
- return roads.map(r => r.map(p => ({ ...p })));
+ if (id === undefined || !roadCache.has(id)) {
+  const res = computeRoads(args);
+  if (id === undefined) return res.roads;
+  roadCache.set(id, res);
+ }
+ return roadCache.get(id).roads.map(r => r.map(p => ({ ...p })));
+}
+// Per i test: celle delle strade della città e incroci a girandola trovati.
+export function roadReport(id) {
+ townLayout(id);
+ const res = roadCache.get(id);
+ return { seed: res.seed, pinwheels: pinwheels(res.cells), cells: res.cells.size };
 }
 
-function computeRoads({ gates, objects, buildings, waters, center, stage, festival }) {
+// Rileva incroci «a girandola»: tre o più bracci che, appena lasciato l'incrocio, girano tutti
+// nello stesso senso. Sono forme da evitare: ricordano simboli che non vogliamo nel gioco.
+export function pinwheels(cells, reach = 14) {
+ const has = (x, y) => cells.has(x + ',' + y), dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+ const deg = (x, y) => dirs.filter(([dx, dy]) => has(x + dx, y + dy)).length;
+ const found = [];
+ for (const k of cells) {
+  const [x, y] = k.split(',').map(Number);
+  if (deg(x, y) < 3) continue;
+  const turns = [];
+  for (const [dx, dy] of dirs) {
+   if (!has(x + dx, y + dy)) continue;
+   let px = x + dx, py = y + dy, n = 1, sign = 0;
+   while (n < reach) {
+    const d = deg(px, py);
+    if (d >= 3 || d <= 1) break;
+    if (has(px + dx, py + dy)) { px += dx; py += dy; n++; continue; }
+    const e = dirs.find(([ex, ey]) => (ex !== -dx || ey !== -dy) && has(px + ex, py + ey));
+    if (e) sign = Math.sign(dx * e[1] - dy * e[0]);
+    break;
+   }
+   turns.push(sign);
+  }
+  const cw = turns.filter(t => t > 0).length, ccw = turns.filter(t => t < 0).length;
+  if (turns.length >= 3 && ((cw >= 3 && ccw === 0) || (ccw >= 3 && cw === 0))) found.push({ x, y, turns });
+ }
+ return found;
+}
+
+function computeRoads(args) {
+ // Si provano più varianti (ordine dei collegamenti e preferenze di svolta) e si tiene la prima senza girandole.
+ let fallback = null;
+ for (let seed = 0; seed < 24; seed++) {
+  const res = computeRoadsVariant(args, seed);
+  if (!res) continue;
+  if (!pinwheels(res.cells).length) return { ...res, seed };
+  fallback = fallback || { ...res, seed };
+ }
+ return fallback || { roads: [], cells: new Set(), seed: -1 };
+}
+
+function computeRoadsVariant({ gates, objects, buildings, waters, center, stage, festival }, seed) {
  const sScale = festival ? FESTIVAL_STAGE_SCALE : STAGE_SCALE;
  const stageRect = { x: stage.x - 72 * sScale / TILE, y: stage.y - 60 * sScale / TILE, w: 144 * sScale / TILE, h: 60 * sScale / TILE + .25 };
  const rects = [...buildings, stageRect];
- const blockedBy = m => (x, y) => rects.some(r => x > r.x - m && x < r.x + r.w + m && y > r.y - m && y < r.y + r.h + m - .2);
- const cost = (x, y) => waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) ? 12 : 1;
+ const wet = (x, y) => waters.some(w => x > w.x - .6 && x < w.x + w.w + .6 && y > w.y - .6 && y < w.y + w.h + .6);
+ const onBridge = (x, y) => gates.some(g => (g.side === 'east' || g.side === 'west') && Math.abs(y - g.y) < .6);
+ const blockedBy = m => (x, y) => (wet(x, y) && !onBridge(x, y)) || rects.some(r => x > r.x - m && x < r.x + r.w + m && y > r.y - m && y < r.y + r.h + m - .2);
  const hub = { x: Math.round(center.x), y: Math.round(center.y) };
+ const cells = new Set([hub.x + ',' + hub.y]);
+ // Le strade nuove si innestano su quelle esistenti: percorrerle costa poco.
+ const cost = (x, y) => cells.has(x + ',' + y) ? .25 : 1;
  const roads = [];
- const link = (point, exact, approach) => {
-  // Prima con il margine pieno; dove case e palco sono vicini, con un margine più stretto.
-  let r = null;
-  for (const m of [ROAD_HALF, .9, .45]) {
-   const ap = { x: approach.x, y: m === ROAD_HALF ? approach.y : Math.min(approach.y, Math.ceil(approach.y - ROAD_HALF + m)) };
-   r = roadRoute(hub, ap, blockedBy(m), cost);
-   if (r) break;
-  }
-  if (!r) return;
-  const pts = simplifyRoute(r);
-  pts[0] = { x: center.x, y: center.y };
-  if (exact) pts.push(exact);
-  roads.push(roundPath(pts, 2.2));
- };
+ const targets = [];
  for (const g of gates) {
   const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: WIDTH - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: HEIGHT - 2 };
-  link(g, { x: g.x, y: g.y }, inset);
+  targets.push({ exact: { x: g.x, y: g.y }, approach: inset, gate: true });
  }
  for (const o of objects) {
-  if (o.building) link(o, { x: o.x, y: o.y + .9 }, { x: o.x, y: Math.ceil(o.building.y + o.building.h + ROAD_HALF) });
-  else if (o.kind === 'stage') link(o, { x: o.x, y: o.y + .9 }, { x: o.x, y: Math.ceil(stage.y + .25 + ROAD_HALF) });
-  else if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) link(o, { x: o.x, y: o.y + .6 }, { x: Math.round(o.x), y: Math.round(o.y + 1) });
+  if (o.building) targets.push({ exact: { x: o.x, y: o.y + .9 }, approach: { x: Math.round(o.x), y: Math.ceil(o.building.y + o.building.h + ROAD_HALF) } });
+  else if (o.kind === 'stage') targets.push({ exact: { x: o.x, y: o.y + .9 }, approach: { x: Math.round(o.x), y: Math.ceil(stage.y + .25 + ROAD_HALF) } });
+  else if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) targets.push({ exact: { x: o.x, y: o.y + .6 }, approach: { x: Math.round(o.x), y: Math.round(o.y + 1) } });
  }
- return roads;
+ // Varianti: prima i varchi (la strada principale), poi il resto; l'ordine ruota con il seme.
+ const gatesFirst = targets.filter(t => t.gate), rest = targets.filter(t => !t.gate);
+ const rot = (arr, k) => arr.length ? arr.map((_, i) => arr[(i + k) % arr.length]) : arr;
+ const order = [...rot(gatesFirst, seed % Math.max(1, gatesFirst.length)), ...rot(rest, Math.floor(seed / 4) % Math.max(1, rest.length))];
+ const flip = seed % 2 === 1;
+ for (const t of order) {
+  let r = null;
+  for (const m of [ROAD_HALF, .9, .45]) {
+   const ap = { x: t.approach.x, y: m === ROAD_HALF || t.gate ? t.approach.y : Math.min(t.approach.y, Math.ceil(t.approach.y - ROAD_HALF + m)) };
+   r = roadRoute(ap, hub, blockedBy(m), cost, flip);
+   if (r) break;
+  }
+  if (!r) return null;
+  // Si tiene solo il tratto nuovo: dalla destinazione fino al primo punto di strada già esistente.
+  const cut = r.findIndex(c => cells.has(c.x + ',' + c.y));
+  const fresh = r.slice(0, cut < 0 ? r.length : cut + 1);
+  for (const c of fresh) cells.add(c.x + ',' + c.y);
+  const pts = simplifyRoute(fresh.reverse());
+  if (cut < 0 || (pts[0].x === hub.x && pts[0].y === hub.y)) pts[0] = { x: center.x, y: center.y };
+  pts.push(t.exact);
+  roads.push(roundPath(pts, 2.2));
+ }
+ return { roads, cells };
 }
 
 export function isWalkable(layout, x, y) {
@@ -1059,6 +1122,38 @@ export function drawStage(ctx, x, y, genre, large = false, scale = null) {
 }
 
 // Oltre i bordi della mappa: bosco fitto (o mare), così la telecamera centrata non mostra mai il vuoto.
+// Acque che toccano un bordo continuano oltre la mappa; a sud di Rivafosca il fiume sfocia nel mare.
+export function outerWaters(layout) {
+ const out = [];
+ const list = [...layout.waters];
+ if (layout.from !== undefined && layout.theme === 'river') list.push({ x: 7.6, y: -1, w: 5.8, h: HEIGHT + 2 });
+ for (const w of list) {
+  const e = { ...w };
+  if (w.y <= 1.5) { e.y -= 30; e.h += 30; }
+  if (w.y + w.h >= HEIGHT - 1.5) e.h += 30;
+  if (w.x <= 1.5) { e.x -= 30; e.w += 30; }
+  if (w.x + w.w >= WIDTH - 1.5) e.w += 30;
+  out.push(e);
+ }
+ return out;
+}
+
+function seaBeyond(ctx, layout, time) {
+ if (layout.coast !== 'south') return;
+ const top = HEIGHT + 3;
+ rounded(ctx, -60 * TILE, (top - 1.4) * TILE, (WIDTH + 120) * TILE, 3 * TILE, 0, '#e8d6a6');
+ rounded(ctx, -60 * TILE, top * TILE, (WIDTH + 120) * TILE, 40 * TILE, 0, '#6fa9ad');
+ for (let i = 0; i < 90; i++) {
+  const x = -40 * TILE + (i * 173) % ((WIDTH + 80) * TILE), y = (top + .8 + (i * 37) % 14) * TILE;
+  line(ctx, [{ x: x + Math.sin(time / 1500 + i) * 4, y }, { x: x + 22 + Math.sin(time / 1500 + i) * 4, y }], '#d7eeea88', 2);
+ }
+}
+
+function inOuterWater(layout, x, y) {
+ if (layout.coast === 'south' && y > HEIGHT + 1.4) return true;
+ return outerWaters(layout).some(w => x > w.x - 1 && x < w.x + w.w + 1 && y > w.y - 1 && y < w.y + w.h + 1);
+}
+
 function borderTrees(ctx, layout, p, cam, W, H) {
  const x0 = Math.floor(cam.x / TILE) - 2, x1 = Math.ceil((cam.x + W) / TILE) + 2,
   y0 = Math.floor(cam.y / TILE) - 2, y1 = Math.ceil((cam.y + H) / TILE) + 4;
@@ -1067,7 +1162,7 @@ function borderTrees(ctx, layout, p, cam, W, H) {
   for (let x = x0 - (x0 % 2); x <= x1; x += 2) {
    const ox = x + (y % 4 ? 1 : 0), oy = y + .6;
    if (ox > -1 && ox < layout.width + 1 && oy > -.5 && oy < layout.height + 1.5) continue;
-   if (gap(ox, oy)) continue;
+   if (gap(ox, oy) || inOuterWater(layout, ox, oy)) continue;
    drawTree(ctx, ox * TILE, oy * TILE, p, Math.abs(ox * 7 + oy * 13), layout.theme === 'island');
   }
  for (const g of layout.gates) {
@@ -1390,34 +1485,28 @@ export function renderWorld(ctx, {
  }
  if (layout.size === 'city') paving(ctx, layout, p);
  if (layout.size === 'village') villageFields(ctx, layout, p, time);
- layout.waters.forEach(w => waterArt(ctx, w, time));
- for (const path of layout.paths) {
-  const pts = path.map(pt => ({
-   x: pt.x * TILE,
-   y: pt.y * TILE
-  }));
-  if (layout.size === 'city') {
-   line(ctx, pts, '#00000026', 78);
-   line(ctx, pts, shade(p.path, layout.theme === 'night' ? .25 : -.08), 70);
-   line(ctx, pts, layout.theme === 'night' ? shade(p.path, .12) : p.path, 62);
-  } else {
-   line(ctx, pts, '#647b4e16', 76);
-   line(ctx, pts, p.path, 68);
-   line(ctx, pts, '#fff1cd16', 53);
-  }
-  if (layout.theme !== 'route' && layout.theme !== 'country' && layout.theme !== 'island') {
-   for (let segment = 1; segment < pts.length; segment++) {
-    const a = pts[segment - 1],
-     b = pts[segment],
-     length = Math.hypot(b.x - a.x, b.y - a.y);
-    for (let d = 12; d < length; d += 22) {
-     const t = d / length,
-      x = a.x + (b.x - a.x) * t,
-      y = a.y + (b.y - a.y) * t;
-     rounded(ctx, x - 7, y - 3, 14, 6, 2, '#a58e6d22');
-    }
-   }
-  }
+ seaBeyond(ctx, layout, time);
+ outerWaters(layout).forEach(w => waterArt(ctx, w, time));
+ // Tutte le strade insieme, strato per strato: un unico tratto per strato, così dove si
+ // incrociano o si sovrappongono si fondono senza bordi visibili.
+ const allPts = layout.paths.map(path => path.map(pt => ({ x: pt.x * TILE, y: pt.y * TILE })));
+ const layer = (color, width) => {
+  ctx.beginPath();
+  for (const pts of allPts) pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+ };
+ if (layout.size === 'city') {
+  layer('#00000026', 78);
+  layer(shade(p.path, layout.theme === 'night' ? .25 : -.08), 70);
+  layer(layout.theme === 'night' ? shade(p.path, .12) : p.path, 62);
+ } else {
+  layer('#647b4e16', 76);
+  layer(p.path, 68);
+  layer('#fff1cd16', 53);
  }
  if (layout.theme === 'seaBridge') {
   rounded(ctx, 22.4 * TILE, 0, 3.2 * TILE, HEIGHT * TILE, 0, '#bda478');
@@ -1440,12 +1529,6 @@ export function renderWorld(ctx, {
   }
  }
  if (layout.plaza) oval(ctx, layout.plaza[0] * TILE, layout.plaza[1] * TILE, 100, 65, p.path);
- if (layout.from !== undefined && layout.theme === 'river') waterArt(ctx, {
-  x: 7.6,
-  y: -1,
-  w: 5.8,
-  h: HEIGHT + 2
- }, time);
  if (layout.theme === 'river')
   for (const yy of [18]) {
    if (drawSprite(ctx, 'towns', 3, 3, 10.5 * TILE, (yy + 1) * TILE, 7 * TILE, 92)) continue;
