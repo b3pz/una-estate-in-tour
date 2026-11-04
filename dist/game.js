@@ -400,6 +400,8 @@ function restoreScene() {
   objects = layout.objects;
   solids = [];
   room = null;
+  // Salvataggio con una posizione non valida: si riparte dall'inizio del sentiero.
+  if (!isWalkable(layout, state.x, state.y)) Object.assign(state, layout.spawn);
   updateJournal();
  } else if (scene?.type === 'interior') {
   const entry = townLayout(state.city).objects.find(o => o.building && o.label === scene.label);
@@ -645,7 +647,8 @@ function automaticPassages() {
   return;
  }
  if (area === 'town') {
-  const entry = objects.find(o => o.building && Math.hypot(o.x - state.x, o.y - state.y) < .68);
+  // Si entra salendo verso la porta (come nei giochi di ruolo classici), non passandoci accanto.
+  const entry = objects.find(o => o.building && (state.facing === 'north' || o === tapDoor) && Math.hypot(o.x - state.x, o.y - state.y) < .68);
   if (entry) fade(() => setupRoom(entry));
  }
 }
@@ -1945,12 +1948,22 @@ function drawRhythm() {
  });
 }
 
+// Percorso a tocco: evita varchi e porte che non sono la meta, così attraversare la città non porta altrove per sbaglio.
+function tapPath(target) {
+ const avoid = (layout.gates || []).filter(g => Math.hypot(g.x - target.x, g.y - target.y) > 1.5).map(g => [g.x, g.y, 1.2])
+  .concat(objects.filter(o => o.building && Math.hypot(o.x - target.x, o.y - target.y) > 1.5).map(o => [o.x, o.y, 1]));
+ const ok = (x, y) => canMove(x, y) && !avoid.some(([ax, ay, r]) => Math.hypot(ax - x, ay - y) < r);
+ const route = findPath(state, target, ok, layout.width ?? WIDTH, layout.height ?? HEIGHT);
+ return route.length || !avoid.length ? route : findPath(state, target, canMove, layout.width ?? WIDTH, layout.height ?? HEIGHT);
+}
+
 function canMove(x, y) {
  if (area === 'metro') return x > 6.6 && x < 41.4 && y > 15.4 && y < 19.4;
  if (area === 'interior') return x > 10.5 && x < 37.5 && y > 10.8 && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
  return isWalkable(layout, x, y);
 }
-let saveClock = 0;
+let saveClock = 0,
+ tapDoor = null;
 
 function update(dt) {
  if (mode === 'rhythm') {
@@ -1971,6 +1984,7 @@ function update(dt) {
  if (dx || dy) {
   path = [];
   tapObject = null;
+  tapDoor = null;
  } else if (path.length) {
   const next = path[0],
    dist = Math.hypot(next.x - state.x, next.y - state.y);
@@ -2011,6 +2025,17 @@ function update(dt) {
     hasMoved = true;
    }
   }
+  // Percorso a tocco bloccato da un bordo sottile: scivola di lato per aggirarlo.
+  if (!hasMoved && path.length)
+   for (const side of [1, -1]) {
+    const n = Math.hypot(dx, dy) || 1, sx = -dy / n * side * .12, sy = dx / n * side * .12;
+    if (canMove(state.x + sx, state.y + sy)) {
+     state.x += sx;
+     state.y += sy;
+     hasMoved = true;
+     break;
+    }
+   }
   if (hasMoved) {
    walk += dt;
    saveClock += dt;
@@ -2161,8 +2186,9 @@ canvas.addEventListener('pointerdown', e => {
   x,
   y
  };
- path = findPath(state, target, canMove, layout.width ?? WIDTH, layout.height ?? HEIGHT);
+ path = tapPath(target);
  tapObject = object && !object.building ? object : null;
+ tapDoor = object?.building ? object : null;
  if (!path.length && tapObject && Math.hypot(state.x - object.x, state.y - object.y) < 2.25) {
   near = object;
   tapObject = null;
@@ -2532,6 +2558,7 @@ if (QA) {
   where: () => ({
    area,
    mode,
+   path: path.length, next: path.slice(0, 3), transitioning,
    near: near?.label || null,
    ride: ride ? { t: +ride.t.toFixed(1), duration: +ride.duration.toFixed(1) } : null,
    room: room?.entry?.label || null,
@@ -2544,6 +2571,15 @@ if (QA) {
     notes: song.notes.length
    } : null
   }),
+  // Cammino automatico con il normale movimento del gioco (stesso percorso del tocco sullo schermo).
+  walk: (x, y) => {
+   path = tapPath({ x, y });
+   tapObject = null;
+   return path.length;
+  },
+  gates: () => (layout.gates || []).map(g => ({ ...g })),
+  can: (x, y) => canMove(x, y),
+  objects: () => objects.map(o => ({ kind: o.kind, label: o.label, id: o.id, x: o.x, y: o.y, building: !!o.building })),
   log: () => {
    try {
     return JSON.parse(localStorage.getItem(QA_LOG)) || [];

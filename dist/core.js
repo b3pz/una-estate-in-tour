@@ -341,7 +341,8 @@ export function findPath(start, target, canEnter, maxX = 66, maxY = 34) {
    const x = p[0] + dx,
     y = p[1] + dy,
     k = key(x, y);
-   if (x < 0 || y < 0 || x > maxX || y > maxY || parents.has(k) || !canEnter(x, y)) continue;
+   // Controlla anche i punti intermedi: un ostacolo sottile (tronco, panchina) può stare tra due caselle libere.
+   if (x < 0 || y < 0 || x > maxX || y > maxY || parents.has(k) || !canEnter(x, y) || [.125, .25, .375, .5, .625, .75, .875].some(f => !canEnter(p[0] + dx * f, p[1] + dy * f))) continue;
    parents.set(k, p);
    queue.push([x, y]);
   }
