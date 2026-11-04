@@ -72,7 +72,7 @@ Ogni città ha anche un brano proprio: giro armonico e pattern di chitarra, bass
 
 ## Sprite aggiuntivi
 
-Bici, personaggi nelle quattro direzioni, nuovi abitanti, palchi, ingressi dei trasporti, arredi extra e sfondi dei concerti si aggiungono senza toccare il codice: le specifiche e i prompt sono in [docs/SPRITE_PER_CHATGPT.md](docs/SPRITE_PER_CHATGPT.md). Si salvano i file in `dist/assets/extra/` e si lancia `npm run assets`, che li controlla e aggiorna il manifest letto dal gioco. Finché un file manca resta il disegno di riserva.
+Bici, personaggi nelle quattro direzioni, nuovi abitanti, palchi, ingressi dei trasporti, arredi extra e sfondi dei concerti si aggiungono senza toccare il codice: le specifiche e i prompt sono in [docs/SPRITE_PER_CHATGPT.md](docs/SPRITE_PER_CHATGPT.md); il prompt pronto da incollare in ChatGPT è in [docs/PROMPT_CHATGPT.md](docs/PROMPT_CHATGPT.md). Si salvano i file in `dist/assets/extra/` e si lancia `npm run assets`, che li controlla e aggiorna il manifest letto dal gioco. Finché un file manca resta il disegno di riserva.
 
 I testi usano Nunito e Fredoka (SIL Open Font License), inclusi in `dist/assets/fonts/`.
 
