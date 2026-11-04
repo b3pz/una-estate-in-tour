@@ -21,6 +21,9 @@ import {
  spriteCell,
  hasAtlas
 } from './assets.js';
+
+// Pseudo-casuale stabile: stesse decorazioni a ogni visita.
+const rnd = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
 export const TILE = 24,
  WIDTH = 48,
  HEIGHT = 34;
@@ -1230,6 +1233,63 @@ export function bubble(ctx, x, y, time = 0) {
  ctx.textAlign = 'left';
 }
 
+// Sentieri: sassi, ceppi, more e staccionate appena fuori dal percorso; panchine nelle radure.
+function trailDecor(ctx, layout, actors) {
+ if (!hasAtlas('trail')) return;
+ const R = layout.route, placed = [];
+ const free = (x, y) => !placed.some(q => Math.hypot(q.x - x, q.y - y) < 2.4) && !layout.objects.some(o => Math.hypot(o.x - x, o.y - y) < 2.2) && !layout.gates.some(g => Math.hypot(g.x - x, g.y - y) < 4) && !(R.grass || []).some(g => inRect(g, x, y, .8));
+ let k = 0;
+ for (const path of R.paths)
+  for (let i = 1; i < path.length; i++) {
+   const a = path[i - 1], b = path[i], len = Math.hypot(b.x - a.x, b.y - a.y);
+   for (let d = 1.5; d < len; d += 3.2) {
+    k++;
+    if (rnd(k + layout.from * 31 + layout.to * 7) > .38) continue;
+    const t = d / len, side = rnd(k * 3.1) > .5 ? 1 : -1, off = 2.05 + rnd(k * 1.7) * .3;
+    const x = a.x + (b.x - a.x) * t + (b.y - a.y) / len * off * side, y = a.y + (b.y - a.y) * t - (b.x - a.x) / len * off * side;
+    if (!free(x, y) || pathDistance(R, x, y) < 1.9 || x < 1 || y < 1 || x > layout.width - 1 || y > layout.height - 1) continue;
+    placed.push({ x, y });
+    const pick = [[0, 2, 48, 40], [0, 3, 46, 36], [1, 1, 46, 38], [1, 0, 52, 36]][Math.floor(rnd(k * 5.3) * 4)];
+    actors.push({ depth: y * TILE, draw: () => drawSprite(ctx, 'trail', pick[0], pick[1], x * TILE, y * TILE + 6, pick[2], pick[3]) });
+   }
+  }
+ for (const c of R.clearings) {
+  const x = c.x + c.w / 2, y = c.y + .9;
+  if (!free(x, y)) continue;
+  placed.push({ x, y });
+  actors.push({ depth: y * TILE, draw: () => drawSprite(ctx, 'trail', 1, 2, x * TILE, y * TILE + 6, 56, 38) });
+ }
+}
+
+// Città: arredo urbano sul bordo delle strade, a distanza da porte, persone e lampioni.
+function cityDecor(ctx, layout, actors) {
+ if (!hasAtlas('cityProps')) return;
+ const cells = [[0, 1, 54, 36], [1, 0, 50, 34], [0, 3, 22, 46], [1, 3, 56, 40], [0, 2, 30, 44], [1, 1, 48, 54], [1, 2, 54, 48]];
+ const placed = [];
+ let k = 0;
+ for (const path of layout.paths)
+  for (let i = 1; i < path.length; i++) {
+   const a = path[i - 1], b = path[i], len = Math.hypot(b.x - a.x, b.y - a.y);
+   if (len < 1.5) continue;
+   for (let d = 2; d < len; d += 4.5) {
+    k++;
+    if (rnd(k + layout.width * 3) > .45) continue;
+    const t = d / len, side = rnd(k * 2.3) > .5 ? 1 : -1;
+    const x = a.x + (b.x - a.x) * t + (b.y - a.y) / len * 2 * side, y = a.y + (b.y - a.y) * t - (b.x - a.x) / len * 2 * side;
+    if (placed.some(q => Math.hypot(q.x - x, q.y - y) < 4)) continue;
+    if (layout.buildings.some(z => x > z.x - 1 && x < z.x + z.w + 1 && y > z.y - .8 && y < z.y + z.h + 2.6)) continue;
+    if (layout.objects.some(o => !o.building && Math.hypot(o.x - x, o.y - y) < 2.4)) continue;
+    if (layout.paths.some(pp => pp.some((q, j) => j && segDist(x, y, pp[j - 1], q) < 1.5))) continue;
+    if (layout.waters.some(w => x > w.x - 1 && x < w.x + w.w + 1 && y > w.y - 1 && y < w.y + w.h + 1)) continue;
+    const sb = stageBox(layout);
+    if (sb && x > sb.x0 - 1 && x < sb.x1 + 1 && y > sb.y0 - 1 && y < sb.y1 + 2) continue;
+    placed.push({ x, y });
+    const c = cells[Math.floor(rnd(k * 7.7) * cells.length)];
+    actors.push({ depth: y * TILE, draw: () => drawSprite(ctx, 'cityProps', c[0], c[1], x * TILE, y * TILE + 6, c[2], c[3]) });
+   }
+  }
+}
+
 function tallGrass(ctx, x, y, time, seed) {
  const sway = Math.sin(time / 600 + seed) * 1.5;
  ctx.strokeStyle = '#3f7a3c';
@@ -1286,6 +1346,7 @@ function paving(ctx, layout, p) {
  for (const [x, y] of [[7, 17], [LW - 8, 17], [LW / 2, LH - 3.5], [LW / 2, 4.5], [7, LH - 6], [LW - 8, LH - 6], [7, 6], [LW - 8, 6]]) {
   if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 2)) continue;
   if (layout.paths.some(path => path.some((q, i) => i && segDist(x, y, path[i - 1], q) < 3.2))) continue;
+  if (drawSprite(ctx, 'cityProps', 1, 0, x * TILE, (y + .9) * TILE, 76, 52)) continue;
   rounded(ctx, (x - 1.6) * TILE, (y - 1) * TILE, 3.2 * TILE, 2 * TILE, 4, shade(p.path, -.3));
   rounded(ctx, (x - 1.4) * TILE, (y - .8) * TILE, 2.8 * TILE, 1.6 * TILE, 3, p.grass);
   for (let k = 0; k < 6; k++) oval(ctx, (x - 1.1 + k * .45) * TILE, (y - .1 + (k % 2) * .3) * TILE, 4, 4, ['#e48ab4', '#f3d58a', '#ffffff'][k % 3]);
@@ -1299,7 +1360,7 @@ function lampposts(ctx, layout, actors, time) {
    const a = path[k - 1], b = path[k], len = Math.hypot(b.x - a.x, b.y - a.y);
    for (let d = 3; d < len; d += 7) {
     const t = d / len, x = a.x + (b.x - a.x) * t + (b.y - a.y) / len * 1.8, y = a.y + (b.y - a.y) * t - (b.x - a.x) / len * 1.8;
-    if (placed.some(q => Math.hypot(q.x - x, q.y - y) < 5) || layout.buildings.some(z => x > z.x - .6 && x < z.x + z.w + .6 && y > z.y - .6 && y < z.y + z.h + 1.2) || layout.objects.some(o => !o.building && Math.hypot(o.x - x, o.y - y) < 2)) continue;
+    if (placed.some(q => Math.hypot(q.x - x, q.y - y) < 5) || layout.buildings.some(z => x > z.x - .6 && x < z.x + z.w + .6 && y > z.y - .6 && y < z.y + z.h + 1.2) || layout.objects.some(o => !o.building && Math.hypot(o.x - x, o.y - y) < (['metro', 'cable', 'ferry', 'bridge', 'stage'].includes(o.kind) ? 3 : 2))) continue;
     if (layout.paths.some(pp => pp.some((q, i) => i && segDist(x, y, pp[i - 1], q) < 1.3))) continue;
     placed.push({ x, y });
     actors.push({ depth: y * TILE, draw: () => {
@@ -1639,11 +1700,21 @@ export function renderWorld(ctx, {
      draw: () => drawTree(ctx, x * TILE, y * TILE, p, Math.floor(x * 13 + y * 7))
     });
    }
-  for (const g of R.grass || [])
-   for (let yy = g.y; yy < g.y + g.h; yy += .55)
-    for (let xx = g.x; xx < g.x + g.w; xx += .5) tallGrass(ctx, xx * TILE, yy * TILE, time, xx + yy);
+  for (const g of R.grass || []) {
+   if (hasAtlas('trail')) {
+    for (let yy = g.y + .6; yy < g.y + g.h + .4; yy += .7)
+     for (let xx = g.x + .5; xx < g.x + g.w; xx += 1.1) {
+      const X = xx, Y = yy;
+      actors.push({ depth: Y * TILE, draw: () => drawSprite(ctx, 'trail', 0, 0, X * TILE, Y * TILE + 4, 34, 26) });
+     }
+   } else
+    for (let yy = g.y; yy < g.y + g.h; yy += .55)
+     for (let xx = g.x; xx < g.x + g.w; xx += .5) tallGrass(ctx, xx * TILE, yy * TILE, time, xx + yy);
+  }
+  trailDecor(ctx, layout, actors);
  }
- for (let i = 0; i < (layout.theme === 'seaBridge' || layout.route ? 0 : layout.size === 'city' ? 18 : 58); i++) {
+ if (layout.size === 'city') cityDecor(ctx, layout, actors);
+ for (let i = 0; i < (layout.theme === 'seaBridge' || layout.route || layout.size === 'city' ? 0 : 58); i++) {
   const x = (2 + (i * 7.37) % 44),
    y = (2 + (i * 5.19) % 30);
   if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 3)) continue;
@@ -1668,7 +1739,15 @@ export function renderWorld(ctx, {
  for (const o of layout.objects)
   if (o.kind === 'secret' && !(state.found || []).includes(o.id)) actors.push({
    depth: o.y * TILE,
-   draw: () => sparkle(ctx, o.x * TILE, o.y * TILE - 6, time)
+   draw: () => {
+    drawSprite(ctx, 'trail', 1, 3, o.x * TILE, o.y * TILE + 4, 40, 30);
+    sparkle(ctx, o.x * TILE, o.y * TILE - 6, time);
+   }
+  });
+ for (const o of layout.objects)
+  if (o.kind === 'sign') actors.push({
+   depth: o.y * TILE,
+   draw: () => drawSprite(ctx, 'trail', 0, 1, o.x * TILE, o.y * TILE + 2, 40, 52)
   });
  for (const o of layout.objects)
   if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) actors.push({
