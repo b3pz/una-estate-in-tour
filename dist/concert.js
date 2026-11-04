@@ -2,7 +2,9 @@ import {
  drawCharacter
 } from './world.js';
 import {
- drawSprite
+ drawSprite,
+ atlases,
+ hasAtlas
 } from './assets.js';
 import {
  CITIES,
@@ -63,10 +65,15 @@ function ellipse(ctx, x, y, rx, ry, fill) {
 }
 
 function words(ctx, s, x, y, size = 12, color = '#fff0d0', align = 'center') {
- ctx.font = `${size}px Georgia,serif`;
+ ctx.font = `600 ${size}px Fredoka, Nunito, sans-serif`;
  ctx.textAlign = align;
+ ctx.save();
+ ctx.shadowColor = '#000c';
+ ctx.shadowBlur = 6;
+ ctx.shadowOffsetY = 1;
  ctx.fillStyle = color;
  ctx.fillText(s, x, y);
+ ctx.restore();
 }
 
 function poly(ctx, pts, fill, stroke) {
@@ -105,6 +112,15 @@ function musician(ctx, x, y, who, instrument, t, energy, player) {
 
 // Scenografia sullo sfondo: un segno riconoscibile per ogni città e occasione.
 function backdrop(ctx, scene, W, H, t, accent, gold) {
+ const art = 'concert:' + scene;
+ if (hasAtlas(art)) {
+  const img = atlases[art], h = H * .4, scale = Math.max(W / img.naturalWidth, h / img.naturalHeight), w = img.naturalWidth * scale;
+  ctx.save();
+  ctx.globalAlpha = .85;
+  ctx.drawImage(img, (W - w) / 2, 0, w, img.naturalHeight * scale);
+  ctx.restore();
+  return;
+ }
  const y0 = H * .14, y1 = H * .34, sil = accent + '66', mid = accent + '33';
  const sway = k => reduced ? 0 : Math.sin(t * k);
  ctx.save();

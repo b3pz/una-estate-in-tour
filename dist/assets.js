@@ -12,6 +12,53 @@ export const atlases = {
  interiors: load('./assets/interiors-atlas.png'),
  people: load('./assets/people-atlas.png')
 };
+// Atlanti opzionali: compaiono da soli quando i file sono in assets/extra/ ed elencati nel manifest
+// (lo aggiorna «npm run assets»). Finché mancano, il gioco usa i disegni di riserva.
+export const EXTRA_FILES = {
+ 'hero-bike.png': 'heroBike',
+ 'people-dir-1.png': 'peopleDir0',
+ 'people-dir-2.png': 'peopleDir1',
+ 'people-dir-3.png': 'peopleDir2',
+ 'people-dir-4.png': 'peopleDir3',
+ 'people-extra.png': 'people2',
+ 'transport-stage.png': 'transport',
+ 'interiors-extra.png': 'interiors2',
+ 'title-art.jpg': 'title',
+ 'concert/blues.jpg': 'concert:Blues',
+ 'concert/rock.jpg': 'concert:Rock',
+ 'concert/pop.jpg': 'concert:Pop',
+ 'concert/funk.jpg': 'concert:Funk',
+ 'concert/metal.jpg': 'concert:Metal',
+ 'concert/latino.jpg': 'concert:Latino',
+ 'concert/reggae.jpg': 'concert:Reggae',
+ 'concert/jazz.jpg': 'concert:Jazz',
+ 'concert/casa.jpg': 'concert:Casa',
+ 'concert/rivali.jpg': 'concert:rival',
+ 'concert/traghetto.jpg': 'concert:boat',
+ 'concert/festival.jpg': 'concert:final'
+};
+export function hasAtlas(key) {
+ const image = atlases[key];
+ return !!(image && image.complete && image.naturalWidth);
+}
+export async function loadExtras() {
+ if (typeof fetch === 'undefined' || typeof Image === 'undefined') return [];
+ try {
+  const res = await fetch(new URL('./assets/extra/manifest.json', import.meta.url).href, { cache: 'no-cache' });
+  if (!res.ok) return [];
+  const { files = [] } = await res.json();
+  const loaded = [];
+  for (const file of files) {
+   const key = EXTRA_FILES[file];
+   if (!key) continue;
+   atlases[key] = load('./assets/extra/' + file);
+   loaded.push(key);
+  }
+  return loaded;
+ } catch {
+  return [];
+ }
+}
 const bounds = new WeakMap();
 export function spriteFit(sw, sh, w, h) {
  const scale = Math.min(w / sw, h / sh);

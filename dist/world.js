@@ -1,3 +1,4 @@
+import { ROUTES, routeKey as rKey, routeWalkable, pathDistance, inRect } from './routes.js';
 import {
  METRO_STOPS
 } from './progress.js';
@@ -15,7 +16,8 @@ import {
 } from './core.js';
 import {
  drawSprite,
- spriteCell
+ spriteCell,
+ hasAtlas
 } from './assets.js';
 export const TILE = 24,
  WIDTH = 48,
@@ -110,7 +112,7 @@ export function roadLayout(from, to) {
   side: OPPOSITE[b.side],
   label: CITIES[to].name
  };
- return {
+ return designedRoad({
   width: WIDTH,
   height: HEIGHT,
   theme: ([from, to].includes(9) && [from, to].includes(10)) ? 'seaBridge' : (from === 7 || to === 7) ? 'mountain' : ([8, 9].includes(from) || [8, 9].includes(to)) ? 'port' : (from === 2 || to === 2) ? 'industrial' : (from === 1 || to === 1) ? 'river' : (from === 10 || to === 10) ? 'night' : 'route',
@@ -146,7 +148,21 @@ export function roadLayout(from, to) {
    ...pointOnSide(start.side, a.lane, 3.3),
    facing: a.side
   }
- };
+ });
+}
+
+// Applica un percorso disegnato a mano, se esiste per questa strada.
+function designedRoad(layout) {
+ const route = ROUTES[rKey(layout.from, layout.to)];
+ if (!route) return layout;
+ layout.route = route;
+ layout.paths = route.paths;
+ const wand = layout.objects.find(o => o.kind === 'wanderer'),
+  sign = layout.objects.find(o => o.kind === 'sign');
+ if (wand && route.wanderer) Object.assign(wand, route.wanderer);
+ if (sign && route.sign) Object.assign(sign, route.sign);
+ if (route.secret) layout.objects.push({ ...route.secret, kind: 'secret', secret: route.secret });
+ return layout;
 }
 const b = (x, y, w, h, label, kind = 'lore', style = 'cottage') => ({
  x,
@@ -412,6 +428,7 @@ export function townLayout(id) {
 export function isWalkable(layout, x, y) {
  if (layout.theme === 'seaBridge' && Math.abs(x - 24) > 1.6) return false;
  if (x < 1 || x > WIDTH - 1 || y < 1 || y > HEIGHT - 1) return false;
+ if (layout.route && !routeWalkable(layout.route, x, y)) return false;
  const sb = stageBox(layout);
  if (sb && x > sb.x0 && x < sb.x1 && y > sb.y0 && y < sb.y1) return false;
  for (const b of layout.buildings)
@@ -563,7 +580,7 @@ function line(ctx, pts, color, width) {
 }
 
 function label(ctx, s, x, y, size = 11, color = '#445b45') {
- ctx.font = `${size}px Georgia,serif`;
+ ctx.font = `600 ${size}px Fredoka, Nunito, sans-serif`;
  ctx.textAlign = 'center';
  ctx.fillStyle = color;
  ctx.fillText(s, x, y);
@@ -577,8 +594,12 @@ export function drawCharacter(ctx, x, y, {
  walk = 0,
  bike = false
 } = {}) {
- if (portrait !== null && drawSprite(ctx, 'people', Math.floor(portrait / 4), portrait % 4, x, y, 43, 64)) return;
+ const dirCol = { south: 0, west: 1, east: 2, north: 3 } [facing] ?? 0;
+ if (portrait !== null && typeof portrait === 'string' && portrait.startsWith('x') && drawSprite(ctx, 'people2', Math.floor(+portrait.slice(1) / 4), +portrait.slice(1) % 4, x, y, 43, 64)) return;
+ if (portrait !== null && typeof portrait === 'number' && drawSprite(ctx, 'peopleDir' + Math.floor(portrait / 4), portrait % 4, dirCol, x, y, 43, 64)) return;
+ if (portrait !== null && typeof portrait === 'number' && drawSprite(ctx, 'people', Math.floor(portrait / 4), portrait % 4, x, y, 43, 64)) return;
  const cell = spriteCell(facing, moving, walk);
+ if (bike && drawSprite(ctx, 'heroBike', dirCol, moving ? 1 + (Math.floor(walk * 8) % 2) : 0, x, y + 6, 78, 78)) return;
  if (!bike && drawSprite(ctx, variant ? 'band' : 'hero', variant ? Math.min(2, variant - 1) : cell.row, cell.col, x, y, 64, 64, !variant && cell.flip)) return;
  ctx.save();
  ctx.translate(x, y);
@@ -728,11 +749,9 @@ const BUILDING_SPRITES = {
 function buildingArt(ctx, b, p) {
  const cell = BUILDING_SPRITES[b.style];
  if (cell && drawSprite(ctx, 'towns', cell[0], cell[1], (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE, b.w * TILE + 26, (b.w * TILE + 26) * .92)) {
-  label(ctx, b.label, (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE + 19, 10, p === THEMES.night ? '#e7deb8' : '#3b5946');
   return;
  }
  if ((b.style === 'cottage' || b.style === 'barn' || b.kind === 'garage') && drawSprite(ctx, 'hero', 3, b.kind === 'garage' || b.style === 'barn' ? 3 : 2, (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE, b.w * TILE + 26, (b.w * TILE + 26) * .9)) {
-  label(ctx, b.label, (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE + 19, 10, '#3b5946');
   return;
  }
  const x = b.x * TILE,
@@ -810,8 +829,6 @@ function buildingArt(ctx, b, p) {
  if (['club', 'night', 'theatre', 'school', 'academy', 'station'].includes(b.style)) {
   rounded(ctx, door - 50, y + 34, 100, 19, 4, night ? '#b78c71' : '#f2e4bc');
   label(ctx, b.label.toUpperCase(), door, y + 47, 9, night ? '#fff0bb' : '#6c6e56');
- } else {
-  label(ctx, b.label, door, y + h + 19, 10, '#3b5946');
  }
  if (b.style === 'market') {
   for (let i = 0; i < w / 20; i++) rounded(ctx, x + i * 20, y + 34, 20, 17, 4, i % 2 ? '#dfac6d' : '#ece0b7');
@@ -841,6 +858,9 @@ export function stageBox(layout) {
 }
 export function drawStage(ctx, x, y, genre, large = false, scale = null) {
  const s = scale ?? (large ? FESTIVAL_STAGE_SCALE : 1);
+ if (drawSprite(ctx, 'transport', 1, large ? 1 : 0, x, y + 6 * s, 160 * s, 120 * s)) {
+  return;
+ }
  ctx.save();
  ctx.translate(x, y);
  ctx.scale(s, s);
@@ -879,8 +899,6 @@ export function drawStage(ctx, x, y, genre, large = false, scale = null) {
  drawSprite(ctx, 'band', 3, 3, -57, -1, 26, 30);
  drawSprite(ctx, 'band', 3, 3, 57, -1, 26, 30);
  drawSprite(ctx, 'band', 3, 2, 0, 0, 61, 51);
- rounded(ctx, -52, -82, 104, 16, 4, '#2f4a3e');
- label(ctx, genre.toUpperCase(), 0, -70, 10, '#f2d28c');
  ctx.restore();
 }
 
@@ -913,10 +931,40 @@ export function bubble(ctx, x, y, time = 0) {
  ctx.fill();
  ctx.stroke();
  ctx.fillStyle = '#2a3b33';
- ctx.font = 'bold 15px Georgia, serif';
+ ctx.font = '600 15px Fredoka, sans-serif';
  ctx.textAlign = 'center';
  ctx.fillText('!', x, y - 7 + bob);
  ctx.textAlign = 'left';
+}
+
+function tallGrass(ctx, x, y, time, seed) {
+ const sway = Math.sin(time / 600 + seed) * 1.5;
+ ctx.strokeStyle = '#3f7a3c';
+ ctx.lineWidth = 2;
+ ctx.beginPath();
+ for (const dx of [-5, 0, 5]) {
+  ctx.moveTo(x + dx, y + 4);
+  ctx.quadraticCurveTo(x + dx + sway, y - 4, x + dx + sway * 2 + (dx / 3), y - 10);
+ }
+ ctx.stroke();
+ ctx.strokeStyle = '#6aa65a';
+ ctx.lineWidth = 1.2;
+ ctx.beginPath();
+ ctx.moveTo(x - 2, y + 4);
+ ctx.quadraticCurveTo(x - 2 + sway, y - 3, x + sway, y - 8);
+ ctx.stroke();
+}
+
+function sparkle(ctx, x, y, time) {
+ const a = .5 + Math.sin(time / 250) * .5;
+ ctx.fillStyle = `rgba(255,248,214,${.35 + a * .6})`;
+ ctx.beginPath();
+ for (let i = 0; i < 8; i++) {
+  const r = i % 2 ? 2.5 : 8 + a * 3, ang = i * Math.PI / 4;
+  ctx.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r);
+ }
+ ctx.closePath();
+ ctx.fill();
 }
 
 function waterArt(ctx, w, time) {
@@ -1176,7 +1224,7 @@ export function renderWorld(ctx, {
   if ((layout.from !== undefined && layout.theme === 'river' && x > 6.5 && x < 14.5) || layout.buildings.some(b => x > b.x - 1 && x < b.x + b.w + 1 && y > b.y - 1 && y < b.y + b.h + 2) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) || layout.paths.some(path => path.some(pt => Math.hypot(pt.x - x, pt.y - y) < 3))) continue;
   drawSprite(ctx, 'towns', 3, 2, x * TILE, y * TILE, 35, 27);
  }
- if (layout.from !== undefined && layout.theme !== 'seaBridge') {
+ if (layout.from !== undefined && layout.theme !== 'seaBridge' && !layout.route) {
   for (let i = 0; i < 18; i++) {
    const xx = (4 + i * 2.3) * TILE,
     yy = (i % 2 ? 8 : 28) * TILE;
@@ -1207,7 +1255,25 @@ export function renderWorld(ctx, {
   depth: layout.stage.y * TILE,
   draw: () => drawStage(ctx, layout.stage.x * TILE, layout.stage.y * TILE, state.city === 0 ? 'Piazza delle Cicale' : CITIES[state.city].genre, layout.theme === 'festival', layout.theme === 'festival' ? FESTIVAL_STAGE_SCALE : STAGE_SCALE)
  });
- for (let i = 0; i < (layout.theme === 'seaBridge' ? 0 : 58); i++) {
+ if (layout.route) {
+  const R = layout.route;
+  for (let gy = 0; gy < HEIGHT + 2; gy += 2.1)
+   for (let gx = 0; gx < WIDTH + 1; gx += 2.3) {
+    const x = gx + ((Math.floor(gy / 2.1) % 2) ? 1.15 : 0) + Math.sin(gx * 7.1 + gy * 3.3) * .35,
+     y = gy + Math.cos(gx * 5.3 + gy) * .3;
+    if (pathDistance(R, x, y) < 2.7 || R.clearings.some(r => inRect(r, x, y, 1.6))) continue;
+    if (layout.theme === 'river' && x > 6.5 && x < 14.5) continue;
+    if (layout.gates.some(g => Math.hypot(g.x - x, g.y - y) < 3)) continue;
+    actors.push({
+     depth: y * TILE,
+     draw: () => drawTree(ctx, x * TILE, y * TILE, p, Math.floor(x * 13 + y * 7))
+    });
+   }
+  for (const g of R.grass || [])
+   for (let yy = g.y; yy < g.y + g.h; yy += .55)
+    for (let xx = g.x; xx < g.x + g.w; xx += .5) tallGrass(ctx, xx * TILE, yy * TILE, time, xx + yy);
+ }
+ for (let i = 0; i < (layout.theme === 'seaBridge' || layout.route ? 0 : 58); i++) {
   const x = (2 + (i * 7.37) % 44),
    y = (2 + (i * 5.19) % 30);
   if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 3)) continue;
@@ -1229,26 +1295,11 @@ export function renderWorld(ctx, {
    draw: () => drawTree(ctx, x * TILE, y * TILE, p, i, layout.theme === 'island')
   });
  }
- for (const g of layout.gates) {
-  const sign = {
-   x: g.x + (g.side === 'east' ? -1.2 : g.side === 'west' ? 1.2 : 2),
-   y: g.y + (g.side === 'north' ? 1.5 : g.side === 'south' ? -1.5 : -1.6)
-  };
-  rounded(ctx, sign.x * TILE - 20, sign.y * TILE - 24, 40, 20, 4, '#f0d8a9');
-  line(ctx, [{
-   x: sign.x * TILE,
-   y: sign.y * TILE - 4
-  }, {
-   x: sign.x * TILE,
-   y: sign.y * TILE + 12
-  }], '#9b8058', 4);
-  label(ctx, {
-   east: '→',
-   west: '←',
-   north: '↑',
-   south: '↓'
-  } [g.side], sign.x * TILE, sign.y * TILE - 9, 15, '#6d7b54');
- }
+ for (const o of layout.objects)
+  if (o.kind === 'secret' && !(state.found || []).includes(o.id)) actors.push({
+   depth: o.y * TILE,
+   draw: () => sparkle(ctx, o.x * TILE, o.y * TILE - 6, time)
+  });
  for (const o of layout.objects)
   if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) actors.push({
    depth: o.y * TILE,
@@ -1285,6 +1336,9 @@ export function renderWorld(ctx, {
 }
 
 function drawTransport(ctx, x, y, kind, title) {
+ if (drawSprite(ctx, 'transport', 0, { metro: 0, cable: 1, ferry: 2, bridge: 3 } [kind] ?? 0, x, y + 22, 96, 96)) {
+  return;
+ }
  ctx.save();
  ctx.translate(x, y);
  if (kind === 'metro') {
@@ -1358,6 +1412,5 @@ function drawTransport(ctx, x, y, kind, title) {
    }], '#c1a879', 3);
   }
  }
- label(ctx, title, 0, 42, 10, '#304e42');
  ctx.restore();
 }

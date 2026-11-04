@@ -18,6 +18,11 @@ import {
  roadKey,
  DEDUCTION,
  BAND_NAMES,
+ MESSAGES,
+ newMessages,
+ questsFor,
+ metroPassengers,
+ STRANGER_LINES,
  chapter,
  clueText,
  clueIndex,
@@ -25,6 +30,9 @@ import {
  mysteryReady,
  mysteryEnding
 } from './adventure.js';
+import {
+ ROUTES
+} from './routes.js';
 import {
  openPuzzle,
  PUZZLE_INFO
@@ -50,7 +58,10 @@ import {
  MusicAudio
 } from './audio.js';
 import {
- drawSprite
+ drawSprite,
+ hasAtlas,
+ atlases,
+ loadExtras
 } from './assets.js';
 import {
  TILE,
@@ -123,7 +134,7 @@ function save() {
   label: room.entry.label
  } : null;
  try {
-  localStorage.setItem(SAVE, JSON.stringify(state));
+  localStorage.setItem(SAVE, JSON.stringify(area === 'metro' && ride ? { ...state, ...ride.dest, facing: 'south', scene: null } : state));
   $('saveLabel').textContent = 'Partita salvata su questo dispositivo';
  } catch {
   $('saveLabel').textContent = 'Salvataggio non disponibile: esporta dal menu';
@@ -204,9 +215,9 @@ function nextStop() {
   const r = journeyRoute(state, m.id);
   if (r && (!best || r.legs.length < best.r.legs.length)) best = { m, r };
  }
- if (!best) return 'Otto città, otto pass. Apri la mappa (M) per scegliere la prossima tappa.';
+ if (!best) return 'Otto città, otto pass. La Mappa del telefono aiuta a scegliere la prossima tappa.';
  const first = best.r.legs[0];
- return `Prossima tappa: ${best.m.name} (${best.m.genre.toLowerCase()}). ${first.to === best.m.id ? 'È qui vicino' : 'Passa da ' + CITIES[first.to].name}: ${first.mode === 'Sentiero' ? 'segui i cartelli ai bordi del paese' : first.mode.toLowerCase()}. Itinerario completo nella mappa (M).`;
+ return `Prossima tappa: ${best.m.name} (${best.m.genre.toLowerCase()}). ${first.to === best.m.id ? 'È qui vicino' : 'Passa da ' + CITIES[first.to].name}: ${first.mode === 'Sentiero' ? 'segui la strada che esce dal paese' : first.mode.toLowerCase()}. L’itinerario è nella Mappa del telefono.`;
 }
 
 let lastObjective = '',
@@ -214,14 +225,14 @@ let lastObjective = '',
  signTimer,
  pendingSign;
 
-function showAreaSign(name, sub, ms) {
+function showAreaSign(name, sub, ms, note = false) {
  clearTimeout(pendingSign);
  if (!overlay.hidden || mode !== 'world') {
-  pendingSign = setTimeout(() => showAreaSign(name, sub, ms), 300);
+  pendingSign = setTimeout(() => showAreaSign(name, sub, ms, note), 300);
   return;
  }
  const el = $('areaSign');
- el.classList.toggle('objective-sign', !name);
+ el.classList.toggle('objective-sign', !name || note);
  $('areaSignName').textContent = name || 'Obiettivo';
  $('areaSignSub').textContent = sub || '';
  el.hidden = false;
@@ -250,11 +261,12 @@ function updateJournal() {
   const q = state.transport;
   objective = q.bike === 0 ? 'Arturo, in piazza, cerca qualcuno che lo aiuti a rimettere in strada una vecchia bici.' : q.bike === 1 ? 'Missione bici: chi ha preso la pompa? Chiedi ai ragazzi del campeggio in piazza.' : q.bike === 2 ? 'Missione bici: riporta la pompa ad Arturo.' : q.metro === 1 ? 'Missione metro: entra nella Stazione Nord e ricomponi gli annunci.' : q.metro === 2 ? 'Missione metro: riporta il nastro ad Arturo.' : objective;
  }
- if (area === 'interior' && state.stage === 'school' && room.entry.kind === 'school') objective = 'Parla con il maestro Riva, davanti alla lavagna. Premi E / PARLA.';
- if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'garage') objective = 'Avvicinati a Nico e Vale e premi E / PARLA per cominciare a provare.';
- if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'school') objective = 'Esci dalla porta in basso. Nico e Vale ti aspettano nel garage, a sud-ovest.';
+ if (area === 'interior' && state.stage === 'school' && room.entry.kind === 'school') objective = 'Il maestro Riva ti aspetta davanti alla lavagna.';
+ if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'garage') objective = 'Nico e Vale ti aspettano per la prima prova.';
+ if (area === 'interior' && state.stage === 'practice' && room.entry.kind === 'school') objective = 'Nico e Vale ti aspettano nella sala prove, a sud-ovest della piazza.';
  if (objective !== lastObjective && state.introDone && lastObjective && lastPlace) showAreaSign(null, objective, 4200);
  lastObjective = objective;
+ checkMessages();
  $('objective').textContent = objective;
  $('areaSubtitle').textContent = area === 'interior' ? room.entry.label.toUpperCase() : area === 'road' ? 'SENTIERO · ' + CITIES[road.to].genre.toUpperCase() : ({
   Casa: 'CAMPI, CICALE E IL PRIMO ACCORDO',
@@ -273,13 +285,14 @@ function updateJournal() {
  const placeKey = area + ':' + state.city + ':' + (road ? road.from + '-' + road.to : '') + ':' + (room?.entry.label || '');
  if (placeKey !== lastPlace && state.introDone) {
   lastPlace = placeKey;
-  showAreaSign(area === 'road' ? CITIES[road.from].name + ' → ' + CITIES[road.to].name : area === 'interior' ? room.entry.label : c.name, area === 'road' ? 'Sentiero' : area === 'interior' ? c.name : $('areaSubtitle').textContent || c.genre, 2600);
+  if (area === 'metro') showAreaSign('Metro delle Otto Strade', 'In viaggio verso ' + CITIES[ride?.to ?? state.city].name, 2600);
+  else showAreaSign(area === 'road' ? CITIES[road.from].name + ' → ' + CITIES[road.to].name : area === 'interior' ? room.entry.label : c.name, area === 'road' ? 'Sentiero' : area === 'interior' ? c.name : $('areaSubtitle').textContent || c.genre, 2600);
  }
  $('instrumentTag').textContent = `${INSTRUMENTS[state.instrument].name.toUpperCase()} · ${state.bike?'IN BICICLETTA':state.bicycle?'BICI SBLOCCATA · B':'A PIEDI'} · ${fameTitle()}`;
 }
 
 function welcome() {
- const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.6</p>`, [...(saved ? [{
+ const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.7</p>`, [...(saved ? [{
   label: 'Continua',
   run: () => {
    state = saved;
@@ -349,7 +362,7 @@ function chooseInstrument() {
    } catch {}
    setupTown();
    save();
-   panel('Oggi finisce la scuola.', `<p>«Ti aspettiamo nel pomeriggio. Ho trovato un posto per provare!»</p><p>Nico e Vale hanno lasciato un biglietto sul cancello. Prima però c’è l’ultima mattinata di scuola.</p><p class="fine">Muoviti con WASD / frecce. Avvicinati a porte e persone, poi premi E o PARLA / USA. La scuola è a nord-est. Cammina fino alla porta: entrerai automaticamente.</p>`, [{
+   panel('Oggi finisce la scuola.', `<p>«Ti aspettiamo nel pomeriggio. Ho trovato un posto per provare!»</p><p>Nico e Vale hanno lasciato un biglietto sul cancello. Prima però c’è l’ultima mattinata di scuola.</p><p class="fine">Frecce o WASD per camminare, E o A per parlare. Il telefono — Invio o START — ha mappa, note e messaggi.</p>`, [{
     label: 'Esci di casa',
     run: close
    }], 'BORGO DELLE CICALE / ORE 08:00');
@@ -427,9 +440,13 @@ function enterCity(id, from = null) {
 }
 
 function roomPlan(entry) {
- return ROOMS[entry.label] || {
+ const plan = ROOMS[entry.label] || {
   items: roomItems(entry.kind)
  };
+ return hasAtlas('interiors2') && plan.extras ? {
+  ...plan,
+  items: plan.items.concat(plan.extras)
+ } : plan;
 }
 
 function setupRoom(entry, reset = true) {
@@ -478,6 +495,16 @@ function setupRoom(entry, reset = true) {
   label: 'Vale',
   sprite: 2
  });
+ if (hasAtlas('people2'))
+  for (const person of plan.people || []) objects.push({
+   x: person.x,
+   y: person.y,
+   kind: 'roomPerson',
+   label: person.label,
+   portrait: 'x' + person.who,
+   text: person.text,
+   facing: 'south'
+  });
  if (plan.spot) objects.push({
   x: plan.spot.x,
   y: plan.spot.y,
@@ -496,6 +523,10 @@ function setupRoom(entry, reset = true) {
   state.x = 24;
   state.y = 26;
   state.facing = 'north';
+  questEvent({
+   type: 'room',
+   label: entry.label
+  });
  }
  updateJournal();
  save();
@@ -622,7 +653,6 @@ function automaticPassages() {
 function interact() {
  if (mode !== 'world' || !overlay.hidden) return;
  if (!near) {
-  toast('Avvicinati a una porta, a un musicista o a un cartello.');
   return;
  }
  const o = near,
@@ -657,6 +687,34 @@ function interact() {
    label: 'Torna a guardarti intorno',
    run: close
   }], room ? room.entry.label.toUpperCase() + ' · ' + CITIES[state.city].name.toUpperCase() : '');
+  return;
+ }
+ if (o.kind === 'passenger') {
+  const text = o.stranger || o.person.lines[o.line % o.person.lines.length](state, ride?.to ?? state.city);
+  o.line++;
+  panel(o.label, (typeof o.portrait === 'number' ? portraitCard(o.portrait) : '') + `<p>${text}</p>`, [{
+   label: 'Buon viaggio',
+   run: close
+  }], 'IN METRO');
+  return;
+ }
+ if (o.kind === 'secret') {
+  if (state.found.includes(o.id)) return;
+  state.found.push(o.id);
+  state.xp += o.secret.xp || 0;
+  save();
+  updateJournal();
+  panel(o.secret.title, `<p>${o.secret.text}</p><p class="fine">Trovato · finisce nella Band, tra i ricordi della strada.</p>`, [{
+   label: 'Nello zaino',
+   run: close
+  }], 'UN SEGRETO DEL SENTIERO');
+  return;
+ }
+ if (o.kind === 'roomPerson') {
+  panel(o.label, `<p>${typeof o.text === 'function' ? o.text(state) : o.text}</p>`, [{
+   label: 'Grazie',
+   run: close
+  }], room ? room.entry.label.toUpperCase() : '');
   return;
  }
  if (o.kind === 'archive') {
@@ -1097,6 +1155,15 @@ function endSong() {
   score = Math.max(0, acc - penalty),
   result = award(state, completed.city, score, completed.kind);
  exitSong(false);
+ questEvent({
+  type: 'song',
+  city: completed.city,
+  kind: completed.kind,
+  won: result.won,
+  score,
+  difficulty: state.settings.difficulty,
+  instrument: state.instrument
+ });
  save();
  updateJournal();
  if (completed.kind === 'final' && result.won) {
@@ -1300,6 +1367,8 @@ function atMetro() {
  return area === 'town' && townLayout(state.city).objects.some(o => o.kind === 'metro' && Math.hypot(o.x - state.x, o.y - state.y) < 2.6);
 }
 
+let ride = null;
+
 function travelMetro(to) {
  const reason = metroReason(state, to) || (!atMetro() ? 'Raggiungi l’ingresso della metro in città.' : null);
  if (reason) {
@@ -1308,22 +1377,132 @@ function travelMetro(to) {
  }
  const from = state.city;
  close();
+ fade(() => startRide(from, to));
+}
+
+function startRide(from, to) {
+ const destLayout = townLayout(to),
+  pos = metroSpawn(destLayout).find(p => isWalkable(destLayout, p.x, p.y)) || { x: 24, y: 18 },
+  [ax, ay] = MAP_POINTS[from],
+  [bx, by] = MAP_POINTS[to],
+  seed = Math.floor(Math.random() * 97);
+ // Da 8 a 15 secondi, secondo la distanza sulla mappa.
+ const duration = Math.max(8, Math.min(15, 8 + Math.hypot(bx - ax, by - ay) / 9));
+ state.city = to;
+ if (!state.visited.includes(to)) state.visited.push(to);
+ ride = { from, to, t: 0, duration, dest: { x: pos.x, y: pos.y }, announced: false, seed };
+ area = 'metro';
+ room = null;
+ road = null;
+ path = [];
+ tapObject = null;
+ layout = { width: WIDTH, height: HEIGHT, theme: 'metro', buildings: [], waters: [], gates: [], paths: [], objects: [] };
+ const seats = [[9, 14.6, 'south'], [16, 14.6, 'south'], [21, 19.9, 'north'], [29, 14.6, 'south'], [33, 19.9, 'north'], [38, 14.6, 'south']];
+ objects = metroPassengers(state, to, seed).map((p, i) => ({
+  x: seats[(seed + i * 2) % seats.length][0],
+  y: seats[(seed + i * 2) % seats.length][1],
+  facing: seats[(seed + i * 2) % seats.length][2],
+  kind: 'passenger',
+  label: PEOPLE[p.who][0],
+  portrait: p.who,
+  person: p,
+  line: seed % p.lines.length
+ }));
+ if (hasAtlas('people2'))
+  for (let i = 0; i < 2; i++) {
+   const seat = [[12, 18.2], [27, 16.6]][i];
+   objects.push({ x: seat[0], y: seat[1], facing: 'south', kind: 'passenger', label: 'Una passeggera', portrait: 'x' + (8 + (seed + i * 3) % 8), stranger: STRANGER_LINES[(seed + i * 2) % STRANGER_LINES.length] });
+  }
+ solids = [];
+ Object.assign(state, { x: 24, y: 17.2, facing: 'south', bike: false });
+ portalCooldown = 1;
+ updateJournal();
+ save();
+ questEvent({ type: 'metro', to });
+}
+
+function updateRide(dt) {
+ if (!ride || area !== 'metro') return;
+ ride.t += dt;
+ if (!ride.announced && ride.t > ride.duration - 3) {
+  ride.announced = true;
+  showAreaSign('Prossima fermata', CITIES[ride.to].name + (ride.to === 9 ? ' · coincidenza traghetto' : ''), 2800, true);
+  try {
+   audio.init().then(() => [0, 4, 7].forEach((st, i) => audio.tone(523.25 * Math.pow(2, st / 12), audio.ctx.currentTime + i * .18, .25, 'sine', .08)));
+  } catch {}
+ }
+ if (ride.t >= ride.duration) arriveRide();
+}
+
+function arriveRide() {
+ const r = ride;
+ ride = null;
  fade(() => {
-  state.city = to;
-  const dest = townLayout(to),
-   pos = metroSpawn(dest).find(p => isWalkable(dest, p.x, p.y));
-  Object.assign(state, pos || {
-   x: 24,
-   y: 18
-  }, {
-   facing: 'south',
-   bike: false
-  });
-  portalCooldown = 1;
+  Object.assign(state, r.dest, { facing: 'south' });
   setupTown();
+  portalCooldown = 1;
   save();
-  toast('Metro: ' + CITIES[from].name + ' → ' + CITIES[to].name + (to === 9 ? ' · coincidenza traghetto' : ''));
  });
+}
+
+function drawMetro(ts) {
+ const cam = cameraNow(),
+  speed = ride ? 380 : 0,
+  shift = ((ride?.t || 0) * speed) % (8 * T),
+  sway = Math.sin(ts / 260) * 1.2;
+ rect(0, 0, W, H, '#0d1114');
+ ctx.save();
+ ctx.translate(-cam.x, -cam.y + sway);
+ // galleria che scorre fuori dal vagone
+ for (let x = -40; x < 60; x += 8) {
+  rect((x * T) - shift, 9 * T, 3 * T, 4, '#f2c86c33');
+  rect((x * T) - shift + T, 23.6 * T, 2 * T, 4, '#9fd3d022');
+ }
+ // cassa del vagone
+ const x0 = 6 * T, x1 = 42 * T;
+ ctx.fillStyle = '#c9cdc4';
+ ctx.beginPath();
+ ctx.roundRect(x0 - 8, 12.6 * T, x1 - x0 + 16, 9 * T, 18);
+ ctx.fill();
+ rect(x0, 13 * T, x1 - x0, 1.2 * T, '#3e6f63');
+ // finestrini con la galleria in movimento
+ for (let i = 0; i < 9; i++) {
+  const wx = x0 + 24 + i * 4 * T;
+  if (i === 2 || i === 6) continue;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(wx, 13.15 * T, 3 * T, .9 * T, 6);
+  ctx.clip();
+  rect(wx, 13.15 * T, 3 * T, .9 * T, '#1d272b');
+  for (let k = -2; k < 4; k++) rect(wx + ((k * 50 - shift * 1.6) % (3 * T) + 3 * T) % (3 * T), 13.35 * T, 18, 3, '#f2d28caa');
+  ctx.restore();
+ }
+ // porte
+ for (const dx of [14, 34]) {
+  rect(dx * T - T, 13 * T, 2 * T, 1.2 * T, '#2c4c43');
+  rect(dx * T - 2, 13 * T, 4, 1.2 * T, '#9fb39a');
+ }
+ // pavimento e corsia
+ rect(x0, 14.2 * T, x1 - x0, 7 * T, '#b8b39f');
+ rect(x0, 16.2 * T, x1 - x0, 2.6 * T, '#a8a28c');
+ for (let x = 6; x < 42; x += 2) rect(x * T, 17.4 * T, T, 3, '#9a947f');
+ // sedili
+ for (let x = 7; x < 41; x += 1.6) {
+  ctx.fillStyle = '#c25b45';
+  ctx.beginPath();
+  ctx.roundRect(x * T, 14.25 * T, 1.3 * T, .8 * T, 6);
+  ctx.roundRect(x * T, 19.75 * T, 1.3 * T, .8 * T, 6);
+  ctx.fill();
+ }
+ rect(x0, 20.6 * T, x1 - x0, .6 * T, '#3e6f63');
+ // pali e maniglie
+ const actors = [];
+ for (const px of [11, 19, 24, 31, 37]) actors.push({ depth: 17.4 * T, draw: () => { rect(px * T - 2, 15.4 * T, 4, 2.1 * T, '#e3e7e0'); ctx.fillStyle = '#7f8c86'; ctx.beginPath(); ctx.ellipse(px * T, 17.5 * T, 6, 3, 0, 0, 7); ctx.fill(); } });
+ for (const o of objects) actors.push({ depth: o.y * T, draw: () => drawCharacter(ctx, o.x * T, o.y * T, { portrait: o.portrait, facing: o.facing || 'south' }) });
+ actors.push({ depth: state.y * T, draw: () => drawCharacter(ctx, state.x * T, state.y * T, { facing: state.facing, moving: hasMoved, walk }) });
+ actors.sort((a, b) => a.depth - b.depth).forEach(a => a.draw());
+ if (near && overlay.hidden) interactBubble(near.x * T, near.y * T - 70);
+ ctx.restore();
 }
 
 function showDex() {
@@ -1375,7 +1554,7 @@ function showBand() {
  if (mode === 'rhythm') return;
  const missing = Object.keys(INSTRUMENTS).filter(id => id !== state.instrument),
   clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
- panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p><h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
+ panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p>${state.found.length ? `<h4>Trovati per strada</h4><p>${Object.values(ROUTES).map(r => r.secret).filter(x => x && state.found.includes(x.id)).map(x => x.title).join(' · ')}</p>` : ''}<h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
   label: 'Musicodex · abilità',
   run: showDex
  }, {
@@ -1384,22 +1563,96 @@ function showBand() {
  }], 'LA NOSTRA BAND');
 }
 
+function senderName(m) {
+ return typeof m.from === 'number' ? PEOPLE[m.from][0] : m.from;
+}
+
+function avatar(m) {
+ return typeof m.from === 'number' ? `<span class="avatar" style="--px:${m.from % 4 * 100 / 3}%;--py:${Math.floor(m.from / 4) * 100 / 3}%"></span>` : `<span class="avatar letter">${m.from[0]}</span>`;
+}
+
+function unreadCount() {
+ return Object.values(state.msgs || {}).filter(v => !v.r).length;
+}
+
+let messagePlace = '',
+ msgClock = 0;
+
+function checkMessages() {
+ if (!state.introDone || state.stage === 'school' || messagePlace === lastPlace) return;
+ // Un messaggio alla volta: il prossimo arriva quando si cambia zona.
+ for (const m of newMessages(state).slice(0, 1)) {
+  messagePlace = lastPlace;
+  state.msgs[m.id] = { r: false, d: false };
+  save();
+  showAreaSign('✉ ' + senderName(m), m.text.length > 70 ? m.text.slice(0, 68) + '…' : m.text, 4200, true);
+ }
+}
+
+function questEvent(event) {
+ for (const m of questsFor(state, event)) {
+  state.msgs[m.id] = { r: false, d: true };
+  state.xp += m.xp || 0;
+  save();
+  updateJournal();
+  showAreaSign('Missione completata · ' + senderName(m), m.reply, 4600, true);
+ }
+}
+
+function phonePanel(title, body, back = openPhone) {
+ const p = panel(title, `<div class="phone-status"><span>${chapter(state).split(' · ')[0]}</span><span>${state.bandName || 'Band'}</span><span>▮▮▮ ▰</span></div>${body}<button class="phone-home" aria-label="Chiudi il telefono"></button>`, [], '');
+ p.classList.remove('dialogue');
+ p.classList.add('phone');
+ overlay.classList.add('clear');
+ p.querySelector('.phone-home').onclick = close;
+ p.querySelector('.phone-back')?.addEventListener('click', back);
+ return p;
+}
+
 function startMenu() {
  if (mode !== 'world' || !overlay.hidden || !state.introDone) return;
- const items = [
-  ['Obiettivo', () => panel('Obiettivo', `<p>${$('objective').textContent}</p><p class="fine">${chapter(state)} · ${state.passes.length} pass su 8 · ${fameTitle().toLowerCase()}</p>`, [{ label: 'Indietro', run: () => { close(); startMenu(); } }], 'MENU')],
-  ['Mappa', showMap],
-  ['Musicodex', showDex],
-  [state.bandName || 'La band', showBand],
-  ...(state.bicycle ? [[state.bike ? 'Scendi dalla bici' : 'Bici', () => { close(); toggleBike(); }]] : []),
-  ['Opzioni', settings],
-  ['Chiudi', close]
+ openPhone();
+}
+
+function openPhone() {
+ const unread = unreadCount();
+ const apps = [
+  ['map', 'Mappa', '⌖', showMap],
+  ['notes', 'Note', '✎', notesApp],
+  ['msg', 'Messaggi', '✉', messagesApp, unread],
+  ['dex', 'Musicodex', '♪', showDex],
+  ['band', 'Band', '★', showBand],
+  ['metro', 'Metro', 'M', () => state.transport.metro === 3 ? showMetro() : phonePanel('Metro', '<div class="app-head"><button class="phone-back">‹</button><b>Metro</b></div><p class="app-text">Il pass non c’è ancora. A Binario Nord, Arturo cerca qualcuno che lo aiuti.</p>')],
+  ...(state.bicycle ? [['bike', state.bike ? 'A piedi' : 'Bici', '⚙', () => { close(); toggleBike(); }]] : []),
+  ['save', 'Salva', '⤓', () => { save(); close(); toast('Partita salvata su questo dispositivo.'); }],
+  ['opt', 'Impostazioni', '☰', settings]
  ];
- const p = panel('', `<div class="start-list">${items.map((it, i) => `<button class="start-item" data-i="${i}">${it[0]}</button>`).join('')}</div>`, [], '');
- p.classList.add('start-menu');
- overlay.classList.add('clear');
- p.querySelectorAll('.start-item').forEach(b => b.onclick = () => items[+b.dataset.i][1]());
- p.querySelector('.start-item')?.focus();
+ const p = phonePanel('', `<div class="phone-clock"><b>${chapter(state).split(' · ')[1] || ''}</b><span>${state.passes.length} pass su 8</span></div><div class="apps">${apps.map((a, i) => `<button class="app app-${a[0]}" data-i="${i}"><span class="icon">${a[2]}${a[4] ? `<i class="badge">${a[4]}</i>` : ''}</span><small>${a[1]}</small></button>`).join('')}</div>`);
+ p.classList.add('phone-home-screen');
+ p.querySelectorAll('.app').forEach(b => b.onclick = () => apps[+b.dataset.i][3]());
+ p.querySelector('.app')?.focus();
+}
+
+function messagesApp() {
+ const got = MESSAGES.filter(m => state.msgs?.[m.id]).reverse();
+ const rows = got.length ? got.map(m => { const st = state.msgs[m.id]; return `<button class="thread" data-id="${m.id}">${avatar(m)}<span><b>${senderName(m)}</b><small>${m.quest ? (st.d ? '✓ Missione completata' : '◆ Missione in corso') : m.text.slice(0, 40) + '…'}</small></span>${st.r ? '' : '<i class="dot"></i>'}</button>`; }).join('') : '<p class="app-text">Nessun messaggio, per ora. Le persone che incontrate in viaggio vi scriveranno.</p>';
+ const p = phonePanel('', `<div class="app-head"><button class="phone-back">‹</button><b>Messaggi</b></div><div class="threads">${rows}</div>`);
+ p.querySelectorAll('.thread').forEach(b => b.onclick = () => conversation(b.dataset.id));
+ p.querySelector('.thread, .phone-back')?.focus();
+}
+
+function conversation(id) {
+ const m = MESSAGES.find(x => x.id === id),
+  st = state.msgs[id];
+ st.r = true;
+ save();
+ phonePanel('', `<div class="app-head"><button class="phone-back">‹</button>${avatar(m)}<b>${senderName(m)}</b></div><div class="bubbles"><p class="bubble in">${m.text}</p>${m.quest ? `<p class="bubble note">${st.d ? '✓' : '◆'} ${m.quest}</p>` : ''}${st.d && m.reply ? `<p class="bubble in">${m.reply}</p>` : ''}</div>`, messagesApp).querySelector('.phone-back').focus();
+}
+
+function notesApp() {
+ const quests = MESSAGES.filter(m => m.quest && state.msgs?.[m.id] && !state.msgs[m.id].d),
+  clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
+ phonePanel('', `<div class="app-head"><button class="phone-back">‹</button><b>Note</b></div><div class="notes"><h5>Adesso</h5><p>${$('objective').textContent}</p><h5>Missioni secondarie</h5>${quests.length ? `<ul>${quests.map(m => `<li><b>${senderName(m)}:</b> ${m.quest}</li>`).join('')}</ul>` : '<p>Nessuna in corso.</p>'}<h5>Il plettro delle Otto Strade · ${clues.length} / 8</h5>${clues.length ? `<ol>${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Ancora nessun indizio.</p>'}</div>`).querySelector('.phone-back').focus();
 }
 
 function settings() {
@@ -1497,7 +1750,7 @@ function rect(x, y, w, h, color) {
 
 function text(s, x, y, color = '#f4e8c8', size = 10, align = 'left') {
  ctx.fillStyle = color;
- ctx.font = `${size}px monospace`;
+ ctx.font = `700 ${size}px Nunito, sans-serif`;
  ctx.textAlign = align;
  ctx.fillText(s, Math.round(x), Math.round(y));
  ctx.textAlign = 'left';
@@ -1571,7 +1824,7 @@ function interactBubble(x, y) {
  ctx.fill();
  ctx.stroke();
  ctx.fillStyle = '#2a3b33';
- ctx.font = 'bold 15px Georgia, serif';
+ ctx.font = '600 15px Fredoka, sans-serif';
  ctx.textAlign = 'center';
  ctx.fillText('!', x, y - 7 + bob);
  ctx.textAlign = 'left';
@@ -1593,13 +1846,21 @@ function drawInterior() {
  rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
  for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
  for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
- text(room.entry.label, 24 * T, 7.45 * T, '#59745b', 15, 'center');
  const items = roomPlan(room.entry).items;
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
+ // Porta d’uscita nella parete in basso, con zerbino: si capisce senza scritte.
+ rect(10 * T, 29 * T - 6, 28 * T, 14, '#9c8a68');
+ rect(22.6 * T, 29 * T - 8, 2.8 * T, 22, '#3a2c20');
+ rect(22.75 * T, 29 * T - 6, 2.5 * T, 18, '#1c140e');
+ ctx.fillStyle = '#a4503d';
+ ctx.beginPath();
+ ctx.roundRect(22.8 * T, 27.7 * T, 2.4 * T, 1.05 * T, 5);
+ ctx.fill();
+ for (let i = 0; i < 5; i++) rect(23 * T + i * 11, 27.85 * T, 5, .75 * T, '#c9785e');
  const actors = items.filter(i => i[0] !== 7).map(([id, x, y, w, h]) => ({
   depth: y * T,
-  draw: () => drawSprite(ctx, 'interiors', Math.floor(id / 4), id % 4, x * T, y * T, w, h)
+  draw: () => id >= 16 ? drawSprite(ctx, 'interiors2', Math.floor((id - 16) / 4), (id - 16) % 4, x * T, y * T, w, h) : drawSprite(ctx, 'interiors', Math.floor(id / 4), id % 4, x * T, y * T, w, h)
  }));
  if (room.entry.kind === 'garage') actors.push({
   depth: 13 * T,
@@ -1637,13 +1898,12 @@ function drawInterior() {
  });
  actors.sort((a, b) => a.depth - b.depth).forEach(o => o.draw());
  if (near && overlay.hidden) interactBubble(near.x * T, near.y * T - (near.prop ? 34 : 70));
- rect(23 * T, 28 * T, 2 * T, 1.2 * T, '#e7c891');
- text('↓ USCITA', 24 * T, 27.8 * T, '#6d7959', 10, 'center');
  ctx.restore();
 }
 
 function drawWorld(ts) {
- if (area === 'interior') drawInterior();
+ if (area === 'metro') drawMetro(ts);
+ else if (area === 'interior') drawInterior();
  else {
   const cam = cameraNow();
   renderWorld(ctx, {
@@ -1679,6 +1939,7 @@ function drawRhythm() {
 }
 
 function canMove(x, y) {
+ if (area === 'metro') return x > 6.6 && x < 41.4 && y > 15.4 && y < 19.4;
  if (area === 'interior') return x > 10.5 && x < 37.5 && y > 10.8 && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
  return isWalkable(layout, x, y);
 }
@@ -1691,6 +1952,12 @@ function update(dt) {
  }
  hasMoved = false;
  if (!overlay.hidden || transitioning) return;
+ updateRide(dt);
+ msgClock += dt;
+ if (msgClock > 2) {
+  msgClock = 0;
+  checkMessages();
+ }
  portalCooldown = Math.max(0, portalCooldown - dt);
  let dx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0),
   dy = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
@@ -1749,9 +2016,9 @@ function update(dt) {
  automaticPassages();
  if (transitioning || !overlay.hidden) return;
  near = null;
- let best = 2.25;
+ let best = area === 'metro' ? 3.1 : 2.25;
  for (const o of objects) {
-  if (o.building || o.kind === 'exit' || o.kind === 'roadBack' || o.kind === 'roadEnd') continue;
+  if (o.building || o.kind === 'exit' || o.kind === 'roadBack' || o.kind === 'roadEnd' || (o.kind === 'secret' && state.found.includes(o.id))) continue;
   const dist = Math.hypot(o.x - state.x, o.y - state.y);
   if (dist < best) {
    best = dist;
@@ -1791,11 +2058,12 @@ document.addEventListener('keydown', e => {
   return;
  }
  if (!overlay.hidden) {
-  const menu = overlay.querySelector('.start-menu');
-  if (menu && (key === 'arrowdown' || key === 'arrowup' || key === 's' || key === 'w')) {
-   const list = [...menu.querySelectorAll('.start-item')],
-    i = list.indexOf(document.activeElement);
-   list[(i + (key === 'arrowdown' || key === 's' ? 1 : -1) + list.length) % list.length].focus();
+  const phone = overlay.querySelector('.phone');
+  if (phone && ['arrowdown', 'arrowup', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+   const list = [...phone.querySelectorAll('.app, .thread, .phone-back')],
+    i = Math.max(0, list.indexOf(document.activeElement)),
+    step = phone.querySelector('.app') ? ({ arrowdown: 3, s: 3, arrowup: -3, w: -3, arrowright: 1, d: 1, arrowleft: -1, a: -1 })[key] : ({ arrowdown: 1, s: 1, arrowup: -1, w: -1 })[key] || 0;
+   list[(i + step + list.length) % list.length]?.focus();
    return;
   }
   if (key === 'm' && overlay.querySelector('.map-panel')) close();
@@ -1910,6 +2178,13 @@ function fitCanvas() {
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
+loadExtras().then(keys => {
+ if (!keys.includes('title')) return;
+ const img = atlases.title;
+ const apply = () => document.body.style.setProperty('--title-art', `url(${img.src})`);
+ if (img.complete) apply();
+ else img.onload = apply;
+});
 setupTown();
 welcome();
 requestAnimationFrame(frame);
@@ -1980,6 +2255,10 @@ function showRoadEncounter(o) {
   label: 'Fermiamoci a provare',
   run: () => {
    rememberRoad();
+   questEvent({
+    type: 'roadPractice',
+    road: roadKey(road.from, road.to)
+   });
    songBrief(CITIES[road.to].type === 'music' ? road.to : CITIES[road.from].type === 'music' ? road.from : 1, 'practice');
   }
  }, {
@@ -2142,6 +2421,9 @@ function travelConnection(to, label) {
   setupTown();
   portalCooldown = 1;
   save();
+  if (label === 'Funivia') questEvent({
+   type: 'cable'
+  });
   toast(label + ' · ' + CITIES[to].name);
  });
 }
@@ -2243,6 +2525,8 @@ if (QA) {
   where: () => ({
    area,
    mode,
+   near: near?.label || null,
+   ride: ride ? { t: +ride.t.toFixed(1), duration: +ride.duration.toFixed(1) } : null,
    room: room?.entry?.label || null,
    road: road ? {
     ...road
