@@ -44,3 +44,8 @@ test('town roads never run under buildings and reach every door, gate, stage and
  const seg=(a,b,r)=>{for(let i=0;i<=60;i++){const x=a.x+(b.x-a.x)*i/60,y=a.y+(b.y-a.y)*i/60;if(x>r.x-.4&&x<r.x+r.w+.4&&y>r.y-.4&&y<r.y+r.h-.1)return true;}return false;};
  for(let id=0;id<12;id++){const L=w.townLayout(id);for(const p of L.paths)for(let i=1;i<p.length;i++)for(const b of L.buildings)assert.equal(seg(p[i-1],p[i],b),false,`${id} ${b.label}`);
   const ends=L.paths.map(p=>p.at(-1));for(const t of [...L.gates,...L.objects.filter(o=>o.building||o.kind==='stage'||['metro','cable','ferry','bridge'].includes(o.kind))])assert.ok(ends.some(e=>Math.hypot(e.x-t.x,e.y-t.y)<1.2),`${id} ${t.label}`);}});
+test('cities have blocks and passers-by, villages do not; every door stays reachable',async()=>{const w=await import('../dist/world.js');const {findPath}=await import('../dist/core.js');
+ for(let id=0;id<12;id++){const L=w.townLayout(id);const blocks=L.buildings.filter(b=>b.kind==='scenery'&&b.city!==undefined).length,pb=L.objects.filter(o=>o.kind==='passerby').length;
+  if(w.TOWN_SIZE[id]==='city'){assert.ok(blocks>=3,`${id} isolati`);assert.ok(pb>=1,`${id} passanti`);}else{assert.equal(blocks,0);assert.equal(pb,0);}
+  const can=(x,y)=>w.isWalkable(L,x,y),start={x:Math.round(L.plaza[0]),y:Math.round(L.plaza[1])};
+  for(const o of L.objects.filter(o=>o.building))assert.ok(findPath(start,{x:Math.round(o.x),y:Math.round(o.y+.4)},can,48,34).length>0||Math.hypot(start.x-o.x,start.y-o.y)<1,`${id} porta ${o.label}`);}});

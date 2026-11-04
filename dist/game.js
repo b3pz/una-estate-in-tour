@@ -689,6 +689,13 @@ function interact() {
   }], room ? room.entry.label.toUpperCase() + ' · ' + CITIES[state.city].name.toUpperCase() : '');
   return;
  }
+ if (o.kind === 'passerby') {
+  panel(o.label, `<p>${o.line}</p>`, [{
+   label: 'Buona giornata',
+   run: close
+  }], CITIES[state.city].name.toUpperCase());
+  return;
+ }
  if (o.kind === 'passenger') {
   const text = o.stranger || o.person.lines[o.line % o.person.lines.length](state, ride?.to ?? state.city);
   o.line++;
@@ -1919,7 +1926,7 @@ function drawWorld(ts) {
    H
   });
   if (near && overlay.hidden) {
-   const person = ['npc', 'wanderer', 'resident', 'rivalPerson'].includes(near.kind);
+   const person = ['npc', 'wanderer', 'resident', 'rivalPerson', 'passerby'].includes(near.kind);
    ctx.save();
    ctx.translate(-cam.x, -cam.y);
    interactBubble(near.x * T, near.y * T - (person ? 70 : 46));
