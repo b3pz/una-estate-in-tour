@@ -149,3 +149,35 @@ export const MESSAGES = [
 ];
 export function newMessages(s) { return MESSAGES.filter(m => !s.msgs?.[m.id] && m.when(s)); }
 export function questsFor(s, event) { return MESSAGES.filter(m => m.quest && s.msgs?.[m.id] && !s.msgs[m.id].d && m.done(event, s)); }
+
+// Passeggeri della metro: persone già incontrate che viaggiano anche loro.
+// Ogni battuta è una funzione (stato, destinazione) → testo; city indica dove le si è conosciute.
+const dest = to => ['', 'Rivafosca', 'Officina', 'Binario Nord', 'Bellavista', 'Grooveto', '', '', 'Porto del Sol', '', 'Notturnia', 'Settembre'][to] || 'la prossima fermata';
+export const PASSENGERS = [
+ { who: 15, city: 0, lines: [(s, to) => `«Registro il rumore delle rotaie. Senti? Ta-tum, ta-tum: è uno shuffle perfetto. Scendi a ${dest(to)}?»`, () => '«Ho finito un’altra cassetta. Metà sono rumori di metro, metà sono voi.»'] },
+ { who: 12, city: 1, lines: [() => '«Odio la metro: la bici non entra mai dritta. Però almeno qui non si fora.»', (s) => s.passes.length >= 4 ? '«Vi ho sentiti in tre città diverse. Ogni volta suonavate un po’ meglio.»' : '«Avete già un nome per la band? No? Ci pensate in metro, è il posto giusto.»'] },
+ { who: 11, city: 2, lines: [(s, to) => `«Sto andando a ${dest(to)} per un’intervista. Se avete due minuti, dopo vi registro!»`, () => '«La radio del campeggio ha tre ascoltatori fissi. Da quando parlo di voi, sono dodici.»'] },
+ { who: 13, city: 3, lines: [() => '«Sentite gli annunci? Sono quelli che avete rimesso in ordine voi. Ogni volta mi viene da sorridere.»', () => '«Quando facevo il ferroviere, la band di Riva prendeva l’ultimo treno della sera con gli strumenti in braccio. Proprio come voi.»'] },
+ { who: 3, city: 1, lines: [() => '«Vado a trovare mia sorella. Lei ascolta solo opera, ma le farò sentire un blues lo stesso.»'] },
+ { who: 4, city: 2, lines: [() => '«Porto un amplificatore a riparare. No, non me lo tengo in braccio per affetto. Be’, un po’ sì.»'] },
+ { who: 5, city: 4, lines: [() => '«Sto stampando i manifesti per la riapertura del teatro. Ve ne lascio uno? Appendetelo in garage.»'] },
+ { who: 6, city: 5, lines: [() => '«In metro conto le fermate come battute. Quattro fermate, una frase. Prova anche tu.»'] },
+ { who: 8, city: 8, lines: [() => '«Le porte si chiudono sempre in levare. Ascolta: pss… tac. Ecco, l’hai sentito?»'] },
+ { who: 10, city: 10, lines: [() => '«La metro di notte è il mio posto preferito per scrivere. Nessuno parla, e tutto suona.»'] },
+ { who: 1, city: 0, lines: [(s) => s.homeShow ? '«Ancora non ci credo che abbiamo suonato insieme in piazza. Elia lo racconta a tutti.»' : '«Sto andando a lezione da Tito. Non dirlo a Elia, pensa che io sia al mare.»'] },
+ { who: 2, city: 0, lines: [() => '«Ho le bacchette nello zaino. Se il vagone frena, faccio un fill. Giuro che non lo faccio. Forse.»'] }
+];
+export const STRANGER_LINES = [
+ '«Siete quelli della radio? Mia figlia vi ascolta tutti i giorni!»',
+ '«Scusate, questo è il treno per il mare? Ah, ci passa. Perfetto.»',
+ '«Una volta suonavo anche io. Poi ho venduto la chitarra. Errore enorme: non fatelo mai.»',
+ '«Che caldo, eh? Meno male che in galleria si respira.»',
+ '«Andate al festival? Ci vado anche io, ho già il biglietto da maggio.»',
+ '«Mio nonno diceva che i viaggi in metro sono come le pause in musica: servono per sentire meglio quello che viene dopo.»'
+];
+export function metroPassengers(s, to, seed) {
+ const known = PASSENGERS.filter(p => s.visited.includes(p.city));
+ const pick = [];
+ for (let i = 0; i < known.length && pick.length < 3; i++) pick.push(known[(seed + i * 5) % known.length]);
+ return [...new Set(pick)];
+}

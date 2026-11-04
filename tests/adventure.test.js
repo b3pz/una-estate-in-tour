@@ -33,3 +33,6 @@ test('phone messages arrive with the story and side quests complete on game even
  const s=initialState();assert.equal(newMessages(s).length,0);s.stage='tour';assert.ok(newMessages(s).some(m=>m.id==='mamma-partenza'));
  s.passes=[1,2];s.msgs={'elia-rivincita':{r:true,d:false}};assert.equal(questsFor(s,{type:'song',city:2,won:true,difficulty:'normal',score:90}).length,0);assert.equal(questsFor(s,{type:'song',city:2,won:true,difficulty:'expert',score:75})[0].id,'elia-rivincita');
  assert.deepEqual(validateState(JSON.parse(JSON.stringify(s))).msgs,s.msgs);});
+test('metro passengers are people already met, with lines for any destination',async()=>{const {PASSENGERS,metroPassengers}=await import('../dist/adventure.js');
+ const s=initialState();s.visited=[0,1,2,3];for(let seed=0;seed<20;seed++){const ps=metroPassengers(s,1,seed);assert.ok(ps.length>=1&&ps.length<=3);for(const p of ps){assert.ok(s.visited.includes(p.city));for(const line of p.lines)assert.match(line(s,1),/«.+»/);}}
+ assert.ok(PASSENGERS.every(p=>p.lines.length));});

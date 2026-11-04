@@ -21,6 +21,8 @@ import {
  MESSAGES,
  newMessages,
  questsFor,
+ metroPassengers,
+ STRANGER_LINES,
  chapter,
  clueText,
  clueIndex,
@@ -132,7 +134,7 @@ function save() {
   label: room.entry.label
  } : null;
  try {
-  localStorage.setItem(SAVE, JSON.stringify(state));
+  localStorage.setItem(SAVE, JSON.stringify(area === 'metro' && ride ? { ...state, ...ride.dest, facing: 'south', scene: null } : state));
   $('saveLabel').textContent = 'Partita salvata su questo dispositivo';
  } catch {
   $('saveLabel').textContent = 'Salvataggio non disponibile: esporta dal menu';
@@ -283,7 +285,8 @@ function updateJournal() {
  const placeKey = area + ':' + state.city + ':' + (road ? road.from + '-' + road.to : '') + ':' + (room?.entry.label || '');
  if (placeKey !== lastPlace && state.introDone) {
   lastPlace = placeKey;
-  showAreaSign(area === 'road' ? CITIES[road.from].name + ' → ' + CITIES[road.to].name : area === 'interior' ? room.entry.label : c.name, area === 'road' ? 'Sentiero' : area === 'interior' ? c.name : $('areaSubtitle').textContent || c.genre, 2600);
+  if (area === 'metro') showAreaSign('Metro delle Otto Strade', 'In viaggio verso ' + CITIES[ride?.to ?? state.city].name, 2600);
+  else showAreaSign(area === 'road' ? CITIES[road.from].name + ' → ' + CITIES[road.to].name : area === 'interior' ? room.entry.label : c.name, area === 'road' ? 'Sentiero' : area === 'interior' ? c.name : $('areaSubtitle').textContent || c.genre, 2600);
  }
  $('instrumentTag').textContent = `${INSTRUMENTS[state.instrument].name.toUpperCase()} · ${state.bike?'IN BICICLETTA':state.bicycle?'BICI SBLOCCATA · B':'A PIEDI'} · ${fameTitle()}`;
 }
@@ -684,6 +687,15 @@ function interact() {
    label: 'Torna a guardarti intorno',
    run: close
   }], room ? room.entry.label.toUpperCase() + ' · ' + CITIES[state.city].name.toUpperCase() : '');
+  return;
+ }
+ if (o.kind === 'passenger') {
+  const text = o.stranger || o.person.lines[o.line % o.person.lines.length](state, ride?.to ?? state.city);
+  o.line++;
+  panel(o.label, (typeof o.portrait === 'number' ? portraitCard(o.portrait) : '') + `<p>${text}</p>`, [{
+   label: 'Buon viaggio',
+   run: close
+  }], 'IN METRO');
   return;
  }
  if (o.kind === 'secret') {
@@ -1355,6 +1367,8 @@ function atMetro() {
  return area === 'town' && townLayout(state.city).objects.some(o => o.kind === 'metro' && Math.hypot(o.x - state.x, o.y - state.y) < 2.6);
 }
 
+let ride = null;
+
 function travelMetro(to) {
  const reason = metroReason(state, to) || (!atMetro() ? 'Raggiungi l’ingresso della metro in città.' : null);
  if (reason) {
@@ -1363,26 +1377,132 @@ function travelMetro(to) {
  }
  const from = state.city;
  close();
+ fade(() => startRide(from, to));
+}
+
+function startRide(from, to) {
+ const destLayout = townLayout(to),
+  pos = metroSpawn(destLayout).find(p => isWalkable(destLayout, p.x, p.y)) || { x: 24, y: 18 },
+  [ax, ay] = MAP_POINTS[from],
+  [bx, by] = MAP_POINTS[to],
+  seed = Math.floor(Math.random() * 97);
+ // Da 8 a 15 secondi, secondo la distanza sulla mappa.
+ const duration = Math.max(8, Math.min(15, 8 + Math.hypot(bx - ax, by - ay) / 9));
+ state.city = to;
+ if (!state.visited.includes(to)) state.visited.push(to);
+ ride = { from, to, t: 0, duration, dest: { x: pos.x, y: pos.y }, announced: false, seed };
+ area = 'metro';
+ room = null;
+ road = null;
+ path = [];
+ tapObject = null;
+ layout = { width: WIDTH, height: HEIGHT, theme: 'metro', buildings: [], waters: [], gates: [], paths: [], objects: [] };
+ const seats = [[9, 14.6, 'south'], [16, 14.6, 'south'], [21, 19.9, 'north'], [29, 14.6, 'south'], [33, 19.9, 'north'], [38, 14.6, 'south']];
+ objects = metroPassengers(state, to, seed).map((p, i) => ({
+  x: seats[(seed + i * 2) % seats.length][0],
+  y: seats[(seed + i * 2) % seats.length][1],
+  facing: seats[(seed + i * 2) % seats.length][2],
+  kind: 'passenger',
+  label: PEOPLE[p.who][0],
+  portrait: p.who,
+  person: p,
+  line: seed % p.lines.length
+ }));
+ if (hasAtlas('people2'))
+  for (let i = 0; i < 2; i++) {
+   const seat = [[12, 18.2], [27, 16.6]][i];
+   objects.push({ x: seat[0], y: seat[1], facing: 'south', kind: 'passenger', label: 'Una passeggera', portrait: 'x' + (8 + (seed + i * 3) % 8), stranger: STRANGER_LINES[(seed + i * 2) % STRANGER_LINES.length] });
+  }
+ solids = [];
+ Object.assign(state, { x: 24, y: 17.2, facing: 'south', bike: false });
+ portalCooldown = 1;
+ updateJournal();
+ save();
+ questEvent({ type: 'metro', to });
+}
+
+function updateRide(dt) {
+ if (!ride || area !== 'metro') return;
+ ride.t += dt;
+ if (!ride.announced && ride.t > ride.duration - 3) {
+  ride.announced = true;
+  showAreaSign('Prossima fermata', CITIES[ride.to].name + (ride.to === 9 ? ' · coincidenza traghetto' : ''), 2800, true);
+  try {
+   audio.init().then(() => [0, 4, 7].forEach((st, i) => audio.tone(523.25 * Math.pow(2, st / 12), audio.ctx.currentTime + i * .18, .25, 'sine', .08)));
+  } catch {}
+ }
+ if (ride.t >= ride.duration) arriveRide();
+}
+
+function arriveRide() {
+ const r = ride;
+ ride = null;
  fade(() => {
-  state.city = to;
-  const dest = townLayout(to),
-   pos = metroSpawn(dest).find(p => isWalkable(dest, p.x, p.y));
-  Object.assign(state, pos || {
-   x: 24,
-   y: 18
-  }, {
-   facing: 'south',
-   bike: false
-  });
-  portalCooldown = 1;
+  Object.assign(state, r.dest, { facing: 'south' });
   setupTown();
+  portalCooldown = 1;
   save();
-  questEvent({
-   type: 'metro',
-   to
-  });
-  toast('Metro: ' + CITIES[from].name + ' → ' + CITIES[to].name + (to === 9 ? ' · coincidenza traghetto' : ''));
  });
+}
+
+function drawMetro(ts) {
+ const cam = cameraNow(),
+  speed = ride ? 380 : 0,
+  shift = ((ride?.t || 0) * speed) % (8 * T),
+  sway = Math.sin(ts / 260) * 1.2;
+ rect(0, 0, W, H, '#0d1114');
+ ctx.save();
+ ctx.translate(-cam.x, -cam.y + sway);
+ // galleria che scorre fuori dal vagone
+ for (let x = -40; x < 60; x += 8) {
+  rect((x * T) - shift, 9 * T, 3 * T, 4, '#f2c86c33');
+  rect((x * T) - shift + T, 23.6 * T, 2 * T, 4, '#9fd3d022');
+ }
+ // cassa del vagone
+ const x0 = 6 * T, x1 = 42 * T;
+ ctx.fillStyle = '#c9cdc4';
+ ctx.beginPath();
+ ctx.roundRect(x0 - 8, 12.6 * T, x1 - x0 + 16, 9 * T, 18);
+ ctx.fill();
+ rect(x0, 13 * T, x1 - x0, 1.2 * T, '#3e6f63');
+ // finestrini con la galleria in movimento
+ for (let i = 0; i < 9; i++) {
+  const wx = x0 + 24 + i * 4 * T;
+  if (i === 2 || i === 6) continue;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(wx, 13.15 * T, 3 * T, .9 * T, 6);
+  ctx.clip();
+  rect(wx, 13.15 * T, 3 * T, .9 * T, '#1d272b');
+  for (let k = -2; k < 4; k++) rect(wx + ((k * 50 - shift * 1.6) % (3 * T) + 3 * T) % (3 * T), 13.35 * T, 18, 3, '#f2d28caa');
+  ctx.restore();
+ }
+ // porte
+ for (const dx of [14, 34]) {
+  rect(dx * T - T, 13 * T, 2 * T, 1.2 * T, '#2c4c43');
+  rect(dx * T - 2, 13 * T, 4, 1.2 * T, '#9fb39a');
+ }
+ // pavimento e corsia
+ rect(x0, 14.2 * T, x1 - x0, 7 * T, '#b8b39f');
+ rect(x0, 16.2 * T, x1 - x0, 2.6 * T, '#a8a28c');
+ for (let x = 6; x < 42; x += 2) rect(x * T, 17.4 * T, T, 3, '#9a947f');
+ // sedili
+ for (let x = 7; x < 41; x += 1.6) {
+  ctx.fillStyle = '#c25b45';
+  ctx.beginPath();
+  ctx.roundRect(x * T, 14.25 * T, 1.3 * T, .8 * T, 6);
+  ctx.roundRect(x * T, 19.75 * T, 1.3 * T, .8 * T, 6);
+  ctx.fill();
+ }
+ rect(x0, 20.6 * T, x1 - x0, .6 * T, '#3e6f63');
+ // pali e maniglie
+ const actors = [];
+ for (const px of [11, 19, 24, 31, 37]) actors.push({ depth: 17.4 * T, draw: () => { rect(px * T - 2, 15.4 * T, 4, 2.1 * T, '#e3e7e0'); ctx.fillStyle = '#7f8c86'; ctx.beginPath(); ctx.ellipse(px * T, 17.5 * T, 6, 3, 0, 0, 7); ctx.fill(); } });
+ for (const o of objects) actors.push({ depth: o.y * T, draw: () => drawCharacter(ctx, o.x * T, o.y * T, { portrait: o.portrait, facing: o.facing || 'south' }) });
+ actors.push({ depth: state.y * T, draw: () => drawCharacter(ctx, state.x * T, state.y * T, { facing: state.facing, moving: hasMoved, walk }) });
+ actors.sort((a, b) => a.depth - b.depth).forEach(a => a.draw());
+ if (near && overlay.hidden) interactBubble(near.x * T, near.y * T - 70);
+ ctx.restore();
 }
 
 function showDex() {
@@ -1782,7 +1902,8 @@ function drawInterior() {
 }
 
 function drawWorld(ts) {
- if (area === 'interior') drawInterior();
+ if (area === 'metro') drawMetro(ts);
+ else if (area === 'interior') drawInterior();
  else {
   const cam = cameraNow();
   renderWorld(ctx, {
@@ -1818,6 +1939,7 @@ function drawRhythm() {
 }
 
 function canMove(x, y) {
+ if (area === 'metro') return x > 6.6 && x < 41.4 && y > 15.4 && y < 19.4;
  if (area === 'interior') return x > 10.5 && x < 37.5 && y > 10.8 && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
  return isWalkable(layout, x, y);
 }
@@ -1830,6 +1952,7 @@ function update(dt) {
  }
  hasMoved = false;
  if (!overlay.hidden || transitioning) return;
+ updateRide(dt);
  msgClock += dt;
  if (msgClock > 2) {
   msgClock = 0;
@@ -1893,7 +2016,7 @@ function update(dt) {
  automaticPassages();
  if (transitioning || !overlay.hidden) return;
  near = null;
- let best = 2.25;
+ let best = area === 'metro' ? 3.1 : 2.25;
  for (const o of objects) {
   if (o.building || o.kind === 'exit' || o.kind === 'roadBack' || o.kind === 'roadEnd' || (o.kind === 'secret' && state.found.includes(o.id))) continue;
   const dist = Math.hypot(o.x - state.x, o.y - state.y);
@@ -2402,6 +2525,8 @@ if (QA) {
   where: () => ({
    area,
    mode,
+   near: near?.label || null,
+   ride: ride ? { t: +ride.t.toFixed(1), duration: +ride.duration.toFixed(1) } : null,
    room: room?.entry?.label || null,
    road: road ? {
     ...road
