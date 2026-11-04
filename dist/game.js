@@ -29,6 +29,9 @@ import {
  mysteryEnding
 } from './adventure.js';
 import {
+ ROUTES
+} from './routes.js';
+import {
  openPuzzle,
  PUZZLE_INFO
 } from './puzzles.js';
@@ -286,7 +289,7 @@ function updateJournal() {
 }
 
 function welcome() {
- const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.6</p>`, [...(saved ? [{
+ const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.7</p>`, [...(saved ? [{
   label: 'Continua',
   run: () => {
    state = saved;
@@ -681,6 +684,18 @@ function interact() {
    label: 'Torna a guardarti intorno',
    run: close
   }], room ? room.entry.label.toUpperCase() + ' · ' + CITIES[state.city].name.toUpperCase() : '');
+  return;
+ }
+ if (o.kind === 'secret') {
+  if (state.found.includes(o.id)) return;
+  state.found.push(o.id);
+  state.xp += o.secret.xp || 0;
+  save();
+  updateJournal();
+  panel(o.secret.title, `<p>${o.secret.text}</p><p class="fine">Trovato · finisce nella Band, tra i ricordi della strada.</p>`, [{
+   label: 'Nello zaino',
+   run: close
+  }], 'UN SEGRETO DEL SENTIERO');
   return;
  }
  if (o.kind === 'roomPerson') {
@@ -1419,7 +1434,7 @@ function showBand() {
  if (mode === 'rhythm') return;
  const missing = Object.keys(INSTRUMENTS).filter(id => id !== state.instrument),
   clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
- panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p><h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
+ panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p>${state.found.length ? `<h4>Trovati per strada</h4><p>${Object.values(ROUTES).map(r => r.secret).filter(x => x && state.found.includes(x.id)).map(x => x.title).join(' · ')}</p>` : ''}<h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
   label: 'Musicodex · abilità',
   run: showDex
  }, {
@@ -1880,7 +1895,7 @@ function update(dt) {
  near = null;
  let best = 2.25;
  for (const o of objects) {
-  if (o.building || o.kind === 'exit' || o.kind === 'roadBack' || o.kind === 'roadEnd') continue;
+  if (o.building || o.kind === 'exit' || o.kind === 'roadBack' || o.kind === 'roadEnd' || (o.kind === 'secret' && state.found.includes(o.id))) continue;
   const dist = Math.hypot(o.x - state.x, o.y - state.y);
   if (dist < best) {
    best = dist;

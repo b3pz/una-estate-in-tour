@@ -215,6 +215,7 @@ export function initialState(instrument = 'guitar') {
   bandName: null,
   rivalsJoined: false,
   msgs: {},
+  found: [],
   bicycle: false,
   bike: false,
   boat: false,
@@ -260,6 +261,7 @@ export function validateState(s) {
  for (const k of ['bicycle', 'bike', 'boat', 'homeShow', 'finished', 'rivalsJoined']) out[k] = s[k] === true;
  out.mystery = Number.isInteger(s.mystery) ? Math.max(0, Math.min(2, s.mystery)) : out.stories.includes(6) ? 1 : 0;
  if (out.mystery && !out.stories.includes(6)) out.stories.push(6);
+ out.found = Array.isArray(s.found) ? [...new Set(s.found.filter(x => typeof x === 'string' && /^[a-z-]{3,40}$/.test(x)))] : [];
  out.msgs = {};
  if (s.msgs && typeof s.msgs === 'object')
   for (const [k, v] of Object.entries(s.msgs))

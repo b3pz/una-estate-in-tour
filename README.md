@@ -64,6 +64,12 @@ Ogni città ha anche un brano proprio: giro armonico e pattern di chitarra, bass
 - Salvataggio locale automatico (anche su sentieri e interni), esportazione e importazione JSON.
 - Modalità QA per lo sviluppo: `?qa=1` (vedi sotto).
 
+## Telefono, messaggi e percorsi (0.7)
+
+- Il mondo non ha scritte: porte, uscite, trasporti e palchi si riconoscono dal disegno. L’unica interfaccia è il telefono (Invio, Esc o START) con le app Mappa, Note, Messaggi, Musicodex, Band, Metro, Bici, Salva e Impostazioni.
+- Le persone conosciute in viaggio scrivono al telefono quando la storia lo permette. Alcuni messaggi aprono missioni secondarie (una sfida di Elia in Virtuoso, una foto per la radio di Emma, la funivia per Sami…) che si completano giocando e danno una ricompensa.
+- I sentieri Borgo → Rivafosca, Rivafosca → Officina e Officina → Binario Nord sono disegnati a mano in `dist/routes.js`: curve, bivi, radure, erba alta, bosco fitto ai lati e un segreto da trovare. Gli altri sentieri usano ancora il tracciato semplice e si possono aggiungere allo stesso file.
+
 ## Sprite aggiuntivi
 
 Bici, personaggi nelle quattro direzioni, nuovi abitanti, palchi, ingressi dei trasporti, arredi extra e sfondi dei concerti si aggiungono senza toccare il codice: le specifiche e i prompt sono in [docs/SPRITE_PER_CHATGPT.md](docs/SPRITE_PER_CHATGPT.md). Si salvano i file in `dist/assets/extra/` e si lancia `npm run assets`, che li controlla e aggiorna il manifest letto dal gioco. Finché un file manca resta il disegno di riserva.

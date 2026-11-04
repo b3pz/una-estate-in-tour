@@ -1,3 +1,4 @@
+import { ROUTES, routeKey as rKey, routeWalkable, pathDistance, inRect } from './routes.js';
 import {
  METRO_STOPS
 } from './progress.js';
@@ -111,7 +112,7 @@ export function roadLayout(from, to) {
   side: OPPOSITE[b.side],
   label: CITIES[to].name
  };
- return {
+ return designedRoad({
   width: WIDTH,
   height: HEIGHT,
   theme: ([from, to].includes(9) && [from, to].includes(10)) ? 'seaBridge' : (from === 7 || to === 7) ? 'mountain' : ([8, 9].includes(from) || [8, 9].includes(to)) ? 'port' : (from === 2 || to === 2) ? 'industrial' : (from === 1 || to === 1) ? 'river' : (from === 10 || to === 10) ? 'night' : 'route',
@@ -147,7 +148,21 @@ export function roadLayout(from, to) {
    ...pointOnSide(start.side, a.lane, 3.3),
    facing: a.side
   }
- };
+ });
+}
+
+// Applica un percorso disegnato a mano, se esiste per questa strada.
+function designedRoad(layout) {
+ const route = ROUTES[rKey(layout.from, layout.to)];
+ if (!route) return layout;
+ layout.route = route;
+ layout.paths = route.paths;
+ const wand = layout.objects.find(o => o.kind === 'wanderer'),
+  sign = layout.objects.find(o => o.kind === 'sign');
+ if (wand && route.wanderer) Object.assign(wand, route.wanderer);
+ if (sign && route.sign) Object.assign(sign, route.sign);
+ if (route.secret) layout.objects.push({ ...route.secret, kind: 'secret', secret: route.secret });
+ return layout;
 }
 const b = (x, y, w, h, label, kind = 'lore', style = 'cottage') => ({
  x,
@@ -413,6 +428,7 @@ export function townLayout(id) {
 export function isWalkable(layout, x, y) {
  if (layout.theme === 'seaBridge' && Math.abs(x - 24) > 1.6) return false;
  if (x < 1 || x > WIDTH - 1 || y < 1 || y > HEIGHT - 1) return false;
+ if (layout.route && !routeWalkable(layout.route, x, y)) return false;
  const sb = stageBox(layout);
  if (sb && x > sb.x0 && x < sb.x1 && y > sb.y0 && y < sb.y1) return false;
  for (const b of layout.buildings)
@@ -929,6 +945,36 @@ export function bubble(ctx, x, y, time = 0) {
  ctx.textAlign = 'left';
 }
 
+function tallGrass(ctx, x, y, time, seed) {
+ const sway = Math.sin(time / 600 + seed) * 1.5;
+ ctx.strokeStyle = '#3f7a3c';
+ ctx.lineWidth = 2;
+ ctx.beginPath();
+ for (const dx of [-5, 0, 5]) {
+  ctx.moveTo(x + dx, y + 4);
+  ctx.quadraticCurveTo(x + dx + sway, y - 4, x + dx + sway * 2 + (dx / 3), y - 10);
+ }
+ ctx.stroke();
+ ctx.strokeStyle = '#6aa65a';
+ ctx.lineWidth = 1.2;
+ ctx.beginPath();
+ ctx.moveTo(x - 2, y + 4);
+ ctx.quadraticCurveTo(x - 2 + sway, y - 3, x + sway, y - 8);
+ ctx.stroke();
+}
+
+function sparkle(ctx, x, y, time) {
+ const a = .5 + Math.sin(time / 250) * .5;
+ ctx.fillStyle = `rgba(255,248,214,${.35 + a * .6})`;
+ ctx.beginPath();
+ for (let i = 0; i < 8; i++) {
+  const r = i % 2 ? 2.5 : 8 + a * 3, ang = i * Math.PI / 4;
+  ctx.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r);
+ }
+ ctx.closePath();
+ ctx.fill();
+}
+
 function waterArt(ctx, w, time) {
  rounded(ctx, w.x * TILE, w.y * TILE, w.w * TILE, w.h * TILE, 26, '#ddceaa');
  rounded(ctx, (w.x + .3) * TILE, (w.y + .2) * TILE, (w.w - .6) * TILE, (w.h - .4) * TILE, 23, '#7eb2b0');
@@ -1186,7 +1232,7 @@ export function renderWorld(ctx, {
   if ((layout.from !== undefined && layout.theme === 'river' && x > 6.5 && x < 14.5) || layout.buildings.some(b => x > b.x - 1 && x < b.x + b.w + 1 && y > b.y - 1 && y < b.y + b.h + 2) || layout.waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) || layout.paths.some(path => path.some(pt => Math.hypot(pt.x - x, pt.y - y) < 3))) continue;
   drawSprite(ctx, 'towns', 3, 2, x * TILE, y * TILE, 35, 27);
  }
- if (layout.from !== undefined && layout.theme !== 'seaBridge') {
+ if (layout.from !== undefined && layout.theme !== 'seaBridge' && !layout.route) {
   for (let i = 0; i < 18; i++) {
    const xx = (4 + i * 2.3) * TILE,
     yy = (i % 2 ? 8 : 28) * TILE;
@@ -1217,7 +1263,25 @@ export function renderWorld(ctx, {
   depth: layout.stage.y * TILE,
   draw: () => drawStage(ctx, layout.stage.x * TILE, layout.stage.y * TILE, state.city === 0 ? 'Piazza delle Cicale' : CITIES[state.city].genre, layout.theme === 'festival', layout.theme === 'festival' ? FESTIVAL_STAGE_SCALE : STAGE_SCALE)
  });
- for (let i = 0; i < (layout.theme === 'seaBridge' ? 0 : 58); i++) {
+ if (layout.route) {
+  const R = layout.route;
+  for (let gy = 0; gy < HEIGHT + 2; gy += 2.1)
+   for (let gx = 0; gx < WIDTH + 1; gx += 2.3) {
+    const x = gx + ((Math.floor(gy / 2.1) % 2) ? 1.15 : 0) + Math.sin(gx * 7.1 + gy * 3.3) * .35,
+     y = gy + Math.cos(gx * 5.3 + gy) * .3;
+    if (pathDistance(R, x, y) < 2.7 || R.clearings.some(r => inRect(r, x, y, 1.6))) continue;
+    if (layout.theme === 'river' && x > 6.5 && x < 14.5) continue;
+    if (layout.gates.some(g => Math.hypot(g.x - x, g.y - y) < 3)) continue;
+    actors.push({
+     depth: y * TILE,
+     draw: () => drawTree(ctx, x * TILE, y * TILE, p, Math.floor(x * 13 + y * 7))
+    });
+   }
+  for (const g of R.grass || [])
+   for (let yy = g.y; yy < g.y + g.h; yy += .55)
+    for (let xx = g.x; xx < g.x + g.w; xx += .5) tallGrass(ctx, xx * TILE, yy * TILE, time, xx + yy);
+ }
+ for (let i = 0; i < (layout.theme === 'seaBridge' || layout.route ? 0 : 58); i++) {
   const x = (2 + (i * 7.37) % 44),
    y = (2 + (i * 5.19) % 30);
   if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 3)) continue;
@@ -1239,6 +1303,11 @@ export function renderWorld(ctx, {
    draw: () => drawTree(ctx, x * TILE, y * TILE, p, i, layout.theme === 'island')
   });
  }
+ for (const o of layout.objects)
+  if (o.kind === 'secret' && !(state.found || []).includes(o.id)) actors.push({
+   depth: o.y * TILE,
+   draw: () => sparkle(ctx, o.x * TILE, o.y * TILE - 6, time)
+  });
  for (const o of layout.objects)
   if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) actors.push({
    depth: o.y * TILE,
