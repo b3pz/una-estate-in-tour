@@ -23,9 +23,9 @@ Il gioco carica i nuovi file **da solo**: basta salvarli nella cartella indicata
 
 - **Stile:** illustrazione dipinta morbida, colori caldi estivi, contorno scuro sottile, luce dall’alto a sinistra. Identico alle tavole di riferimento.
 - **Tavole (atlas):** PNG **1536 × 1536** con **sfondo trasparente**, divise in una griglia **4 × 4** di celle da 384 × 384.
-- **Una figura per cella**, centrata in orizzontale, con **i piedi (o la base) sul bordo inferiore della cella** e almeno 20 px di margine. Nessuna figura deve sconfinare nella cella vicina.
+- **Una figura per cella**, centrata in orizzontale, con **piedi, ruote o base nella parte bassa della cella**, lasciando **circa 20 px di margine su tutti i lati, anche sotto**. Il gioco ritaglia da solo lo spazio trasparente e appoggia il punto più basso della figura a terra, quindi il margine non la fa galleggiare. Nessuna figura deve sconfinare nella cella vicina.
 - **Scala costante:** in tutte le celle un personaggio adulto occupa circa l’80% dell’altezza della cella; i ragazzi circa il 70%.
-- Niente testo, niente ombre portate sul pavimento, niente sfondi o cornici.
+- Niente testo, niente ombre portate sul pavimento, niente sfondi o cornici. Unica eccezione: la «M» dell’insegna della metro, che è un simbolo grafico e va mantenuta.
 - Vista dall’alto inclinata (come i giochi di ruolo classici): si vedono testa e fronte del corpo.
 
 La posizione nella griglia si indica come **riga, colonna**, partendo da 0 in alto a sinistra.
@@ -92,6 +92,9 @@ Il gioco li mostra già negli interni appena il file esiste. Numero della cella 
 | (1,0) | **Palco di città** | palco in legno rialzato, fondale verde scuro, batteria e due amplificatori, nessuna scritta (l’insegna la aggiunge il gioco) |
 | (1,1) | **Palco del festival** | palco grande con traliccio, luci e bandierine, batteria e amplificatori, nessuna scritta |
 | (1,2), (1,3) | riserva | lasciare vuote |
+| righe 2 e 3 | non usate | lasciare vuote (trasparenti) |
+
+In questa tavola sono usate solo sei celle: le altre dieci restano vuote.
 
 Il palco di città viene mostrato 1,6 volte più grande di un personaggio, quello del festival 2,5 volte: disegnali larghi quanto quasi tutta la cella.
 

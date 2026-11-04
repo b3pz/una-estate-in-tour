@@ -22,9 +22,10 @@ Lavoriamo agli sprite del mio videogioco «Una estate in tour».
 4. Poi genera UN file alla volta, rispettando alla lettera:
    - nome del file e dimensioni esatte;
    - PNG con sfondo trasparente per le tavole, JPEG per sfondi dei concerti e titolo;
-   - griglia 4×4 da 384×384 px, una figura per cella, centrata, piedi o base sul bordo inferiore, nessuna figura che sconfina;
+   - griglia 4×4 da 384×384 px, una figura per cella, centrata, piedi o base nella parte bassa con circa 20 px di margine su tutti i lati (anche sotto), nessuna figura che sconfina;
    - stesso stile, palette, contorno e scala delle tavole di riferimento;
-   - nessun testo, nessuna cornice, nessuno sfondo nelle tavole.
+   - nessun testo, nessuna cornice, nessuno sfondo nelle tavole (unica eccezione: la «M» dell’insegna della metro);
+   - le celle non descritte nelle specifiche restano vuote e trasparenti.
    Dopo ogni file dimmi il nome con cui salvarlo e la cartella:
    - dist/assets/extra/  per le tavole e title-art.jpg
    - dist/assets/extra/concert/  per gli sfondi dei concerti
