@@ -333,17 +333,7 @@ export function townLayout(id) {
   portrait: who,
   facing: 'south'
  });
- const paths = gates.map(g => [g, {
-  x: g.side === 'east' || g.side === 'west' ? center.x : g.x,
-  y: g.side === 'east' || g.side === 'west' ? g.y : center.y
- }, center]);
- for (const o of objects.filter(o => o.building || o.kind === 'stage')) paths.push([center, {
-  x: o.x,
-  y: center.y
- }, {
-  x: o.x,
-  y: o.y + 1
- }]);
+ let paths = [];
  if (id !== 0 && id !== 9 && id !== 11) {
   const style = spec.buildings[0].style;
   for (const [x, y] of [
@@ -401,15 +391,9 @@ export function townLayout(id) {
     kind,
     label: kind === 'metro' ? 'Metro · ingresso M' : kind === 'cable' ? 'Funivia di Monteferro' : kind === 'bridge' ? 'Pontile per ' + (id === 10 ? 'Isola Levante' : 'Notturnia') : 'Imbarco traghetto'
    });
-   paths.push([center, {
-    x,
-    y: center.y
-   }, {
-    x,
-    y
-   }]);
   }
  }
+ paths = townRoads({ id, gates, objects, buildings, waters, center, stage: { x: spec.stage[0], y: spec.stage[1] }, festival: spec.theme === 'festival' });
  return {
   width: WIDTH,
   height: HEIGHT,
@@ -425,6 +409,96 @@ export function townLayout(id) {
   }
  };
 }
+// Strade del paese: ogni tratto gira attorno a case e palco e arriva davanti alla porta.
+// Ricerca A* su una griglia di caselle, con un costo per ogni curva per ottenere tracciati puliti.
+const ROAD_HALF = 1.45;
+
+function roadRoute(from, to, blocked, cost) {
+ const W = WIDTH + 1, H = HEIGHT + 1, key = (x, y, d) => (y * W + x) * 5 + d;
+ const sx = Math.round(from.x), sy = Math.round(from.y), tx = Math.round(to.x), ty = Math.round(to.y);
+ const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+ const open = [[0, sx, sy, 4]], best = new Map([[key(sx, sy, 4), 0]]), parent = new Map();
+ while (open.length) {
+  let bi = 0;
+  for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+  const [, x, y, d] = open.splice(bi, 1)[0], g = best.get(key(x, y, d));
+  if (x === tx && y === ty) {
+   const pts = [];
+   let k = key(x, y, d);
+   while (k !== undefined) {
+    const c = Math.floor(k / 5);
+    pts.push({ x: c % W, y: Math.floor(c / W) });
+    k = parent.get(k);
+   }
+   return pts.reverse();
+  }
+  for (let nd = 0; nd < 4; nd++) {
+   const nx = x + dirs[nd][0], ny = y + dirs[nd][1];
+   if (nx < 0 || ny < 0 || nx > WIDTH || ny > HEIGHT) continue;
+   if (blocked(nx, ny) && !(nx === tx && ny === ty)) continue;
+   const ng = g + cost(nx, ny) + (d !== 4 && d !== nd ? 6 : 0), nk = key(nx, ny, nd);
+   if (ng < (best.get(nk) ?? Infinity)) {
+    best.set(nk, ng);
+    parent.set(nk, key(x, y, d));
+    open.push([ng + Math.abs(nx - tx) + Math.abs(ny - ty), nx, ny, nd]);
+   }
+  }
+ }
+ return null;
+}
+
+function simplifyRoute(pts) {
+ const out = [];
+ for (let i = 0; i < pts.length; i++) {
+  const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+  if (!a || !c || (c.x - b.x) !== (b.x - a.x) || (c.y - b.y) !== (b.y - a.y)) out.push(b);
+ }
+ return out;
+}
+
+const roadCache = new Map();
+export function townRoads(args) {
+ const id = args.id;
+ if (id !== undefined && roadCache.has(id)) return roadCache.get(id).map(r => r.map(p => ({ ...p })));
+ const roads = computeRoads(args);
+ if (id !== undefined) roadCache.set(id, roads);
+ return roads.map(r => r.map(p => ({ ...p })));
+}
+
+function computeRoads({ gates, objects, buildings, waters, center, stage, festival }) {
+ const sScale = festival ? FESTIVAL_STAGE_SCALE : STAGE_SCALE;
+ const stageRect = { x: stage.x - 72 * sScale / TILE, y: stage.y - 60 * sScale / TILE, w: 144 * sScale / TILE, h: 60 * sScale / TILE + .25 };
+ const rects = [...buildings, stageRect];
+ const blockedBy = m => (x, y) => rects.some(r => x > r.x - m && x < r.x + r.w + m && y > r.y - m && y < r.y + r.h + m - .2);
+ const cost = (x, y) => waters.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) ? 12 : 1;
+ const hub = { x: Math.round(center.x), y: Math.round(center.y) };
+ const roads = [];
+ const link = (point, exact, approach) => {
+  // Prima con il margine pieno; dove case e palco sono vicini, con un margine più stretto.
+  let r = null;
+  for (const m of [ROAD_HALF, .9, .45]) {
+   const ap = { x: approach.x, y: m === ROAD_HALF ? approach.y : Math.min(approach.y, Math.ceil(approach.y - ROAD_HALF + m)) };
+   r = roadRoute(hub, ap, blockedBy(m), cost);
+   if (r) break;
+  }
+  if (!r) return;
+  const pts = simplifyRoute(r);
+  pts[0] = { x: center.x, y: center.y };
+  if (exact) pts.push(exact);
+  roads.push(pts);
+ };
+ for (const g of gates) {
+  const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: WIDTH - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: HEIGHT - 2 };
+  link(g, { x: g.x, y: g.y }, inset);
+ }
+ for (const o of objects) {
+  if (o.building) link(o, { x: o.x, y: o.y + .9 }, { x: o.x, y: Math.ceil(o.building.y + o.building.h + ROAD_HALF) });
+  else if (o.kind === 'stage') link(o, { x: o.x, y: o.y + .9 }, { x: o.x, y: Math.ceil(stage.y + .25 + ROAD_HALF) });
+  else if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) link(o, { x: o.x, y: o.y + .6 }, { x: Math.round(o.x), y: Math.round(o.y + 1) });
+ }
+ return roads;
+}
+
 export function isWalkable(layout, x, y) {
  if (layout.theme === 'seaBridge' && Math.abs(x - 24) > 1.6) return false;
  if (x < 1 || x > WIDTH - 1 || y < 1 || y > HEIGHT - 1) return false;

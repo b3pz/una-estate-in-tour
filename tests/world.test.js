@@ -40,3 +40,7 @@ test('click walking reaches the garage door even with slow and irregular frames'
  while(path.length&&frames<500){const target=path[0];if(Math.hypot(pos.x-target.x,pos.y-target.y)<.15)path.shift();else{const delta=stepToward(pos,target,[.54,.08,.4,.12][frames%4]);pos.x+=delta.dx;pos.y+=delta.dy;assert.ok(isWalkable(l,pos.x,pos.y));}frames++;}
  assert.equal(path.length,0,'must reach the destination rather than oscillating around a waypoint');assert.ok(Math.hypot(pos.x-door.x,pos.y-door.y)<.7,'must enter automatic door trigger');
 });
+test('town roads never run under buildings and reach every door, gate, stage and transport',async()=>{const w=await import('../dist/world.js');
+ const seg=(a,b,r)=>{for(let i=0;i<=60;i++){const x=a.x+(b.x-a.x)*i/60,y=a.y+(b.y-a.y)*i/60;if(x>r.x-.4&&x<r.x+r.w+.4&&y>r.y-.4&&y<r.y+r.h-.1)return true;}return false;};
+ for(let id=0;id<12;id++){const L=w.townLayout(id);for(const p of L.paths)for(let i=1;i<p.length;i++)for(const b of L.buildings)assert.equal(seg(p[i-1],p[i],b),false,`${id} ${b.label}`);
+  const ends=L.paths.map(p=>p.at(-1));for(const t of [...L.gates,...L.objects.filter(o=>o.building||o.kind==='stage'||['metro','cable','ferry','bridge'].includes(o.kind))])assert.ok(ends.some(e=>Math.hypot(e.x-t.x,e.y-t.y)<1.2),`${id} ${t.label}`);}});
