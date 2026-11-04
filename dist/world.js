@@ -314,7 +314,8 @@ function cityBlocks(id, spec, buildings, objects, gates, waters, center) {
  if (blockCache.has(id)) return blockCache.get(id).map(b => ({ ...b }));
  const styles = CITY_STYLES[id] || [spec.buildings[0].style];
  const cands = [];
- for (const x of [3, 9, 15, 21, 27, 33, 39]) cands.push([x, 2, 6, 3], [x, 29.5, 6, 3]);
+ for (const x of [3, 9, 15, 21, 27, 33, 39]) cands.push([x, 2, 6, 3], [x, 26.5, 6, 3]);
+ for (const x of [3, 9, 15, 33, 39]) cands.push([x, 12.5, 5, 3], [x + .5, 20, 5, 3]);
  for (const y of [7, 12, 23, 27]) cands.push([2, y, 4, 4], [42, y, 4, 4]);
  const stage = { x: spec.stage[0] - 72 * STAGE_SCALE / TILE - 1, y: spec.stage[1] - 60 * STAGE_SCALE / TILE - 1, w: 144 * STAGE_SCALE / TILE + 2, h: 60 * STAGE_SCALE / TILE + 3 };
  const overlap = (a, r, m) => a[0] < r.x + r.w + m && a[0] + a[2] > r.x - m && a[1] < r.y + r.h + m && a[1] + a[3] > r.y - m;
@@ -322,6 +323,9 @@ function cityBlocks(id, spec, buildings, objects, gates, waters, center) {
  const accepted = [];
  let i = 0;
  for (const c of cands) {
+  if (c[1] + c[3] + ROAD_HALF + 1 > HEIGHT - 1) continue;
+  const doorArea = [c[0] - .5, c[1] + c[3], c[2] + 1, 3.6];
+  if ([...buildings, ...accepted, stage].some(z => overlap(doorArea, z, 0))) continue;
   if (buildings.some(z => overlap(c, z, 1.6)) || accepted.some(z => overlap(c, z, .8)) || overlap(c, stage, 0)) continue;
   if (objects.some(o => !o.building && o.x > c[0] - 2.4 && o.x < c[0] + c[2] + 2.4 && o.y > c[1] - 1.6 && o.y < c[1] + c[3] + 3)) continue;
   if (waters.some(w => overlap(c, w, 0))) continue;
@@ -346,8 +350,8 @@ const CITY_CHATTER = [
  '«Ho perso l’ultimo autobus. Va be’, faccio due passi.»',
  '«Il palco è aperto a tutti, ma il pubblico qui è esigente. Buona fortuna!»'
 ];
-function passersby(id, paths, objects) {
- const out = [], spots = paths.flat().filter((q, k) => k % 5 === 2);
+function passersby(id, paths, objects, area) {
+ const out = [], spots = paths.flatMap(p => p.slice(1, -4)).filter((q, k) => k % 5 === 2 && isWalkable(area, Math.round(q.x), Math.round(q.y)) && isWalkable(area, q.x, q.y));
  for (let k = 0; k < spots.length && out.length < 3; k += 3) {
   const q = spots[(k * 7 + id) % spots.length];
   if ([...objects, ...out].some(o => Math.hypot(o.x - q.x, o.y - q.y) < 4.5)) continue;
@@ -469,7 +473,13 @@ export function townLayout(id) {
  }
  if (TOWN_SIZE[id] === 'city') for (const blk of cityBlocks(id, spec, buildings, objects, gates, waters, center)) buildings.push(blk);
  paths = townRoads({ id, gates, objects, buildings, waters, center, stage: { x: spec.stage[0], y: spec.stage[1] }, festival: spec.theme === 'festival' });
- if (TOWN_SIZE[id] === 'city') for (const pb of passersby(id, paths, objects)) objects.push(pb);
+ // Un palazzo di città senza strada che arrivi alla porta non viene costruito.
+ for (let i = buildings.length - 1; i >= 0; i--) {
+  const bl = buildings[i];
+  if (bl.city === undefined) continue;
+  if (!paths.some(pt => { const e = pt.at(-1); return Math.abs(e.x - (bl.x + bl.w / 2)) < 1 && Math.abs(e.y - (bl.y + bl.h + .5)) < 1; })) buildings.splice(i, 1);
+ }
+ if (TOWN_SIZE[id] === 'city') for (const pb of passersby(id, paths, objects, { buildings, waters, gates })) objects.push(pb);
  return {
   coast: id === 1 ? 'south' : undefined,
   size: TOWN_SIZE[id],
@@ -609,6 +619,8 @@ function computeRoadsVariant({ gates, objects, buildings, waters, center, stage,
   const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: WIDTH - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: HEIGHT - 2 };
   targets.push({ exact: { x: g.x, y: g.y }, approach: inset, gate: true });
  }
+ // Anche case e palazzi di contorno hanno una porta: ognuno ha la sua strada.
+ for (const b of buildings) if (b.kind === 'scenery') targets.push({ exact: { x: b.x + b.w / 2, y: b.y + b.h + .5 }, approach: { x: Math.round(b.x + b.w / 2), y: Math.ceil(b.y + b.h + ROAD_HALF) }, optional: true });
  for (const o of objects) {
   if (o.building) targets.push({ exact: { x: o.x, y: o.y + .9 }, approach: { x: Math.round(o.x), y: Math.ceil(o.building.y + o.building.h + ROAD_HALF) } });
   else if (o.kind === 'stage') targets.push({ exact: { x: o.x, y: o.y + .9 }, approach: { x: Math.round(o.x), y: Math.ceil(stage.y + .25 + ROAD_HALF) } });
@@ -626,6 +638,7 @@ function computeRoadsVariant({ gates, objects, buildings, waters, center, stage,
    r = roadRoute(ap, hub, blockedBy(m), cost, flip);
    if (r) break;
   }
+  if (!r && t.optional) continue;
   if (!r) return null;
   // Si tiene solo il tratto nuovo: dalla destinazione fino al primo punto di strada già esistente.
   const cut = r.findIndex(c => cells.has(c.x + ',' + c.y));

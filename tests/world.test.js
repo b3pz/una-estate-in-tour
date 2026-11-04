@@ -46,7 +46,7 @@ test('town roads never run under buildings and reach every door, gate, stage and
   const ends=L.paths.map(p=>p.at(-1));for(const t of [...L.gates,...L.objects.filter(o=>o.building||o.kind==='stage'||['metro','cable','ferry','bridge'].includes(o.kind))])assert.ok(ends.some(e=>Math.hypot(e.x-t.x,e.y-t.y)<1.2),`${id} ${t.label}`);}});
 test('cities have blocks and passers-by, villages do not; every door stays reachable',async()=>{const w=await import('../dist/world.js');const {findPath}=await import('../dist/core.js');
  for(let id=0;id<12;id++){const L=w.townLayout(id);const blocks=L.buildings.filter(b=>b.kind==='scenery'&&b.city!==undefined).length,pb=L.objects.filter(o=>o.kind==='passerby').length;
-  if(w.TOWN_SIZE[id]==='city'){assert.ok(blocks>=3,`${id} isolati`);assert.ok(pb>=1,`${id} passanti`);}else{assert.equal(blocks,0);assert.equal(pb,0);}
+  if(w.TOWN_SIZE[id]==='city'){assert.ok(blocks>=1,`${id} isolati`);assert.ok(pb>=1,`${id} passanti`);}else{assert.equal(blocks,0);assert.equal(pb,0);}
   const can=(x,y)=>w.isWalkable(L,x,y),start={x:Math.round(L.plaza[0]),y:Math.round(L.plaza[1])};
   for(const o of L.objects.filter(o=>o.building))assert.ok(findPath(start,{x:Math.round(o.x),y:Math.round(o.y+.4)},can,48,34).length>0||Math.hypot(start.x-o.x,start.y-o.y)<1,`${id} porta ${o.label}`);}});
 test('no town road junction forms a pinwheel (arms all turning the same way)',async()=>{const w=await import('../dist/world.js');
@@ -59,3 +59,5 @@ test('no town road junction forms a pinwheel (arms all turning the same way)',as
 test('town roads cross water only on bridges',async()=>{const w=await import('../dist/world.js');
  for(let id=0;id<12;id++){const L=w.townLayout(id);for(const p of L.paths)for(let i=1;i<p.length;i++)for(let k=0;k<=10;k++){const x=p[i-1].x+(p[i].x-p[i-1].x)*k/10,y=p[i-1].y+(p[i].y-p[i-1].y)*k/10;
   if(L.waters.some(wt=>x>wt.x&&x<wt.x+wt.w&&y>wt.y&&y<wt.y+wt.h))assert.ok(L.gates.some(g=>(g.side==='east'||g.side==='west')&&Math.abs(y-g.y)<1),`${id} ${x.toFixed(1)},${y.toFixed(1)}`);}}});
+test('every house and city block has a road to its door',async()=>{const w=await import('../dist/world.js');
+ for(let id=0;id<12;id++){const L=w.townLayout(id);const ends=L.paths.map(p=>p.at(-1));for(const b of L.buildings.filter(b=>b.kind==='scenery'))assert.ok(ends.some(e=>Math.abs(e.x-(b.x+b.w/2))<1&&Math.abs(e.y-(b.y+b.h+.5))<1),`${id} casa @${b.x},${b.y}`);}});
