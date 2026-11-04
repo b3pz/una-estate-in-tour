@@ -2,11 +2,15 @@
  "files": [
   "hero-bike.png",
   "people-dir-1.png",
+  "people-dir-2.png",
+  "people-dir-3.png",
   "people-extra.png",
   "transport-stage.png",
   "interiors-extra.png",
   "concert/pop.jpg",
   "concert/funk.jpg",
-  "concert/metal.jpg"
+  "concert/metal.jpg",
+  "concert/reggae.jpg",
+  "concert/jazz.jpg"
  ]
 }
