@@ -859,12 +859,6 @@ export function stageBox(layout) {
 export function drawStage(ctx, x, y, genre, large = false, scale = null) {
  const s = scale ?? (large ? FESTIVAL_STAGE_SCALE : 1);
  if (drawSprite(ctx, 'transport', 1, large ? 1 : 0, x, y + 6 * s, 160 * s, 120 * s)) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(s, s);
-  rounded(ctx, -52, -82, 104, 16, 4, '#2f4a3e');
-  label(ctx, genre.toUpperCase(), 0, -70, 10, '#f2d28c');
-  ctx.restore();
   return;
  }
  ctx.save();
@@ -905,8 +899,6 @@ export function drawStage(ctx, x, y, genre, large = false, scale = null) {
  drawSprite(ctx, 'band', 3, 3, -57, -1, 26, 30);
  drawSprite(ctx, 'band', 3, 3, 57, -1, 26, 30);
  drawSprite(ctx, 'band', 3, 2, 0, 0, 61, 51);
- rounded(ctx, -52, -82, 104, 16, 4, '#2f4a3e');
- label(ctx, genre.toUpperCase(), 0, -70, 10, '#f2d28c');
  ctx.restore();
 }
 
