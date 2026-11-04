@@ -1,4 +1,4 @@
-import { ROUTES, routeKey as rKey, routeWalkable, pathDistance, inRect } from './routes.js';
+import { ROUTES, routeKey as rKey, routeWalkable, pathDistance, inRect, roundPath } from './routes.js';
 import {
  METRO_STOPS
 } from './progress.js';
@@ -154,14 +154,34 @@ export function roadLayout(from, to) {
 // Applica un percorso disegnato a mano, se esiste per questa strada.
 function designedRoad(layout) {
  const route = ROUTES[rKey(layout.from, layout.to)];
- if (!route) return layout;
- layout.route = route;
- layout.paths = route.paths;
+ if (!route) {
+  layout.paths = layout.paths.map(p => roundPath(p, 3));
+  return layout;
+ }
+ // Primo e ultimo tratto sempre dritti per 4 caselle: si entra e si esce in linea con il varco.
+ const lead = (g, toward) => g.side === 'west' ? { x: g.x + toward, y: g.y } : g.side === 'east' ? { x: g.x - toward, y: g.y } : g.side === 'north' ? { x: g.x, y: g.y + toward } : { x: g.x, y: g.y - toward };
+ const main = route.paths[0], s0 = layout.gates[0], s1 = layout.gates[1];
+ const near = g => Math.hypot(main[0].x - g.x, main[0].y - g.y) < 1 ? 'first' : 'last';
+ const fixed = [...main];
+ for (const g of [s0, s1]) {
+  if (near(g) === 'first') fixed.splice(1, 0, lead(g, 4));
+  else fixed.splice(fixed.length - 1, 0, lead(g, 4));
+ }
+ layout.route = { ...route, paths: [fixed, ...route.paths.slice(1)].map(p => roundPath(p, 3)) };
+ layout.paths = layout.route.paths;
  const wand = layout.objects.find(o => o.kind === 'wanderer'),
   sign = layout.objects.find(o => o.kind === 'sign');
  if (wand && route.wanderer) Object.assign(wand, route.wanderer);
  if (sign && route.sign) Object.assign(sign, route.sign);
  if (route.secret) layout.objects.push({ ...route.secret, kind: 'secret', secret: route.secret });
+ // Chi resta fuori dal tracciato arrotondato viene spostato sul bordo del sentiero più vicino.
+ for (const o of layout.objects) {
+  const ok = (x, y) => routeWalkable(layout.route, x, y);
+  if ([[0, 1], [1, 0], [-1, 0], [0, -1], [0, 0]].some(([dx, dy]) => ok(o.x + dx, o.y + dy))) continue;
+  let best = null;
+  for (const path of layout.route.paths) for (const q of path) { const d = Math.hypot(q.x - o.x, q.y - o.y); if (!best || d < best.d) best = { d, q }; }
+  if (best) { const k = Math.max(0, 1 - 1.1 / Math.max(best.d, .01)); o.x = +(o.x + (best.q.x - o.x) * k).toFixed(2); o.y = +(o.y + (best.q.y - o.y) * k).toFixed(2); }
+ }
  return layout;
 }
 const b = (x, y, w, h, label, kind = 'lore', style = 'cottage') => ({
@@ -485,7 +505,7 @@ function computeRoads({ gates, objects, buildings, waters, center, stage, festiv
   const pts = simplifyRoute(r);
   pts[0] = { x: center.x, y: center.y };
   if (exact) pts.push(exact);
-  roads.push(pts);
+  roads.push(roundPath(pts, 2.2));
  };
  for (const g of gates) {
   const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: WIDTH - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: HEIGHT - 2 };
