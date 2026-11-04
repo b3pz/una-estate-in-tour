@@ -1028,7 +1028,7 @@ async function startSong(id, kind) {
  $('laneControls').hidden = false;
  fitCanvas();
  $('sceneBadge').hidden = true;
- $('songLabel').textContent = `${kind==='tutorial'?'TUTORIAL':kind==='final'?'FESTIVAL':CITIES[id].genre.toUpperCase()} / ${INSTRUMENTS[state.instrument].name.toUpperCase()}`;
+ $('songLabel').textContent = `${kind==='tutorial'?'TUTORIAL':kind==='final'?'FESTIVAL':kind==='rival'?'LA SFIDA':kind==='home'?'CONCERTO A CASA':kind==='boat'?'TRAGHETTO':CITIES[id].genre.toUpperCase()} / ${INSTRUMENTS[state.instrument].name.toUpperCase()}`;
  $('laneControls').innerHTML = '';
  INSTRUMENTS[state.instrument].labels.forEach((key, lane) => {
   const b = document.createElement('button');
