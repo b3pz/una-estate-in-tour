@@ -7,14 +7,14 @@ test('all connections have matching entrances, with safe inward spawns on both e
  for(const [a,b]of EDGES)for(const [from,to]of [[a,b],[b,a]]){
  const gates=townGates(to),g=gates.find(x=>x.to===from),pos=arrival(to,from),layout=townLayout(to);
  assert.ok(g);assert.equal(pos.facing,OPPOSITE[g.side]);assert.ok(isWalkable(layout,pos.x,pos.y),`${from}->${to} unsafe spawn`);assert.equal(gateAt(layout,pos.x,pos.y),null,'arrival must not immediately exit');
- if(g.side==='west')assert.ok(pos.x<5);if(g.side==='east')assert.ok(pos.x>WIDTH-5);if(g.side==='north')assert.ok(pos.y<5);if(g.side==='south')assert.ok(pos.y>HEIGHT-5);
+ if(g.side==='west')assert.ok(pos.x<5);if(g.side==='east')assert.ok(pos.x>layout.width-5);if(g.side==='north')assert.ok(pos.y<5);if(g.side==='south')assert.ok(pos.y>layout.height-5);
  }
 });
 test('road entry and departure preserve cardinal direction, including bent routes',()=>{
  for(const [a,b]of EDGES)for(const [from,to]of [[a,b],[b,a]]){const road=roadLayout(from,to),departure=townGates(from).find(g=>g.to===to),destination=townGates(to).find(g=>g.to===from);assert.equal(road.gates[0].side,OPPOSITE[departure.side]);assert.equal(road.gates[1].side,OPPOSITE[destination.side]);assert.equal(road.spawn.facing,departure.side);assert.equal(gateAt(road,road.spawn.x,road.spawn.y),null);}
 });
 test('all town entrances can reach every interactive building and teacher',()=>{
- for(const city of CITIES){const l=townLayout(city.id);for(const g of l.gates){const pos=arrival(city.id,g.to);for(const target of l.objects){const path=findPath(pos,target,(x,y)=>isWalkable(l,x,y),WIDTH,HEIGHT);assert.ok(path.length,`${city.name}: entrance ${g.side} cannot reach ${target.label}`);}}}
+ for(const city of CITIES){const l=townLayout(city.id);for(const g of l.gates){const pos=arrival(city.id,g.to);for(const target of l.objects){const path=findPath(pos,target,(x,y)=>isWalkable(l,x,y),l.width,l.height);assert.ok(path.length,`${city.name}: entrance ${g.side} cannot reach ${target.label}`);}}}
 });
 test('all routes can be walked in both directions without clicking a transition',()=>{
  for(const [a,b]of EDGES){const l=roadLayout(a,b);for(const gate of l.gates)assert.ok(gateAt(l,gate.x,gate.y));assert.ok(findPath(l.spawn,l.gates[1],(x,y)=>isWalkable(l,x,y),WIDTH,HEIGHT).length);}
@@ -48,7 +48,7 @@ test('cities have blocks and passers-by, villages do not; every door stays reach
  for(let id=0;id<12;id++){const L=w.townLayout(id);const blocks=L.buildings.filter(b=>b.kind==='scenery'&&b.city!==undefined).length,pb=L.objects.filter(o=>o.kind==='passerby').length;
   if(w.TOWN_SIZE[id]==='city'){assert.ok(blocks>=1,`${id} isolati`);assert.ok(pb>=1,`${id} passanti`);}else{assert.equal(blocks,0);assert.equal(pb,0);}
   const can=(x,y)=>w.isWalkable(L,x,y),start={x:Math.round(L.plaza[0]),y:Math.round(L.plaza[1])};
-  for(const o of L.objects.filter(o=>o.building))assert.ok(findPath(start,{x:Math.round(o.x),y:Math.round(o.y+.4)},can,48,34).length>0||Math.hypot(start.x-o.x,start.y-o.y)<1,`${id} porta ${o.label}`);}});
+  for(const o of L.objects.filter(o=>o.building))assert.ok(findPath(start,{x:Math.round(o.x),y:Math.round(o.y+.4)},can,L.width,L.height).length>0||Math.hypot(start.x-o.x,start.y-o.y)<1,`${id} porta ${o.label}`);}});
 test('no town road junction forms a pinwheel (arms all turning the same way)',async()=>{const w=await import('../dist/world.js');
  const set=pts=>new Set(pts.map(([x,y])=>x+','+y)),line=(x0,y0,x1,y1)=>{const o=[];for(let x=Math.min(x0,x1);x<=Math.max(x0,x1);x++)for(let y=Math.min(y0,y1);y<=Math.max(y0,y1);y++)o.push([x,y]);return o;};
  const bad=set([...line(10,4,10,16),...line(4,10,16,10),...line(10,4,14,4),...line(16,10,16,14),...line(10,16,6,16),...line(4,10,4,6)]);

@@ -382,8 +382,8 @@ function setupTown() {
  objects = layout.objects;
  solids = layout.buildings;
  if (!isWalkable(layout, state.x, state.y)) {
-  state.x = 24;
-  state.y = 18;
+  state.x = layout.plaza ? layout.plaza[0] : 24;
+  state.y = layout.plaza ? layout.plaza[1] : 18;
  }
  updateJournal();
 }
@@ -2161,7 +2161,7 @@ canvas.addEventListener('pointerdown', e => {
   x,
   y
  };
- path = findPath(state, target, canMove, WIDTH, HEIGHT);
+ path = findPath(state, target, canMove, layout.width ?? WIDTH, layout.height ?? HEIGHT);
  tapObject = object && !object.building ? object : null;
  if (!path.length && tapObject && Math.hypot(state.x - object.x, state.y - object.y) < 2.25) {
   near = object;

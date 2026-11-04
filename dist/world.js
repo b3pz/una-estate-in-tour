@@ -12,7 +12,9 @@ import {
  roadKey
 } from './adventure.js';
 import {
- CITIES
+ CITIES,
+ CITY_IDS,
+ CITY_MAP
 } from './core.js';
 import {
  drawSprite,
@@ -58,30 +60,36 @@ export const OPPOSITE = {
  north: 'south',
  south: 'north'
 };
-export function pointOnSide(side, lane, inset = 1.5) {
+export function dimsOf(id) {
+ return CITY_IDS.includes(id) ? CITY_MAP : { w: WIDTH, h: HEIGHT, ox: 0, oy: 0 };
+}
+export function pointOnSide(side, lane, inset = 1.5, dims = { w: WIDTH, h: HEIGHT }) {
  return side === 'west' ? {
   x: inset,
   y: lane
  } : side === 'east' ? {
-  x: WIDTH - inset,
+  x: dims.w - inset,
   y: lane
  } : side === 'north' ? {
   x: lane,
   y: inset
  } : {
   x: lane,
-  y: HEIGHT - inset
+  y: dims.h - inset
  };
 }
 export function townGates(id) {
  return LINKS.filter(e => e[0] === id || e[1] === id).map(e => {
   const first = e[0] === id,
    side = e[first ? 2 : 3],
-   lane = e[first ? 4 : 5];
+   roadLane = e[first ? 4 : 5],
+   D = dimsOf(id),
+   lane = roadLane + (side === 'west' || side === 'east' ? D.oy : D.ox);
   return {
-   ...pointOnSide(side, lane),
+   ...pointOnSide(side, lane, 1.5, D),
    side,
    lane,
+   roadLane,
    to: e[first ? 1 : 0],
    kind: 'exit',
    label: CITIES[e[first ? 1 : 0]].name
@@ -92,7 +100,7 @@ export function arrival(id, from) {
  const g = townGates(id).find(g => g.to === from);
  if (!g) throw Error('Invalid arrival connection');
  return {
-  ...pointOnSide(g.side, g.lane, 3.3),
+  ...pointOnSide(g.side, g.lane, 3.3, dimsOf(id)),
   facing: OPPOSITE[g.side]
  };
 }
@@ -101,13 +109,13 @@ export function roadLayout(from, to) {
   b = townGates(to).find(g => g.to === from);
  if (!a || !b) throw Error('Invalid road');
  const start = {
-  ...pointOnSide(OPPOSITE[a.side], a.lane),
+  ...pointOnSide(OPPOSITE[a.side], a.roadLane),
   kind: 'roadBack',
   side: OPPOSITE[a.side],
   label: CITIES[from].name
  };
  const end = {
-  ...pointOnSide(OPPOSITE[b.side], b.lane),
+  ...pointOnSide(OPPOSITE[b.side], b.roadLane),
   kind: 'roadEnd',
   side: OPPOSITE[b.side],
   label: CITIES[to].name
@@ -145,7 +153,7 @@ export function roadLayout(from, to) {
    label: 'Appunti di viaggio'
   }],
   spawn: {
-   ...pointOnSide(start.side, a.lane, 3.3),
+   ...pointOnSide(start.side, a.roadLane, 3.3),
    facing: a.side
   }
  });
@@ -296,44 +304,46 @@ const CITY_STYLES = { 2: ['factory', 'stone'], 4: ['theatre', 'cottage'], 5: ['m
 const blockCache = new Map();
 
 function reachableFrom(start, layoutLike, targets) {
- const W = WIDTH + 1, seen = new Uint8Array(W * (HEIGHT + 1)), q = [[Math.round(start.x), Math.round(start.y)]];
+ const LW = layoutLike.width ?? WIDTH, LH = layoutLike.height ?? HEIGHT, W = LW + 1, seen = new Uint8Array(W * (LH + 1)), q = [[Math.round(start.x), Math.round(start.y)]];
  seen[q[0][1] * W + q[0][0]] = 1;
  for (let h = 0; h < q.length; h++) {
   const [x, y] = q[h];
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
    const nx = x + dx, ny = y + dy;
-   if (nx < 1 || ny < 1 || nx > WIDTH - 1 || ny > HEIGHT - 1 || seen[ny * W + nx] || !isWalkable(layoutLike, nx, ny)) continue;
+   if (nx < 1 || ny < 1 || nx > LW - 1 || ny > LH - 1 || seen[ny * W + nx] || !isWalkable(layoutLike, nx, ny)) continue;
    seen[ny * W + nx] = 1;
    q.push([nx, ny]);
   }
  }
- return targets.every(t => [[0, 0], [0, 1], [1, 0], [-1, 0], [0, -1], [0, 2]].some(([dx, dy]) => { const x = Math.round(t.x) + dx, y = Math.round(t.y) + dy; return x >= 0 && y >= 0 && x <= WIDTH && y <= HEIGHT && seen[y * W + x]; }));
+ return targets.every(t => [[0, 0], [0, 1], [1, 0], [-1, 0], [0, -1], [0, 2]].some(([dx, dy]) => { const x = Math.round(t.x) + dx, y = Math.round(t.y) + dy; return x >= 0 && y >= 0 && x <= LW && y <= LH && seen[y * W + x]; }));
 }
 
-function cityBlocks(id, spec, buildings, objects, gates, waters, center) {
+function cityBlocks(id, spec, buildings, objects, gates, waters, center, D) {
  if (blockCache.has(id)) return blockCache.get(id).map(b => ({ ...b }));
  const styles = CITY_STYLES[id] || [spec.buildings[0].style];
  const cands = [];
- for (const x of [3, 9, 15, 21, 27, 33, 39]) cands.push([x, 2, 6, 3], [x, 26.5, 6, 3]);
- for (const x of [3, 9, 15, 33, 39]) cands.push([x, 12.5, 5, 3], [x + .5, 20, 5, 3]);
- for (const y of [7, 12, 23, 27]) cands.push([2, y, 4, 4], [42, y, 4, 4]);
+ // Griglia di isolati su tutta la mappa della città, filtrata dai vincoli qui sotto.
+ for (let y = 2; y < D.h - 6; y += 5.5)
+  for (let x = 2.5; x < D.w - 7; x += 6.5) cands.push([x, y, 5.5, 3]);
  const stage = { x: spec.stage[0] - 72 * STAGE_SCALE / TILE - 1, y: spec.stage[1] - 60 * STAGE_SCALE / TILE - 1, w: 144 * STAGE_SCALE / TILE + 2, h: 60 * STAGE_SCALE / TILE + 3 };
  const overlap = (a, r, m) => a[0] < r.x + r.w + m && a[0] + a[2] > r.x - m && a[1] < r.y + r.h + m && a[1] + a[3] > r.y - m;
  const targets = [...objects.filter(o => !o.building), ...objects.filter(o => o.building).map(o => ({ x: o.x, y: o.y + 1 })), ...gates.map(g => ({ x: g.side === 'west' ? 3 : g.side === 'east' ? WIDTH - 3 : g.x, y: g.side === 'north' ? 3 : g.side === 'south' ? HEIGHT - 3 : g.y }))];
  const accepted = [];
  let i = 0;
  for (const c of cands) {
-  if (c[1] + c[3] + ROAD_HALF + 1 > HEIGHT - 1) continue;
+  if (c[1] + c[3] + ROAD_HALF + 1 > D.h - 1) continue;
   const doorArea = [c[0] - .5, c[1] + c[3], c[2] + 1, 3.6];
   if ([...buildings, ...accepted, stage].some(z => overlap(doorArea, z, 0))) continue;
+  // Nessun isolato davanti alla porta di un altro edificio.
+  if ([...buildings, ...accepted].some(z => overlap(c, [z.x - .5, z.y + z.h, z.w + 1, 3.6].reduce((r, v, i) => (r[['x', 'y', 'w', 'h'][i]] = v, r), {}), 0))) continue;
   if (buildings.some(z => overlap(c, z, 1.6)) || accepted.some(z => overlap(c, z, .8)) || overlap(c, stage, 0)) continue;
   if (objects.some(o => !o.building && o.x > c[0] - 2.4 && o.x < c[0] + c[2] + 2.4 && o.y > c[1] - 1.6 && o.y < c[1] + c[3] + 3)) continue;
   if (waters.some(w => overlap(c, w, 0))) continue;
-  if (gates.some(g => (g.side === 'north' || g.side === 'south') ? Math.abs(g.x - (c[0] + c[2] / 2)) < c[2] / 2 + 3 && ((g.side === 'north' && c[1] < 8) || (g.side === 'south' && c[1] > 24)) : Math.abs(g.y - (c[1] + c[3] / 2)) < c[3] / 2 + 3 && ((g.side === 'west' && c[0] < 8) || (g.side === 'east' && c[0] > 38)))) continue;
+  if (gates.some(g => (g.side === 'north' || g.side === 'south') ? Math.abs(g.x - (c[0] + c[2] / 2)) < c[2] / 2 + 3 && ((g.side === 'north' && c[1] < 8) || (g.side === 'south' && c[1] > D.h - 10)) : Math.abs(g.y - (c[1] + c[3] / 2)) < c[3] / 2 + 3 && ((g.side === 'west' && c[0] < 8) || (g.side === 'east' && c[0] > D.w - 10)))) continue;
   const blk = b(c[0], c[1], c[2], c[3], '', 'scenery', styles[i % styles.length]);
   blk.variant = i;
   blk.city = id;
-  const test = { buildings: [...buildings, ...accepted, blk], waters, gates };
+  const test = { buildings: [...buildings, ...accepted, blk], waters, gates, width: D.w, height: D.h };
   if (!reachableFrom(center, test, targets)) continue;
   accepted.push(blk);
   i++;
@@ -361,7 +371,10 @@ function passersby(id, paths, objects, area) {
 }
 
 export function townLayout(id) {
- const spec = townSpecs[id],
+ const D = dimsOf(id),
+  sh = ([x, y]) => [x + D.ox, y + D.oy],
+  base = townSpecs[id],
+  spec = { ...base, plaza: sh(base.plaza), teacher: sh(base.teacher), stage: sh(base.stage), buildings: base.buildings.map(q => ({ ...q, x: q.x + D.ox, y: q.y + D.oy })) },
   gates = townGates(id),
   center = {
    x: spec.plaza[0],
@@ -397,8 +410,8 @@ export function townLayout(id) {
   objects[objects.length - 2].label = 'Nico';
   objects[objects.length - 2].sprite = 1;
   objects.push({
-   x: 30.5,
-   y: 21,
+   x: 30.5 + D.ox,
+   y: 21 + D.oy,
    kind: 'npc',
    label: 'Vale',
    color: '#c58b72',
@@ -407,8 +420,8 @@ export function townLayout(id) {
   });
  }
  for (const r of RESIDENTS[id] || []) objects.push({
-  x: r.x,
-  y: r.y,
+  x: r.x + D.ox,
+  y: r.y + D.oy,
   kind: 'resident',
   label: PEOPLE[r.who][0],
   portrait: r.who,
@@ -416,8 +429,8 @@ export function townLayout(id) {
   facing: 'south'
  });
  for (const [who, x, y] of RIVAL_POSTS[id] || []) objects.push({
-  x,
-  y,
+  x: x + D.ox,
+  y: y + D.oy,
   kind: 'rivalPerson',
   label: PEOPLE[who][0],
   portrait: who,
@@ -430,10 +443,10 @@ export function townLayout(id) {
   w: 5,
   h: 32
  }] : id === 8 ? [{
-  x: 18,
-  y: 28,
-  w: 29,
-  h: 5
+  x: 18 + D.ox,
+  y: 28 + D.oy,
+  w: D.w - 18 - D.ox,
+  h: D.h - 28 - D.oy
  }] : id === 9 ? [{
   x: 0,
   y: 1,
@@ -456,10 +469,12 @@ export function townLayout(id) {
    [22, 28],
    [4, 20]
   ];
-  const point = candidates.find(([x, y]) => isWalkable({
+  const point = candidates.map(([x, y]) => [x + D.ox, y + D.oy]).find(([x, y]) => isWalkable({
    buildings,
    waters,
-   gates
+   gates,
+   width: D.w,
+   height: D.h
   }, x, y) && !buildings.some(b => x > b.x - 2.2 && x < b.x + b.w + 2.2 && y > b.y - 1 && y < b.y + b.h + 1.6) && !objects.some(o => Math.hypot(x - o.x, y - o.y) < 2.2));
   if (point) {
    const [x, y] = point;
@@ -471,21 +486,22 @@ export function townLayout(id) {
    });
   }
  }
- if (TOWN_SIZE[id] === 'city') for (const blk of cityBlocks(id, spec, buildings, objects, gates, waters, center)) buildings.push(blk);
- paths = townRoads({ id, gates, objects, buildings, waters, center, stage: { x: spec.stage[0], y: spec.stage[1] }, festival: spec.theme === 'festival' });
+ if (TOWN_SIZE[id] === 'city') for (const blk of cityBlocks(id, spec, buildings, objects, gates, waters, center, D)) buildings.push(blk);
+ paths = townRoads({ id, dims: D, gates, objects, buildings, waters, center, stage: { x: spec.stage[0], y: spec.stage[1] }, festival: spec.theme === 'festival' });
  // Un palazzo di città senza strada che arrivi alla porta non viene costruito.
  for (let i = buildings.length - 1; i >= 0; i--) {
   const bl = buildings[i];
   if (bl.city === undefined) continue;
   if (!paths.some(pt => { const e = pt.at(-1); return Math.abs(e.x - (bl.x + bl.w / 2)) < 1 && Math.abs(e.y - (bl.y + bl.h + .5)) < 1; })) buildings.splice(i, 1);
  }
- if (TOWN_SIZE[id] === 'city') for (const pb of passersby(id, paths, objects, { buildings, waters, gates })) objects.push(pb);
+ if (TOWN_SIZE[id] === 'city') for (const pb of passersby(id, paths, objects, { buildings, waters, gates, width: D.w, height: D.h })) objects.push(pb);
  return {
   coast: id === 1 ? 'south' : undefined,
   size: TOWN_SIZE[id],
-  width: WIDTH,
-  height: HEIGHT,
+  offset: { x: D.ox, y: D.oy },
   ...spec,
+  width: D.w,
+  height: D.h,
   buildings,
   paths,
   gates,
@@ -501,8 +517,8 @@ export function townLayout(id) {
 // Ricerca A* su una griglia di caselle, con un costo per ogni curva per ottenere tracciati puliti.
 const ROAD_HALF = 1.45;
 
-function roadRoute(from, to, blocked, cost, flip = false) {
- const W = WIDTH + 1, H = HEIGHT + 1, key = (x, y, d) => (y * W + x) * 5 + d;
+function roadRoute(from, to, blocked, cost, flip = false, dims = { w: WIDTH, h: HEIGHT }) {
+ const W = dims.w + 1, H = dims.h + 1, key = (x, y, d) => (y * W + x) * 5 + d;
  const sx = Math.round(from.x), sy = Math.round(from.y), tx = Math.round(to.x), ty = Math.round(to.y);
  const dirs = flip ? [[0, 1], [0, -1], [1, 0], [-1, 0]] : [[1, 0], [-1, 0], [0, 1], [0, -1]];
  const open = [[0, sx, sy, 4]], best = new Map([[key(sx, sy, 4), 0]]), parent = new Map();
@@ -522,7 +538,7 @@ function roadRoute(from, to, blocked, cost, flip = false) {
   }
   for (let nd = 0; nd < 4; nd++) {
    const nx = x + dirs[nd][0], ny = y + dirs[nd][1];
-   if (nx < 1 || ny < 1 || nx > WIDTH - 1 || ny > HEIGHT - 1) continue;
+   if (nx < 1 || ny < 1 || nx > dims.w - 1 || ny > dims.h - 1) continue;
    if (blocked(nx, ny) && !(nx === tx && ny === ty)) continue;
    const ng = g + cost(nx, ny) + (d !== 4 && d !== nd ? 6 : 0), nk = key(nx, ny, nd);
    if (ng < (best.get(nk) ?? Infinity)) {
@@ -548,7 +564,20 @@ const roadCache = new Map();
 export function townRoads(args) {
  const id = args.id;
  if (id === undefined || !roadCache.has(id)) {
-  const res = computeRoads(args);
+  let res = computeRoads(args);
+  // Se resta una girandola, si toglie il palazzo di contorno più vicino all'incrocio e si ricalcola.
+  for (let tries = 0; tries < 6 && pinwheels(res.cells).length; tries++) {
+   const pw = pinwheels(res.cells)[0];
+   let best = -1, bd = Infinity;
+   args.buildings.forEach((b, i) => {
+    if (b.city === undefined) return;
+    const d = Math.hypot(b.x + b.w / 2 - pw.x, b.y + b.h - pw.y);
+    if (d < bd) { bd = d; best = i; }
+   });
+   if (best < 0) break;
+   args.buildings.splice(best, 1);
+   res = computeRoads(args);
+  }
   if (id === undefined) return res.roads;
   roadCache.set(id, res);
  }
@@ -602,7 +631,7 @@ function computeRoads(args) {
  return fallback || { roads: [], cells: new Set(), seed: -1 };
 }
 
-function computeRoadsVariant({ gates, objects, buildings, waters, center, stage, festival }, seed) {
+function computeRoadsVariant({ gates, objects, buildings, waters, center, stage, festival, dims = { w: WIDTH, h: HEIGHT } }, seed) {
  const sScale = festival ? FESTIVAL_STAGE_SCALE : STAGE_SCALE;
  const stageRect = { x: stage.x - 72 * sScale / TILE, y: stage.y - 60 * sScale / TILE, w: 144 * sScale / TILE, h: 60 * sScale / TILE + .25 };
  const rects = [...buildings, stageRect];
@@ -616,7 +645,7 @@ function computeRoadsVariant({ gates, objects, buildings, waters, center, stage,
  const roads = [];
  const targets = [];
  for (const g of gates) {
-  const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: WIDTH - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: HEIGHT - 2 };
+  const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: dims.w - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: dims.h - 2 };
   targets.push({ exact: { x: g.x, y: g.y }, approach: inset, gate: true });
  }
  // Anche case e palazzi di contorno hanno una porta: ognuno ha la sua strada.
@@ -635,7 +664,7 @@ function computeRoadsVariant({ gates, objects, buildings, waters, center, stage,
   let r = null;
   for (const m of [ROAD_HALF, .9, .45]) {
    const ap = { x: t.approach.x, y: m === ROAD_HALF || t.gate ? t.approach.y : Math.min(t.approach.y, Math.ceil(t.approach.y - ROAD_HALF + m)) };
-   r = roadRoute(ap, hub, blockedBy(m), cost, flip);
+   r = roadRoute(ap, hub, blockedBy(m), cost, flip, dims);
    if (r) break;
   }
   if (!r && t.optional) continue;
@@ -654,7 +683,7 @@ function computeRoadsVariant({ gates, objects, buildings, waters, center, stage,
 
 export function isWalkable(layout, x, y) {
  if (layout.theme === 'seaBridge' && Math.abs(x - 24) > 1.6) return false;
- if (x < 1 || x > WIDTH - 1 || y < 1 || y > HEIGHT - 1) return false;
+ if (x < 1 || x > (layout.width ?? WIDTH) - 1 || y < 1 || y > (layout.height ?? HEIGHT) - 1) return false;
  if (layout.route && !routeWalkable(layout.route, x, y)) return false;
  const sb = stageBox(layout);
  if (sb && x > sb.x0 && x < sb.x1 && y > sb.y0 && y < sb.y1) return false;
@@ -1238,22 +1267,23 @@ function shade(hex, k) {
 
 // Città: selciato a lastre su tutta l’area, con aiuole squadrate.
 function paving(ctx, layout, p) {
+ const LW = layout.width, LH = layout.height;
  const dark = layout.theme === 'night', base = shade(p.path, dark ? -.32 : -.12), joint = shade(p.path, dark ? -.45 : -.24);
  ctx.fillStyle = base;
- ctx.fillRect(0, 0, WIDTH * TILE, HEIGHT * TILE);
+ ctx.fillRect(0, 0, LW * TILE, LH * TILE);
  ctx.strokeStyle = joint + '66';
  ctx.lineWidth = 1;
  ctx.beginPath();
- for (let y = 0; y <= HEIGHT * 2; y++) {
+ for (let y = 0; y <= LH * 2; y++) {
   ctx.moveTo(0, y * TILE / 2);
-  ctx.lineTo(WIDTH * TILE, y * TILE / 2);
-  for (let x = (y % 2) * .5; x <= WIDTH; x += 1) {
+  ctx.lineTo(LW * TILE, y * TILE / 2);
+  for (let x = (y % 2) * .5; x <= LW; x += 1) {
    ctx.moveTo(x * TILE, y * TILE / 2);
    ctx.lineTo(x * TILE, (y + 1) * TILE / 2);
   }
  }
  ctx.stroke();
- for (const [x, y] of [[7, 17], [40, 17], [24, 30.5], [24, 4.5]]) {
+ for (const [x, y] of [[7, 17], [LW - 8, 17], [LW / 2, LH - 3.5], [LW / 2, 4.5], [7, LH - 6], [LW - 8, LH - 6], [7, 6], [LW - 8, 6]]) {
   if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 2)) continue;
   if (layout.paths.some(path => path.some((q, i) => i && segDist(x, y, path[i - 1], q) < 3.2))) continue;
   rounded(ctx, (x - 1.6) * TILE, (y - 1) * TILE, 3.2 * TILE, 2 * TILE, 4, shade(p.path, -.3));
@@ -1490,10 +1520,10 @@ export function renderWorld(ctx, {
  ctx.translate(-cam.x, -cam.y);
  if (!seaAround) borderTrees(ctx, layout, p, cam, W, H);
  ctx.fillStyle = layout.theme === 'seaBridge' ? '#75aaa6' : p.grass;
- ctx.fillRect(0, 0, WIDTH * TILE, HEIGHT * TILE);
+ ctx.fillRect(0, 0, layout.width * TILE, layout.height * TILE);
  for (let i = 0; i < 190; i++) {
-  const x = (i * 151 + state.city * 17) % (WIDTH * TILE),
-   y = (i * 97) % (HEIGHT * TILE);
+  const x = (i * 151 + state.city * 17) % (layout.width * TILE),
+   y = (i * 97) % (layout.height * TILE);
   oval(ctx, x, y, 22 + (i % 4) * 13, 12 + (i % 3) * 5, i % 2 ? '#f9e7a90b' : '#426d3f08');
  }
  if (layout.size === 'city') paving(ctx, layout, p);
@@ -1581,7 +1611,10 @@ export function renderWorld(ctx, {
     [9, 26]
    ]) drawSprite(ctx, 'towns', 3, 1, xx * TILE, yy * TILE, 72, 48);
  }
+ ctx.save();
+ ctx.translate((layout.offset?.x || 0) * TILE, (layout.offset?.y || 0) * TILE);
  landmark(ctx, layout, p, time);
+ ctx.restore();
  const actors = [];
  if (layout.size === 'city') lampposts(ctx, layout, actors, time);
  layout.buildings.forEach(b => actors.push({
