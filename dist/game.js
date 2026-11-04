@@ -1,4 +1,7 @@
 import {
+ playIntro
+} from './intro.js';
+import {
  abilityDex,
  journeyRoute,
  MAP_POINTS,
@@ -292,8 +295,32 @@ function updateJournal() {
 }
 
 function welcome() {
- const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.7</p>`, [...(saved ? [{
-  label: 'Continua',
+ // Menu principale, come sulle console portatili: dopo START si sceglie se cominciare o caricare.
+ const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.7</p>`, [{
+  label: '▶ Nuova partita',
+  run: () => saved ? panel('Nuova partita?', `<p>La nuova estate sostituirà la partita salvata su questo dispositivo. Puoi conservarla con Salva → Esporta nel telefono.</p>`, [{
+   label: 'Comincia da capo',
+   run: () => intro(0)
+  }, {
+   label: 'Indietro',
+   run: welcome,
+   secondary: true
+  }], 'NUOVA PARTITA') : intro(0)
+ }, {
+  label: '▶ Carica partita',
+  run: loadMenu
+ }], 'UNA STORIA DI B3PZ');
+ p.classList.add('chapter-title', 'main-menu');
+ p.classList.remove('dialogue');
+ overlay.classList.remove('clear');
+ p.querySelector('button')?.focus();
+}
+
+function loadMenu() {
+ const s = saved,
+  card = s ? `<div class="save-slot"><strong>${s.bandName || 'Band senza nome'}</strong><span>${CITIES[s.city].name} · ${month(s).toLowerCase()}</span><span>${INSTRUMENTS[s.instrument]?.name || 'Strumento da scegliere'} · pass ${s.passes.length} / 8 · luoghi ${s.visited.length} / 12</span></div>` : '<p>Nessuna partita salvata su questo dispositivo.</p>';
+ const p = panel('Carica partita', card + '<p class="fine">Puoi anche caricare un salvataggio esportato da un altro dispositivo.</p>', [...(s ? [{
+  label: 'Continua il viaggio',
   run: () => {
    state = saved;
    syncAudio();
@@ -301,19 +328,15 @@ function welcome() {
    close();
   }
  }] : []), {
-  label: saved ? 'Nuova estate' : 'Comincia l’estate',
-  run: () => saved ? panel('Si ricomincia?', `<p>La nuova estate sostituirà la partita su questo dispositivo. Puoi conservarla usando Esporta nel menu.</p>`, [{
-   label: 'Nuova avventura',
-   run: () => intro(0)
-  }, {
-   label: 'Indietro',
-   run: welcome,
-   secondary: true
-  }]) : intro(0)
- }], 'UNA STORIA DI B3PZ');
- p.classList.add('chapter-title');
- p.classList.remove('dialogue');
- overlay.classList.remove('clear');
+  label: 'Carica da file',
+  run: importSave,
+  secondary: !!s
+ }, {
+  label: 'Indietro',
+  run: welcome,
+  secondary: true
+ }], 'SALVATAGGIO');
+ p.querySelector('button')?.focus();
 }
 const maestroPortrait = `<svg viewBox="0 0 130 170" aria-label="Il maestro Riva" role="img"><path d="M17 173Q14 111 65 108Q116 111 113 173" fill="#607e6d"/><path d="M51 109L65 139L80 109" fill="#f6e8ba"/><path d="M56 118L65 147L74 118" fill="#b67d53"/><ellipse cx="65" cy="74" rx="33" ry="42" fill="#e3b68d"/><path d="M30 69Q20 18 65 20Q111 18 100 70L87 43Q63 55 43 42Z" fill="#d1cfb8"/><path d="M31 62Q20 80 35 93M99 62Q111 80 96 93" fill="#e3b68d"/><g fill="none" stroke="#42594f" stroke-width="3"><ellipse cx="51" cy="72" rx="14" ry="11"/><ellipse cx="80" cy="72" rx="14" ry="11"/><path d="M65 70H67"/></g><path d="M50 93Q65 78 81 93Q71 101 65 94Q59 101 50 93" fill="#c3bca3"/><path d="M60 105Q65 108 71 104" fill="none" stroke="#9d765e" stroke-width="2"/></svg>`;
 
@@ -2219,7 +2242,11 @@ loadExtras().then(keys => {
  else img.onload = apply;
 });
 setupTown();
-welcome();
+if (QA || new URLSearchParams(location.search).has('nointro')) welcome();
+else playIntro({
+ audio,
+ onStart: welcome
+});
 requestAnimationFrame(frame);
 
 function portraitCard(id) {
