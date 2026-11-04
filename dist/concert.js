@@ -67,8 +67,13 @@ function ellipse(ctx, x, y, rx, ry, fill) {
 function words(ctx, s, x, y, size = 12, color = '#fff0d0', align = 'center') {
  ctx.font = `600 ${size}px Fredoka, Nunito, sans-serif`;
  ctx.textAlign = align;
+ ctx.save();
+ ctx.shadowColor = '#000c';
+ ctx.shadowBlur = 6;
+ ctx.shadowOffsetY = 1;
  ctx.fillStyle = color;
  ctx.fillText(s, x, y);
+ ctx.restore();
 }
 
 function poly(ctx, pts, fill, stroke) {
