@@ -161,3 +161,62 @@ npm test
 ```
 
 Lo script elenca ✓ i file accettati, ✗ quelli da correggere (con il motivo) e quelli ancora mancanti.
+
+---
+
+# Seconda serie: città, arredo urbano e sentieri
+
+Tre tavole nuove, stesse regole comuni (PNG 1536 × 1536 trasparente, griglia 4 × 4, una figura per cella, circa 20 px di margine, stile delle tavole di riferimento). Finché mancano, il gioco usa i disegni attuali.
+
+## 8. `buildings-extra.png` — palazzi delle città
+
+Le città (Officina, Bellavista, Grooveto, Porto del Sol, Notturnia) hanno isolati di palazzi attorno alle strade. Oggi ripetono gli edifici principali; questi sono palazzi «di fila», più semplici e più larghi che alti, senza insegne. Vista frontale dall’alto come gli altri edifici, porta in basso al centro.
+
+| Cella | Città | Edificio |
+|---|---|---|
+| (0,0) | Officina | casa operaia a schiera in mattoni rossi, due finestre e una porta |
+| (0,1) | Officina | piccolo magazzino con saracinesca e casse impilate |
+| (0,2) | Officina | palazzina in mattoni con ciminiera sottile e panni stesi |
+| (0,3) | Bellavista | villetta color pesca con balconcino fiorito |
+| (1,0) | Bellavista | casa a due piani color crema con persiane verdi |
+| (1,1) | Bellavista | serra di vetro e ferro battuto piena di piante |
+| (1,2) | Grooveto | casa con tendone a righe e bancarella davanti |
+| (1,3) | Grooveto | piccolo negozio di dischi con vetrina colorata |
+| (2,0) | Grooveto | casa giallo ocra con murales di note musicali |
+| (2,1) | Porto del Sol | casa di pescatori azzurra con reti appese |
+| (2,2) | Porto del Sol | casa rosa a due piani con buganvillea |
+| (2,3) | Porto del Sol | piccolo deposito di barche in legno |
+| (3,0) | Notturnia | palazzina scura con finestre accese e balcone in ferro |
+| (3,1) | Notturnia | piccolo bar notturno con luci calde in vetrina |
+| (3,2) | Notturnia | casa stretta e alta con abbaino illuminato |
+| (3,3) | riserva | lasciare vuota |
+
+## 9. `city-props.png` — arredo urbano
+
+| Cella | Oggetto | Note |
+|---|---|---|
+| (0,0) | Lampione | alto e sottile, ferro verde scuro, lanterna gialla; usato lungo le strade delle città |
+| (0,1) | Panchina | legno e ferro, vista di tre quarti |
+| (0,2) | Fontanella | piccola, in pietra |
+| (0,3) | Cassetta della posta | rossa, su palo |
+| (1,0) | Fioriera | rettangolare in pietra con fiori misti |
+| (1,1) | Edicola | chiosco di giornali con tettoia |
+| (1,2) | Bancarella | carretto della frutta con ombrellone |
+| (1,3) | Bici parcheggiate | due biciclette appoggiate a una rastrelliera |
+| righe 2 e 3 | riserva | lasciare vuote |
+
+## 10. `trail-props.png` — decorazioni dei sentieri
+
+| Cella | Oggetto | Note |
+|---|---|---|
+| (0,0) | Erba alta | ciuffo largo, verde intenso; si ripete affiancato |
+| (0,1) | Cartello di legno | palo con tavoletta vuota, senza scritte |
+| (0,2) | Sasso grande | con muschio |
+| (0,3) | Ceppo d’albero | tagliato, con funghetti |
+| (1,0) | Staccionata | tre assi orizzontali, pezzo modulare |
+| (1,1) | Cespuglio di more | basso e largo |
+| (1,2) | Panchina da parco | di legno grezzo |
+| (1,3) | Segreto del sentiero | piccola luce dorata che brilla tra l’erba |
+| righe 2 e 3 | riserva | lasciare vuote |
+
+> Prompt (uno per tavola): «Tavola sprite 1536×1536 a sfondo trasparente, griglia 4×4 da 384 px, stesso stile dipinto delle tavole di riferimento allegate. Una figura per cella, centrata, base nella parte bassa con circa 20 px di margine, nessun testo. Contenuto delle celle: [tabella della tavola].»

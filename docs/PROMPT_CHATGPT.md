@@ -3,7 +3,7 @@
 Copia tutto il blocco qui sotto in una nuova chat di ChatGPT (con navigazione web e generazione di immagini attive).
 
 ```text
-Lavoriamo agli sprite del mio videogioco «Una estate in tour».
+Lavoriamo agli sprite del mio videogioco «Fuori Tempo» (un’estate in tour).
 
 1. Leggi le specifiche complete qui:
    https://raw.githubusercontent.com/b3pz/una-estate-in-tour/main/docs/SPRITE_PER_CHATGPT.md
@@ -34,6 +34,7 @@ Lavoriamo agli sprite del mio videogioco «Una estate in tour».
 5. Se una richiesta del documento è ambigua, chiedimi invece di inventare.
 
 Ordine consigliato: hero-bike.png, people-extra.png, transport-stage.png, interiors-extra.png, people-dir-1…4.png, gli sfondi concert/*.jpg, title-art.jpg.
+Seconda serie (sezioni 8–10 delle specifiche): buildings-extra.png, city-props.png, trail-props.png.
 ```
 
 ## Dopo ogni immagine

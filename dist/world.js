@@ -1,4 +1,4 @@
-import { ROUTES, routeKey as rKey, routeWalkable, pathDistance, inRect } from './routes.js';
+import { ROUTES, routeKey as rKey, routeWalkable, pathDistance, inRect, roundPath } from './routes.js';
 import {
  METRO_STOPS
 } from './progress.js';
@@ -12,13 +12,18 @@ import {
  roadKey
 } from './adventure.js';
 import {
- CITIES
+ CITIES,
+ CITY_IDS,
+ CITY_MAP
 } from './core.js';
 import {
  drawSprite,
  spriteCell,
  hasAtlas
 } from './assets.js';
+
+// Pseudo-casuale stabile: stesse decorazioni a ogni visita.
+const rnd = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
 export const TILE = 24,
  WIDTH = 48,
  HEIGHT = 34;
@@ -58,30 +63,36 @@ export const OPPOSITE = {
  north: 'south',
  south: 'north'
 };
-export function pointOnSide(side, lane, inset = 1.5) {
+export function dimsOf(id) {
+ return CITY_IDS.includes(id) ? CITY_MAP : { w: WIDTH, h: HEIGHT, ox: 0, oy: 0 };
+}
+export function pointOnSide(side, lane, inset = 1.5, dims = { w: WIDTH, h: HEIGHT }) {
  return side === 'west' ? {
   x: inset,
   y: lane
  } : side === 'east' ? {
-  x: WIDTH - inset,
+  x: dims.w - inset,
   y: lane
  } : side === 'north' ? {
   x: lane,
   y: inset
  } : {
   x: lane,
-  y: HEIGHT - inset
+  y: dims.h - inset
  };
 }
 export function townGates(id) {
  return LINKS.filter(e => e[0] === id || e[1] === id).map(e => {
   const first = e[0] === id,
    side = e[first ? 2 : 3],
-   lane = e[first ? 4 : 5];
+   roadLane = e[first ? 4 : 5],
+   D = dimsOf(id),
+   lane = roadLane + (side === 'west' || side === 'east' ? D.oy : D.ox);
   return {
-   ...pointOnSide(side, lane),
+   ...pointOnSide(side, lane, 1.5, D),
    side,
    lane,
+   roadLane,
    to: e[first ? 1 : 0],
    kind: 'exit',
    label: CITIES[e[first ? 1 : 0]].name
@@ -92,7 +103,7 @@ export function arrival(id, from) {
  const g = townGates(id).find(g => g.to === from);
  if (!g) throw Error('Invalid arrival connection');
  return {
-  ...pointOnSide(g.side, g.lane, 3.3),
+  ...pointOnSide(g.side, g.lane, 3.3, dimsOf(id)),
   facing: OPPOSITE[g.side]
  };
 }
@@ -101,13 +112,13 @@ export function roadLayout(from, to) {
   b = townGates(to).find(g => g.to === from);
  if (!a || !b) throw Error('Invalid road');
  const start = {
-  ...pointOnSide(OPPOSITE[a.side], a.lane),
+  ...pointOnSide(OPPOSITE[a.side], a.roadLane),
   kind: 'roadBack',
   side: OPPOSITE[a.side],
   label: CITIES[from].name
  };
  const end = {
-  ...pointOnSide(OPPOSITE[b.side], b.lane),
+  ...pointOnSide(OPPOSITE[b.side], b.roadLane),
   kind: 'roadEnd',
   side: OPPOSITE[b.side],
   label: CITIES[to].name
@@ -145,7 +156,7 @@ export function roadLayout(from, to) {
    label: 'Appunti di viaggio'
   }],
   spawn: {
-   ...pointOnSide(start.side, a.lane, 3.3),
+   ...pointOnSide(start.side, a.roadLane, 3.3),
    facing: a.side
   }
  });
@@ -154,14 +165,34 @@ export function roadLayout(from, to) {
 // Applica un percorso disegnato a mano, se esiste per questa strada.
 function designedRoad(layout) {
  const route = ROUTES[rKey(layout.from, layout.to)];
- if (!route) return layout;
- layout.route = route;
- layout.paths = route.paths;
+ if (!route) {
+  layout.paths = layout.paths.map(p => roundPath(p, 3));
+  return layout;
+ }
+ // Primo e ultimo tratto sempre dritti per 4 caselle: si entra e si esce in linea con il varco.
+ const lead = (g, toward) => g.side === 'west' ? { x: g.x + toward, y: g.y } : g.side === 'east' ? { x: g.x - toward, y: g.y } : g.side === 'north' ? { x: g.x, y: g.y + toward } : { x: g.x, y: g.y - toward };
+ const main = route.paths[0], s0 = layout.gates[0], s1 = layout.gates[1];
+ const near = g => Math.hypot(main[0].x - g.x, main[0].y - g.y) < 1 ? 'first' : 'last';
+ const fixed = [...main];
+ for (const g of [s0, s1]) {
+  if (near(g) === 'first') fixed.splice(1, 0, lead(g, 4));
+  else fixed.splice(fixed.length - 1, 0, lead(g, 4));
+ }
+ layout.route = { ...route, paths: [fixed, ...route.paths.slice(1)].map(p => roundPath(p, 3)) };
+ layout.paths = layout.route.paths;
  const wand = layout.objects.find(o => o.kind === 'wanderer'),
   sign = layout.objects.find(o => o.kind === 'sign');
  if (wand && route.wanderer) Object.assign(wand, route.wanderer);
  if (sign && route.sign) Object.assign(sign, route.sign);
  if (route.secret) layout.objects.push({ ...route.secret, kind: 'secret', secret: route.secret });
+ // Chi resta fuori dal tracciato arrotondato viene spostato sul bordo del sentiero più vicino.
+ for (const o of layout.objects) {
+  const ok = (x, y) => routeWalkable(layout.route, x, y);
+  if ([[0, 1], [1, 0], [-1, 0], [0, -1], [0, 0]].some(([dx, dy]) => ok(o.x + dx, o.y + dy))) continue;
+  let best = null;
+  for (const path of layout.route.paths) for (const q of path) { const d = Math.hypot(q.x - o.x, q.y - o.y); if (!best || d < best.d) best = { d, q }; }
+  if (best) { const k = Math.max(0, 1 - 1.1 / Math.max(best.d, .01)); o.x = +(o.x + (best.q.x - o.x) * k).toFixed(2); o.y = +(o.y + (best.q.y - o.y) * k).toFixed(2); }
+ }
  return layout;
 }
 const b = (x, y, w, h, label, kind = 'lore', style = 'cottage') => ({
@@ -270,8 +301,83 @@ const townSpecs = [{
   landmark: 'festival'
  }
 ];
+// Paesini e città: le città hanno selciato, isolati di palazzi, lampioni e passanti.
+export const TOWN_SIZE = { 0: 'village', 1: 'village', 3: 'village', 6: 'village', 7: 'village', 9: 'village', 2: 'city', 4: 'city', 5: 'city', 8: 'city', 10: 'city', 11: 'festival' };
+const CITY_STYLES = { 2: ['factory', 'stone'], 4: ['theatre', 'cottage'], 5: ['market', 'club'], 8: ['stucco', 'market'], 10: ['night', 'club'] };
+const blockCache = new Map();
+
+function reachableFrom(start, layoutLike, targets) {
+ const LW = layoutLike.width ?? WIDTH, LH = layoutLike.height ?? HEIGHT, W = LW + 1, seen = new Uint8Array(W * (LH + 1)), q = [[Math.round(start.x), Math.round(start.y)]];
+ seen[q[0][1] * W + q[0][0]] = 1;
+ for (let h = 0; h < q.length; h++) {
+  const [x, y] = q[h];
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+   const nx = x + dx, ny = y + dy;
+   if (nx < 1 || ny < 1 || nx > LW - 1 || ny > LH - 1 || seen[ny * W + nx] || !isWalkable(layoutLike, nx, ny)) continue;
+   seen[ny * W + nx] = 1;
+   q.push([nx, ny]);
+  }
+ }
+ return targets.every(t => [[0, 0], [0, 1], [1, 0], [-1, 0], [0, -1], [0, 2]].some(([dx, dy]) => { const x = Math.round(t.x) + dx, y = Math.round(t.y) + dy; return x >= 0 && y >= 0 && x <= LW && y <= LH && seen[y * W + x]; }));
+}
+
+function cityBlocks(id, spec, buildings, objects, gates, waters, center, D) {
+ if (blockCache.has(id)) return blockCache.get(id).map(b => ({ ...b }));
+ const styles = CITY_STYLES[id] || [spec.buildings[0].style];
+ const cands = [];
+ // Griglia di isolati su tutta la mappa della città, filtrata dai vincoli qui sotto.
+ for (let y = 2; y < D.h - 6; y += 5.5)
+  for (let x = 2.5; x < D.w - 7; x += 6.5) cands.push([x, y, 5.5, 3]);
+ const stage = { x: spec.stage[0] - 72 * STAGE_SCALE / TILE - 1, y: spec.stage[1] - 60 * STAGE_SCALE / TILE - 1, w: 144 * STAGE_SCALE / TILE + 2, h: 60 * STAGE_SCALE / TILE + 3 };
+ const overlap = (a, r, m) => a[0] < r.x + r.w + m && a[0] + a[2] > r.x - m && a[1] < r.y + r.h + m && a[1] + a[3] > r.y - m;
+ const targets = [...objects.filter(o => !o.building), ...objects.filter(o => o.building).map(o => ({ x: o.x, y: o.y + 1 })), ...gates.map(g => ({ x: g.side === 'west' ? 3 : g.side === 'east' ? WIDTH - 3 : g.x, y: g.side === 'north' ? 3 : g.side === 'south' ? HEIGHT - 3 : g.y }))];
+ const accepted = [];
+ let i = 0;
+ for (const c of cands) {
+  if (c[1] + c[3] + ROAD_HALF + 1 > D.h - 1) continue;
+  const doorArea = [c[0] - .5, c[1] + c[3], c[2] + 1, 3.6];
+  if ([...buildings, ...accepted, stage].some(z => overlap(doorArea, z, 0))) continue;
+  // Nessun isolato davanti alla porta di un altro edificio.
+  if ([...buildings, ...accepted].some(z => overlap(c, [z.x - .5, z.y + z.h, z.w + 1, 3.6].reduce((r, v, i) => (r[['x', 'y', 'w', 'h'][i]] = v, r), {}), 0))) continue;
+  if (buildings.some(z => overlap(c, z, 1.6)) || accepted.some(z => overlap(c, z, .8)) || overlap(c, stage, 0)) continue;
+  if (objects.some(o => !o.building && o.x > c[0] - 2.4 && o.x < c[0] + c[2] + 2.4 && o.y > c[1] - 1.6 && o.y < c[1] + c[3] + 3)) continue;
+  if (waters.some(w => overlap(c, w, 0))) continue;
+  if (gates.some(g => (g.side === 'north' || g.side === 'south') ? Math.abs(g.x - (c[0] + c[2] / 2)) < c[2] / 2 + 3 && ((g.side === 'north' && c[1] < 8) || (g.side === 'south' && c[1] > D.h - 10)) : Math.abs(g.y - (c[1] + c[3] / 2)) < c[3] / 2 + 3 && ((g.side === 'west' && c[0] < 8) || (g.side === 'east' && c[0] > D.w - 10)))) continue;
+  const blk = b(c[0], c[1], c[2], c[3], '', 'scenery', styles[i % styles.length]);
+  blk.variant = i;
+  blk.city = id;
+  const test = { buildings: [...buildings, ...accepted, blk], waters, gates, width: D.w, height: D.h };
+  if (!reachableFrom(center, test, targets)) continue;
+  accepted.push(blk);
+  i++;
+ }
+ blockCache.set(id, accepted);
+ return accepted.map(b => ({ ...b }));
+}
+
+const CITY_CHATTER = [
+ '«Scusate, sapete dov’è la fermata della metro? Ah, la M verde. Grazie!»',
+ '«Che caldo! In città d’estate si vive solo dopo il tramonto.»',
+ '«Siete quelli della radio? Mia cugina non fa che parlare di voi.»',
+ '«Stasera c’è musica in piazza? Qui c’è sempre musica, da qualche parte.»',
+ '«Ho perso l’ultimo autobus. Va be’, faccio due passi.»',
+ '«Il palco è aperto a tutti, ma il pubblico qui è esigente. Buona fortuna!»'
+];
+function passersby(id, paths, objects, area) {
+ const out = [], spots = paths.flatMap(p => p.slice(1, -4)).filter((q, k) => k % 5 === 2 && isWalkable(area, Math.round(q.x), Math.round(q.y)) && isWalkable(area, q.x, q.y));
+ for (let k = 0; k < spots.length && out.length < 3; k += 3) {
+  const q = spots[(k * 7 + id) % spots.length];
+  if ([...objects, ...out].some(o => Math.hypot(o.x - q.x, o.y - q.y) < 4.5)) continue;
+  out.push({ x: +q.x.toFixed(2), y: +q.y.toFixed(2), kind: 'passerby', label: 'Passante', portrait: 'x' + (8 + (id * 3 + out.length * 2) % 8), line: CITY_CHATTER[(id + out.length * 2) % CITY_CHATTER.length], facing: 'south' });
+ }
+ return out;
+}
+
 export function townLayout(id) {
- const spec = townSpecs[id],
+ const D = dimsOf(id),
+  sh = ([x, y]) => [x + D.ox, y + D.oy],
+  base = townSpecs[id],
+  spec = { ...base, plaza: sh(base.plaza), teacher: sh(base.teacher), stage: sh(base.stage), buildings: base.buildings.map(q => ({ ...q, x: q.x + D.ox, y: q.y + D.oy })) },
   gates = townGates(id),
   center = {
    x: spec.plaza[0],
@@ -307,8 +413,8 @@ export function townLayout(id) {
   objects[objects.length - 2].label = 'Nico';
   objects[objects.length - 2].sprite = 1;
   objects.push({
-   x: 30.5,
-   y: 21,
+   x: 30.5 + D.ox,
+   y: 21 + D.oy,
    kind: 'npc',
    label: 'Vale',
    color: '#c58b72',
@@ -317,8 +423,8 @@ export function townLayout(id) {
   });
  }
  for (const r of RESIDENTS[id] || []) objects.push({
-  x: r.x,
-  y: r.y,
+  x: r.x + D.ox,
+  y: r.y + D.oy,
   kind: 'resident',
   label: PEOPLE[r.who][0],
   portrait: r.who,
@@ -326,46 +432,24 @@ export function townLayout(id) {
   facing: 'south'
  });
  for (const [who, x, y] of RIVAL_POSTS[id] || []) objects.push({
-  x,
-  y,
+  x: x + D.ox,
+  y: y + D.oy,
   kind: 'rivalPerson',
   label: PEOPLE[who][0],
   portrait: who,
   facing: 'south'
  });
- const paths = gates.map(g => [g, {
-  x: g.side === 'east' || g.side === 'west' ? center.x : g.x,
-  y: g.side === 'east' || g.side === 'west' ? g.y : center.y
- }, center]);
- for (const o of objects.filter(o => o.building || o.kind === 'stage')) paths.push([center, {
-  x: o.x,
-  y: center.y
- }, {
-  x: o.x,
-  y: o.y + 1
- }]);
- if (id !== 0 && id !== 9 && id !== 11) {
-  const style = spec.buildings[0].style;
-  for (const [x, y] of [
-    [5, 3],
-    [11, 3],
-    [35, 3],
-    [41, 3]
-   ]) {
-   const extra = b(x, y, 6, 3, '', 'scenery', style);
-   if (!buildings.some(z => x < z.x + z.w && x + 6 > z.x && y < z.y + z.h && y + 3 > z.y) && !gates.some(g => Math.abs(g.x - (x + 3)) < 5 && g.side === 'north')) buildings.push(extra);
-  }
- }
+ let paths = [];
  const waters = id === 1 ? [{
   x: 8,
   y: 1,
   w: 5,
   h: 32
  }] : id === 8 ? [{
-  x: 18,
-  y: 28,
-  w: 29,
-  h: 5
+  x: 18 + D.ox,
+  y: 28 + D.oy,
+  w: D.w - 18 - D.ox,
+  h: D.h - 28 - D.oy
  }] : id === 9 ? [{
   x: 0,
   y: 1,
@@ -388,10 +472,12 @@ export function townLayout(id) {
    [22, 28],
    [4, 20]
   ];
-  const point = candidates.find(([x, y]) => isWalkable({
+  const point = candidates.map(([x, y]) => [x + D.ox, y + D.oy]).find(([x, y]) => isWalkable({
    buildings,
    waters,
-   gates
+   gates,
+   width: D.w,
+   height: D.h
   }, x, y) && !buildings.some(b => x > b.x - 2.2 && x < b.x + b.w + 2.2 && y > b.y - 1 && y < b.y + b.h + 1.6) && !objects.some(o => Math.hypot(x - o.x, y - o.y) < 2.2));
   if (point) {
    const [x, y] = point;
@@ -401,19 +487,24 @@ export function townLayout(id) {
     kind,
     label: kind === 'metro' ? 'Metro · ingresso M' : kind === 'cable' ? 'Funivia di Monteferro' : kind === 'bridge' ? 'Pontile per ' + (id === 10 ? 'Isola Levante' : 'Notturnia') : 'Imbarco traghetto'
    });
-   paths.push([center, {
-    x,
-    y: center.y
-   }, {
-    x,
-    y
-   }]);
   }
  }
+ if (TOWN_SIZE[id] === 'city') for (const blk of cityBlocks(id, spec, buildings, objects, gates, waters, center, D)) buildings.push(blk);
+ paths = townRoads({ id, dims: D, gates, objects, buildings, waters, center, stage: { x: spec.stage[0], y: spec.stage[1] }, festival: spec.theme === 'festival' });
+ // Un palazzo di città senza strada che arrivi alla porta non viene costruito.
+ for (let i = buildings.length - 1; i >= 0; i--) {
+  const bl = buildings[i];
+  if (bl.city === undefined) continue;
+  if (!paths.some(pt => { const e = pt.at(-1); return Math.abs(e.x - (bl.x + bl.w / 2)) < 1 && Math.abs(e.y - (bl.y + bl.h + .5)) < 1; })) buildings.splice(i, 1);
+ }
+ if (TOWN_SIZE[id] === 'city') for (const pb of passersby(id, paths, objects, { buildings, waters, gates, width: D.w, height: D.h })) objects.push(pb);
  return {
-  width: WIDTH,
-  height: HEIGHT,
+  coast: id === 1 ? 'south' : undefined,
+  size: TOWN_SIZE[id],
+  offset: { x: D.ox, y: D.oy },
   ...spec,
+  width: D.w,
+  height: D.h,
   buildings,
   paths,
   gates,
@@ -425,9 +516,177 @@ export function townLayout(id) {
   }
  };
 }
+// Strade del paese: ogni tratto gira attorno a case e palco e arriva davanti alla porta.
+// Ricerca A* su una griglia di caselle, con un costo per ogni curva per ottenere tracciati puliti.
+const ROAD_HALF = 1.45;
+
+function roadRoute(from, to, blocked, cost, flip = false, dims = { w: WIDTH, h: HEIGHT }) {
+ const W = dims.w + 1, H = dims.h + 1, key = (x, y, d) => (y * W + x) * 5 + d;
+ const sx = Math.round(from.x), sy = Math.round(from.y), tx = Math.round(to.x), ty = Math.round(to.y);
+ const dirs = flip ? [[0, 1], [0, -1], [1, 0], [-1, 0]] : [[1, 0], [-1, 0], [0, 1], [0, -1]];
+ const open = [[0, sx, sy, 4]], best = new Map([[key(sx, sy, 4), 0]]), parent = new Map();
+ while (open.length) {
+  let bi = 0;
+  for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+  const [, x, y, d] = open.splice(bi, 1)[0], g = best.get(key(x, y, d));
+  if (x === tx && y === ty) {
+   const pts = [];
+   let k = key(x, y, d);
+   while (k !== undefined) {
+    const c = Math.floor(k / 5);
+    pts.push({ x: c % W, y: Math.floor(c / W) });
+    k = parent.get(k);
+   }
+   return pts.reverse();
+  }
+  for (let nd = 0; nd < 4; nd++) {
+   const nx = x + dirs[nd][0], ny = y + dirs[nd][1];
+   if (nx < 1 || ny < 1 || nx > dims.w - 1 || ny > dims.h - 1) continue;
+   if (blocked(nx, ny) && !(nx === tx && ny === ty)) continue;
+   const ng = g + cost(nx, ny) + (d !== 4 && d !== nd ? 6 : 0), nk = key(nx, ny, nd);
+   if (ng < (best.get(nk) ?? Infinity)) {
+    best.set(nk, ng);
+    parent.set(nk, key(x, y, d));
+    open.push([ng + Math.abs(nx - tx) + Math.abs(ny - ty), nx, ny, nd]);
+   }
+  }
+ }
+ return null;
+}
+
+function simplifyRoute(pts) {
+ const out = [];
+ for (let i = 0; i < pts.length; i++) {
+  const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+  if (!a || !c || (c.x - b.x) !== (b.x - a.x) || (c.y - b.y) !== (b.y - a.y)) out.push(b);
+ }
+ return out;
+}
+
+const roadCache = new Map();
+export function townRoads(args) {
+ const id = args.id;
+ if (id === undefined || !roadCache.has(id)) {
+  let res = computeRoads(args);
+  // Se resta una girandola, si toglie il palazzo di contorno più vicino all'incrocio e si ricalcola.
+  for (let tries = 0; tries < 6 && pinwheels(res.cells).length; tries++) {
+   const pw = pinwheels(res.cells)[0];
+   let best = -1, bd = Infinity;
+   args.buildings.forEach((b, i) => {
+    if (b.city === undefined) return;
+    const d = Math.hypot(b.x + b.w / 2 - pw.x, b.y + b.h - pw.y);
+    if (d < bd) { bd = d; best = i; }
+   });
+   if (best < 0) break;
+   args.buildings.splice(best, 1);
+   res = computeRoads(args);
+  }
+  if (id === undefined) return res.roads;
+  roadCache.set(id, res);
+ }
+ return roadCache.get(id).roads.map(r => r.map(p => ({ ...p })));
+}
+// Per i test: celle delle strade della città e incroci a girandola trovati.
+export function roadReport(id) {
+ townLayout(id);
+ const res = roadCache.get(id);
+ return { seed: res.seed, pinwheels: pinwheels(res.cells), cells: res.cells.size };
+}
+
+// Rileva incroci «a girandola»: tre o più bracci che, appena lasciato l'incrocio, girano tutti
+// nello stesso senso. Sono forme da evitare: ricordano simboli che non vogliamo nel gioco.
+export function pinwheels(cells, reach = 14) {
+ const has = (x, y) => cells.has(x + ',' + y), dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+ const deg = (x, y) => dirs.filter(([dx, dy]) => has(x + dx, y + dy)).length;
+ const found = [];
+ for (const k of cells) {
+  const [x, y] = k.split(',').map(Number);
+  if (deg(x, y) < 3) continue;
+  const turns = [];
+  for (const [dx, dy] of dirs) {
+   if (!has(x + dx, y + dy)) continue;
+   let px = x + dx, py = y + dy, n = 1, sign = 0;
+   while (n < reach) {
+    const d = deg(px, py);
+    if (d >= 3 || d <= 1) break;
+    if (has(px + dx, py + dy)) { px += dx; py += dy; n++; continue; }
+    const e = dirs.find(([ex, ey]) => (ex !== -dx || ey !== -dy) && has(px + ex, py + ey));
+    if (e) sign = Math.sign(dx * e[1] - dy * e[0]);
+    break;
+   }
+   turns.push(sign);
+  }
+  const cw = turns.filter(t => t > 0).length, ccw = turns.filter(t => t < 0).length;
+  if (turns.length >= 3 && ((cw >= 3 && ccw === 0) || (ccw >= 3 && cw === 0))) found.push({ x, y, turns });
+ }
+ return found;
+}
+
+function computeRoads(args) {
+ // Si provano più varianti (ordine dei collegamenti e preferenze di svolta) e si tiene la prima senza girandole.
+ let fallback = null;
+ for (let seed = 0; seed < 24; seed++) {
+  const res = computeRoadsVariant(args, seed);
+  if (!res) continue;
+  if (!pinwheels(res.cells).length) return { ...res, seed };
+  fallback = fallback || { ...res, seed };
+ }
+ return fallback || { roads: [], cells: new Set(), seed: -1 };
+}
+
+function computeRoadsVariant({ gates, objects, buildings, waters, center, stage, festival, dims = { w: WIDTH, h: HEIGHT } }, seed) {
+ const sScale = festival ? FESTIVAL_STAGE_SCALE : STAGE_SCALE;
+ const stageRect = { x: stage.x - 72 * sScale / TILE, y: stage.y - 60 * sScale / TILE, w: 144 * sScale / TILE, h: 60 * sScale / TILE + .25 };
+ const rects = [...buildings, stageRect];
+ const wet = (x, y) => waters.some(w => x > w.x - .6 && x < w.x + w.w + .6 && y > w.y - .6 && y < w.y + w.h + .6);
+ const onBridge = (x, y) => gates.some(g => (g.side === 'east' || g.side === 'west') && Math.abs(y - g.y) < .6);
+ const blockedBy = m => (x, y) => (wet(x, y) && !onBridge(x, y)) || rects.some(r => x > r.x - m && x < r.x + r.w + m && y > r.y - m && y < r.y + r.h + m - .2);
+ const hub = { x: Math.round(center.x), y: Math.round(center.y) };
+ const cells = new Set([hub.x + ',' + hub.y]);
+ // Le strade nuove si innestano su quelle esistenti: percorrerle costa poco.
+ const cost = (x, y) => cells.has(x + ',' + y) ? .25 : 1;
+ const roads = [];
+ const targets = [];
+ for (const g of gates) {
+  const inset = g.side === 'west' ? { x: 2, y: g.y } : g.side === 'east' ? { x: dims.w - 2, y: g.y } : g.side === 'north' ? { x: g.x, y: 2 } : { x: g.x, y: dims.h - 2 };
+  targets.push({ exact: { x: g.x, y: g.y }, approach: inset, gate: true });
+ }
+ // Anche case e palazzi di contorno hanno una porta: ognuno ha la sua strada.
+ for (const b of buildings) if (b.kind === 'scenery') targets.push({ exact: { x: b.x + b.w / 2, y: b.y + b.h + .5 }, approach: { x: Math.round(b.x + b.w / 2), y: Math.ceil(b.y + b.h + ROAD_HALF) }, optional: true });
+ for (const o of objects) {
+  if (o.building) targets.push({ exact: { x: o.x, y: o.y + .9 }, approach: { x: Math.round(o.x), y: Math.ceil(o.building.y + o.building.h + ROAD_HALF) } });
+  else if (o.kind === 'stage') targets.push({ exact: { x: o.x, y: o.y + .9 }, approach: { x: Math.round(o.x), y: Math.ceil(stage.y + .25 + ROAD_HALF) } });
+  else if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) targets.push({ exact: { x: o.x, y: o.y + .6 }, approach: { x: Math.round(o.x), y: Math.round(o.y + 1) } });
+ }
+ // Varianti: prima i varchi (la strada principale), poi il resto; l'ordine ruota con il seme.
+ const gatesFirst = targets.filter(t => t.gate), rest = targets.filter(t => !t.gate);
+ const rot = (arr, k) => arr.length ? arr.map((_, i) => arr[(i + k) % arr.length]) : arr;
+ const order = [...rot(gatesFirst, seed % Math.max(1, gatesFirst.length)), ...rot(rest, Math.floor(seed / 4) % Math.max(1, rest.length))];
+ const flip = seed % 2 === 1;
+ for (const t of order) {
+  let r = null;
+  for (const m of [ROAD_HALF, .9, .45]) {
+   const ap = { x: t.approach.x, y: m === ROAD_HALF || t.gate ? t.approach.y : Math.min(t.approach.y, Math.ceil(t.approach.y - ROAD_HALF + m)) };
+   r = roadRoute(ap, hub, blockedBy(m), cost, flip, dims);
+   if (r) break;
+  }
+  if (!r && t.optional) continue;
+  if (!r) return null;
+  // Si tiene solo il tratto nuovo: dalla destinazione fino al primo punto di strada già esistente.
+  const cut = r.findIndex(c => cells.has(c.x + ',' + c.y));
+  const fresh = r.slice(0, cut < 0 ? r.length : cut + 1);
+  for (const c of fresh) cells.add(c.x + ',' + c.y);
+  const pts = simplifyRoute(fresh.reverse());
+  if (cut < 0 || (pts[0].x === hub.x && pts[0].y === hub.y)) pts[0] = { x: center.x, y: center.y };
+  pts.push(t.exact);
+  roads.push(roundPath(pts, 2.2));
+ }
+ return { roads, cells };
+}
+
 export function isWalkable(layout, x, y) {
  if (layout.theme === 'seaBridge' && Math.abs(x - 24) > 1.6) return false;
- if (x < 1 || x > WIDTH - 1 || y < 1 || y > HEIGHT - 1) return false;
+ if (x < 1 || x > (layout.width ?? WIDTH) - 1 || y < 1 || y > (layout.height ?? HEIGHT) - 1) return false;
  if (layout.route && !routeWalkable(layout.route, x, y)) return false;
  const sb = stageBox(layout);
  if (sb && x > sb.x0 && x < sb.x1 && y > sb.y0 && y < sb.y1) return false;
@@ -746,7 +1005,12 @@ const BUILDING_SPRITES = {
  tent: [2, 3]
 };
 
+const CITY_CELLS = { 2: [[0, 0], [0, 1], [0, 2]], 4: [[0, 3], [1, 0], [1, 1]], 5: [[1, 2], [1, 3], [2, 0]], 8: [[2, 1], [2, 2], [2, 3]], 10: [[3, 0], [3, 1], [3, 2]] };
 function buildingArt(ctx, b, p) {
+ if (b.kind === 'scenery' && b.city !== undefined) {
+  const cells = CITY_CELLS[b.city], c = cells && cells[(b.variant || 0) % cells.length];
+  if (c && drawSprite(ctx, 'buildings2', c[0], c[1], (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE, b.w * TILE + 26, (b.h + 3) * TILE)) return;
+ }
  const cell = BUILDING_SPRITES[b.style];
  if (cell && drawSprite(ctx, 'towns', cell[0], cell[1], (b.x + b.w / 2) * TILE, (b.y + b.h) * TILE, b.w * TILE + 26, (b.w * TILE + 26) * .92)) {
   return;
@@ -903,6 +1167,38 @@ export function drawStage(ctx, x, y, genre, large = false, scale = null) {
 }
 
 // Oltre i bordi della mappa: bosco fitto (o mare), così la telecamera centrata non mostra mai il vuoto.
+// Acque che toccano un bordo continuano oltre la mappa; a sud di Rivafosca il fiume sfocia nel mare.
+export function outerWaters(layout) {
+ const out = [];
+ const list = [...layout.waters];
+ if (layout.from !== undefined && layout.theme === 'river') list.push({ x: 7.6, y: -1, w: 5.8, h: HEIGHT + 2 });
+ for (const w of list) {
+  const e = { ...w };
+  if (w.y <= 1.5) { e.y -= 30; e.h += 30; }
+  if (w.y + w.h >= HEIGHT - 1.5) e.h += 30;
+  if (w.x <= 1.5) { e.x -= 30; e.w += 30; }
+  if (w.x + w.w >= WIDTH - 1.5) e.w += 30;
+  out.push(e);
+ }
+ return out;
+}
+
+function seaBeyond(ctx, layout, time) {
+ if (layout.coast !== 'south') return;
+ const top = HEIGHT + 3;
+ rounded(ctx, -60 * TILE, (top - 1.4) * TILE, (WIDTH + 120) * TILE, 3 * TILE, 0, '#e8d6a6');
+ rounded(ctx, -60 * TILE, top * TILE, (WIDTH + 120) * TILE, 40 * TILE, 0, '#6fa9ad');
+ for (let i = 0; i < 90; i++) {
+  const x = -40 * TILE + (i * 173) % ((WIDTH + 80) * TILE), y = (top + .8 + (i * 37) % 14) * TILE;
+  line(ctx, [{ x: x + Math.sin(time / 1500 + i) * 4, y }, { x: x + 22 + Math.sin(time / 1500 + i) * 4, y }], '#d7eeea88', 2);
+ }
+}
+
+function inOuterWater(layout, x, y) {
+ if (layout.coast === 'south' && y > HEIGHT + 1.4) return true;
+ return outerWaters(layout).some(w => x > w.x - 1 && x < w.x + w.w + 1 && y > w.y - 1 && y < w.y + w.h + 1);
+}
+
 function borderTrees(ctx, layout, p, cam, W, H) {
  const x0 = Math.floor(cam.x / TILE) - 2, x1 = Math.ceil((cam.x + W) / TILE) + 2,
   y0 = Math.floor(cam.y / TILE) - 2, y1 = Math.ceil((cam.y + H) / TILE) + 4;
@@ -911,7 +1207,7 @@ function borderTrees(ctx, layout, p, cam, W, H) {
   for (let x = x0 - (x0 % 2); x <= x1; x += 2) {
    const ox = x + (y % 4 ? 1 : 0), oy = y + .6;
    if (ox > -1 && ox < layout.width + 1 && oy > -.5 && oy < layout.height + 1.5) continue;
-   if (gap(ox, oy)) continue;
+   if (gap(ox, oy) || inOuterWater(layout, ox, oy)) continue;
    drawTree(ctx, ox * TILE, oy * TILE, p, Math.abs(ox * 7 + oy * 13), layout.theme === 'island');
   }
  for (const g of layout.gates) {
@@ -935,6 +1231,63 @@ export function bubble(ctx, x, y, time = 0) {
  ctx.textAlign = 'center';
  ctx.fillText('!', x, y - 7 + bob);
  ctx.textAlign = 'left';
+}
+
+// Sentieri: sassi, ceppi, more e staccionate appena fuori dal percorso; panchine nelle radure.
+function trailDecor(ctx, layout, actors) {
+ if (!hasAtlas('trail')) return;
+ const R = layout.route, placed = [];
+ const free = (x, y) => !placed.some(q => Math.hypot(q.x - x, q.y - y) < 2.4) && !layout.objects.some(o => Math.hypot(o.x - x, o.y - y) < 2.2) && !layout.gates.some(g => Math.hypot(g.x - x, g.y - y) < 4) && !(R.grass || []).some(g => inRect(g, x, y, .8));
+ let k = 0;
+ for (const path of R.paths)
+  for (let i = 1; i < path.length; i++) {
+   const a = path[i - 1], b = path[i], len = Math.hypot(b.x - a.x, b.y - a.y);
+   for (let d = 1.5; d < len; d += 3.2) {
+    k++;
+    if (rnd(k + layout.from * 31 + layout.to * 7) > .38) continue;
+    const t = d / len, side = rnd(k * 3.1) > .5 ? 1 : -1, off = 2.05 + rnd(k * 1.7) * .3;
+    const x = a.x + (b.x - a.x) * t + (b.y - a.y) / len * off * side, y = a.y + (b.y - a.y) * t - (b.x - a.x) / len * off * side;
+    if (!free(x, y) || pathDistance(R, x, y) < 1.9 || x < 1 || y < 1 || x > layout.width - 1 || y > layout.height - 1) continue;
+    placed.push({ x, y });
+    const pick = [[0, 2, 48, 40], [0, 3, 46, 36], [1, 1, 46, 38], [1, 0, 52, 36]][Math.floor(rnd(k * 5.3) * 4)];
+    actors.push({ depth: y * TILE, draw: () => drawSprite(ctx, 'trail', pick[0], pick[1], x * TILE, y * TILE + 6, pick[2], pick[3]) });
+   }
+  }
+ for (const c of R.clearings) {
+  const x = c.x + c.w / 2, y = c.y + .9;
+  if (!free(x, y)) continue;
+  placed.push({ x, y });
+  actors.push({ depth: y * TILE, draw: () => drawSprite(ctx, 'trail', 1, 2, x * TILE, y * TILE + 6, 56, 38) });
+ }
+}
+
+// Città: arredo urbano sul bordo delle strade, a distanza da porte, persone e lampioni.
+function cityDecor(ctx, layout, actors) {
+ if (!hasAtlas('cityProps')) return;
+ const cells = [[0, 1, 54, 36], [1, 0, 50, 34], [0, 3, 22, 46], [1, 3, 56, 40], [0, 2, 30, 44], [1, 1, 48, 54], [1, 2, 54, 48]];
+ const placed = [];
+ let k = 0;
+ for (const path of layout.paths)
+  for (let i = 1; i < path.length; i++) {
+   const a = path[i - 1], b = path[i], len = Math.hypot(b.x - a.x, b.y - a.y);
+   if (len < 1.5) continue;
+   for (let d = 2; d < len; d += 4.5) {
+    k++;
+    if (rnd(k + layout.width * 3) > .45) continue;
+    const t = d / len, side = rnd(k * 2.3) > .5 ? 1 : -1;
+    const x = a.x + (b.x - a.x) * t + (b.y - a.y) / len * 2 * side, y = a.y + (b.y - a.y) * t - (b.x - a.x) / len * 2 * side;
+    if (placed.some(q => Math.hypot(q.x - x, q.y - y) < 4)) continue;
+    if (layout.buildings.some(z => x > z.x - 1 && x < z.x + z.w + 1 && y > z.y - .8 && y < z.y + z.h + 2.6)) continue;
+    if (layout.objects.some(o => !o.building && Math.hypot(o.x - x, o.y - y) < 2.4)) continue;
+    if (layout.paths.some(pp => pp.some((q, j) => j && segDist(x, y, pp[j - 1], q) < 1.5))) continue;
+    if (layout.waters.some(w => x > w.x - 1 && x < w.x + w.w + 1 && y > w.y - 1 && y < w.y + w.h + 1)) continue;
+    const sb = stageBox(layout);
+    if (sb && x > sb.x0 - 1 && x < sb.x1 + 1 && y > sb.y0 - 1 && y < sb.y1 + 2) continue;
+    placed.push({ x, y });
+    const c = cells[Math.floor(rnd(k * 7.7) * cells.length)];
+    actors.push({ depth: y * TILE, draw: () => drawSprite(ctx, 'cityProps', c[0], c[1], x * TILE, y * TILE + 6, c[2], c[3]) });
+   }
+  }
 }
 
 function tallGrass(ctx, x, y, time, seed) {
@@ -965,6 +1318,84 @@ function sparkle(ctx, x, y, time) {
  }
  ctx.closePath();
  ctx.fill();
+}
+
+function shade(hex, k) {
+ const n = parseInt(hex.slice(1, 7), 16), f = c => Math.max(0, Math.min(255, Math.round(c * (1 + k))));
+ return '#' + [n >> 16, n >> 8 & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// Città: selciato a lastre su tutta l’area, con aiuole squadrate.
+function paving(ctx, layout, p) {
+ const LW = layout.width, LH = layout.height;
+ const dark = layout.theme === 'night', base = shade(p.path, dark ? -.32 : -.12), joint = shade(p.path, dark ? -.45 : -.24);
+ ctx.fillStyle = base;
+ ctx.fillRect(0, 0, LW * TILE, LH * TILE);
+ ctx.strokeStyle = joint + '66';
+ ctx.lineWidth = 1;
+ ctx.beginPath();
+ for (let y = 0; y <= LH * 2; y++) {
+  ctx.moveTo(0, y * TILE / 2);
+  ctx.lineTo(LW * TILE, y * TILE / 2);
+  for (let x = (y % 2) * .5; x <= LW; x += 1) {
+   ctx.moveTo(x * TILE, y * TILE / 2);
+   ctx.lineTo(x * TILE, (y + 1) * TILE / 2);
+  }
+ }
+ ctx.stroke();
+ for (const [x, y] of [[7, 17], [LW - 8, 17], [LW / 2, LH - 3.5], [LW / 2, 4.5], [7, LH - 6], [LW - 8, LH - 6], [7, 6], [LW - 8, 6]]) {
+  if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 2)) continue;
+  if (layout.paths.some(path => path.some((q, i) => i && segDist(x, y, path[i - 1], q) < 3.2))) continue;
+  if (drawSprite(ctx, 'cityProps', 1, 0, x * TILE, (y + .9) * TILE, 76, 52)) continue;
+  rounded(ctx, (x - 1.6) * TILE, (y - 1) * TILE, 3.2 * TILE, 2 * TILE, 4, shade(p.path, -.3));
+  rounded(ctx, (x - 1.4) * TILE, (y - .8) * TILE, 2.8 * TILE, 1.6 * TILE, 3, p.grass);
+  for (let k = 0; k < 6; k++) oval(ctx, (x - 1.1 + k * .45) * TILE, (y - .1 + (k % 2) * .3) * TILE, 4, 4, ['#e48ab4', '#f3d58a', '#ffffff'][k % 3]);
+ }
+}
+
+function lampposts(ctx, layout, actors, time) {
+ const placed = [];
+ for (const path of layout.paths)
+  for (let k = 1; k < path.length; k++) {
+   const a = path[k - 1], b = path[k], len = Math.hypot(b.x - a.x, b.y - a.y);
+   for (let d = 3; d < len; d += 7) {
+    const t = d / len, x = a.x + (b.x - a.x) * t + (b.y - a.y) / len * 1.8, y = a.y + (b.y - a.y) * t - (b.x - a.x) / len * 1.8;
+    if (placed.some(q => Math.hypot(q.x - x, q.y - y) < 5) || layout.buildings.some(z => x > z.x - .6 && x < z.x + z.w + .6 && y > z.y - .6 && y < z.y + z.h + 1.2) || layout.objects.some(o => !o.building && Math.hypot(o.x - x, o.y - y) < (['metro', 'cable', 'ferry', 'bridge', 'stage'].includes(o.kind) ? 3 : 2))) continue;
+    if (layout.paths.some(pp => pp.some((q, i) => i && segDist(x, y, pp[i - 1], q) < 1.3))) continue;
+    placed.push({ x, y });
+    actors.push({ depth: y * TILE, draw: () => {
+     const X = x * TILE, Y = y * TILE, night = layout.theme === 'night';
+     if (drawSprite(ctx, 'cityProps', 0, 0, X, Y + 4, 28, 80)) return;
+     oval(ctx, X, Y + 2, 7, 3, '#0003');
+     rounded(ctx, X - 2, Y - 46, 4, 48, 2, '#3c4a46');
+     rounded(ctx, X - 6, Y - 54, 12, 10, 3, '#2f3c39');
+     oval(ctx, X, Y - 49, 4, 4, night ? '#ffe7a3' : '#f6e3b0');
+     if (night) oval(ctx, X, Y - 49, 16 + Math.sin(time / 500 + x) * 1.5, 16, '#ffd98a2a');
+    } });
+   }
+  }
+}
+
+function segDist(px, py, a, b) {
+ const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy, t = len ? Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len)) : 0;
+ return Math.hypot(px - a.x - t * dx, py - a.y - t * dy);
+}
+
+// Paesini: orti a filari e covoni negli spazi liberi.
+function villageFields(ctx, layout, p, time) {
+ const spots = [[3, 3, 7, 4], [38, 3, 7, 4], [3, 28, 7, 4], [38, 28, 7, 4], [3, 11, 5, 4], [41, 11, 5, 4]];
+ for (const [x, y, w, h] of spots) {
+  if (layout.buildings.some(b => x < b.x + b.w + 1 && x + w > b.x - 1 && y < b.y + b.h + 1 && y + h > b.y - 1)) continue;
+  if (layout.paths.some(path => path.some((q, i) => i && segDist(x + w / 2, y + h / 2, path[i - 1], q) < Math.max(w, h) / 2 + 1.6))) continue;
+  if (layout.objects.some(o => !o.building && o.x > x - 1 && o.x < x + w + 1 && o.y > y - 1 && o.y < y + h + 2)) continue;
+  if (layout.waters.some(wt => x < wt.x + wt.w && x + w > wt.x && y < wt.y + wt.h && y + h > wt.y)) continue;
+  rounded(ctx, x * TILE, y * TILE, w * TILE, h * TILE, 6, '#8a6f4c');
+  for (let r = 0; r < h * 2 - 1; r++) {
+   line(ctx, [{ x: x * TILE + 6, y: (y + .5 + r * .5) * TILE }, { x: (x + w) * TILE - 6, y: (y + .5 + r * .5) * TILE }], '#6f5838', 2);
+   for (let c = 0; c < w * 2 - 1; c++) oval(ctx, (x + .5 + c * .5) * TILE, (y + .45 + r * .5) * TILE, 4, 3, r % 3 === 2 ? '#d8b25a' : p.leaf);
+  }
+  for (const fx of [x - .2, x + w + .2]) line(ctx, [{ x: fx * TILE, y: (y - .2) * TILE }, { x: fx * TILE, y: (y + h + .2) * TILE }], '#a5875e', 3);
+ }
 }
 
 function waterArt(ctx, w, time) {
@@ -1150,34 +1581,36 @@ export function renderWorld(ctx, {
  ctx.translate(-cam.x, -cam.y);
  if (!seaAround) borderTrees(ctx, layout, p, cam, W, H);
  ctx.fillStyle = layout.theme === 'seaBridge' ? '#75aaa6' : p.grass;
- ctx.fillRect(0, 0, WIDTH * TILE, HEIGHT * TILE);
+ ctx.fillRect(0, 0, layout.width * TILE, layout.height * TILE);
  for (let i = 0; i < 190; i++) {
-  const x = (i * 151 + state.city * 17) % (WIDTH * TILE),
-   y = (i * 97) % (HEIGHT * TILE);
+  const x = (i * 151 + state.city * 17) % (layout.width * TILE),
+   y = (i * 97) % (layout.height * TILE);
   oval(ctx, x, y, 22 + (i % 4) * 13, 12 + (i % 3) * 5, i % 2 ? '#f9e7a90b' : '#426d3f08');
  }
- layout.waters.forEach(w => waterArt(ctx, w, time));
- for (const path of layout.paths) {
-  const pts = path.map(pt => ({
-   x: pt.x * TILE,
-   y: pt.y * TILE
-  }));
-  line(ctx, pts, '#647b4e16', 76);
-  line(ctx, pts, p.path, 68);
-  line(ctx, pts, '#fff1cd16', 53);
-  if (layout.theme !== 'route' && layout.theme !== 'country' && layout.theme !== 'island') {
-   for (let segment = 1; segment < pts.length; segment++) {
-    const a = pts[segment - 1],
-     b = pts[segment],
-     length = Math.hypot(b.x - a.x, b.y - a.y);
-    for (let d = 12; d < length; d += 22) {
-     const t = d / length,
-      x = a.x + (b.x - a.x) * t,
-      y = a.y + (b.y - a.y) * t;
-     rounded(ctx, x - 7, y - 3, 14, 6, 2, '#a58e6d22');
-    }
-   }
-  }
+ if (layout.size === 'city') paving(ctx, layout, p);
+ if (layout.size === 'village') villageFields(ctx, layout, p, time);
+ seaBeyond(ctx, layout, time);
+ outerWaters(layout).forEach(w => waterArt(ctx, w, time));
+ // Tutte le strade insieme, strato per strato: un unico tratto per strato, così dove si
+ // incrociano o si sovrappongono si fondono senza bordi visibili.
+ const allPts = layout.paths.map(path => path.map(pt => ({ x: pt.x * TILE, y: pt.y * TILE })));
+ const layer = (color, width) => {
+  ctx.beginPath();
+  for (const pts of allPts) pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+ };
+ if (layout.size === 'city') {
+  layer('#00000026', 78);
+  layer(shade(p.path, layout.theme === 'night' ? .25 : -.08), 70);
+  layer(layout.theme === 'night' ? shade(p.path, .12) : p.path, 62);
+ } else {
+  layer('#647b4e16', 76);
+  layer(p.path, 68);
+  layer('#fff1cd16', 53);
  }
  if (layout.theme === 'seaBridge') {
   rounded(ctx, 22.4 * TILE, 0, 3.2 * TILE, HEIGHT * TILE, 0, '#bda478');
@@ -1200,12 +1633,6 @@ export function renderWorld(ctx, {
   }
  }
  if (layout.plaza) oval(ctx, layout.plaza[0] * TILE, layout.plaza[1] * TILE, 100, 65, p.path);
- if (layout.from !== undefined && layout.theme === 'river') waterArt(ctx, {
-  x: 7.6,
-  y: -1,
-  w: 5.8,
-  h: HEIGHT + 2
- }, time);
  if (layout.theme === 'river')
   for (const yy of [18]) {
    if (drawSprite(ctx, 'towns', 3, 3, 10.5 * TILE, (yy + 1) * TILE, 7 * TILE, 92)) continue;
@@ -1245,8 +1672,12 @@ export function renderWorld(ctx, {
     [9, 26]
    ]) drawSprite(ctx, 'towns', 3, 1, xx * TILE, yy * TILE, 72, 48);
  }
+ ctx.save();
+ ctx.translate((layout.offset?.x || 0) * TILE, (layout.offset?.y || 0) * TILE);
  landmark(ctx, layout, p, time);
+ ctx.restore();
  const actors = [];
+ if (layout.size === 'city') lampposts(ctx, layout, actors, time);
  layout.buildings.forEach(b => actors.push({
   depth: (b.y + b.h) * TILE,
   draw: () => buildingArt(ctx, b, p)
@@ -1269,11 +1700,21 @@ export function renderWorld(ctx, {
      draw: () => drawTree(ctx, x * TILE, y * TILE, p, Math.floor(x * 13 + y * 7))
     });
    }
-  for (const g of R.grass || [])
-   for (let yy = g.y; yy < g.y + g.h; yy += .55)
-    for (let xx = g.x; xx < g.x + g.w; xx += .5) tallGrass(ctx, xx * TILE, yy * TILE, time, xx + yy);
+  for (const g of R.grass || []) {
+   if (hasAtlas('trail')) {
+    for (let yy = g.y + .6; yy < g.y + g.h + .4; yy += .7)
+     for (let xx = g.x + .5; xx < g.x + g.w; xx += 1.1) {
+      const X = xx, Y = yy;
+      actors.push({ depth: Y * TILE, draw: () => drawSprite(ctx, 'trail', 0, 0, X * TILE, Y * TILE + 4, 34, 26) });
+     }
+   } else
+    for (let yy = g.y; yy < g.y + g.h; yy += .55)
+     for (let xx = g.x; xx < g.x + g.w; xx += .5) tallGrass(ctx, xx * TILE, yy * TILE, time, xx + yy);
+  }
+  trailDecor(ctx, layout, actors);
  }
- for (let i = 0; i < (layout.theme === 'seaBridge' || layout.route ? 0 : 58); i++) {
+ if (layout.size === 'city') cityDecor(ctx, layout, actors);
+ for (let i = 0; i < (layout.theme === 'seaBridge' || layout.route || layout.size === 'city' ? 0 : 58); i++) {
   const x = (2 + (i * 7.37) % 44),
    y = (2 + (i * 5.19) % 30);
   if (layout.buildings.some(b => x > b.x - 2 && x < b.x + b.w + 2 && y > b.y - 2 && y < b.y + b.h + 3)) continue;
@@ -1298,7 +1739,15 @@ export function renderWorld(ctx, {
  for (const o of layout.objects)
   if (o.kind === 'secret' && !(state.found || []).includes(o.id)) actors.push({
    depth: o.y * TILE,
-   draw: () => sparkle(ctx, o.x * TILE, o.y * TILE - 6, time)
+   draw: () => {
+    drawSprite(ctx, 'trail', 1, 3, o.x * TILE, o.y * TILE + 4, 40, 30);
+    sparkle(ctx, o.x * TILE, o.y * TILE - 6, time);
+   }
+  });
+ for (const o of layout.objects)
+  if (o.kind === 'sign') actors.push({
+   depth: o.y * TILE,
+   draw: () => drawSprite(ctx, 'trail', 0, 1, o.x * TILE, o.y * TILE + 2, 40, 52)
   });
  for (const o of layout.objects)
   if (['metro', 'cable', 'ferry', 'bridge'].includes(o.kind)) actors.push({
@@ -1306,7 +1755,7 @@ export function renderWorld(ctx, {
    draw: () => drawTransport(ctx, o.x * TILE, o.y * TILE, o.kind, o.label)
   });
  for (const o of layout.objects)
-  if (['npc', 'wanderer', 'resident', 'rivalPerson'].includes(o.kind)) actors.push({
+  if (['npc', 'wanderer', 'resident', 'rivalPerson', 'passerby'].includes(o.kind)) actors.push({
    depth: o.y * TILE,
    draw: () => {
     drawCharacter(ctx, o.x * TILE, o.y * TILE, {

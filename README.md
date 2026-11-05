@@ -1,4 +1,4 @@
-# Una estate in tour
+# Fuori Tempo — un’estate in tour
 
 Un’avventura musicale 2D di B3PZ: un ragazzo di campagna, tre amici e un’estate per arrivare al festival di settembre.
 
@@ -24,7 +24,7 @@ Lo schermo mostra solo il mondo, come nei giochi di ruolo classici: la telecamer
 |---|---|---|
 | Cammina | WASD / frecce | croce, oppure tocca il terreno |
 | Parla, entra, usa | E / Spazio / Z | A |
-| Menu Start (obiettivo, mappa, Musicodex, band, bici, opzioni) | Invio / Esc | START |
+| Menu Start (obiettivo, mappa, Repertorio, band, bici, opzioni) | Invio / Esc | START |
 | Bicicletta, dopo averla ottenuta | B | B |
 | Mappa rapida | M | dal menu |
 | Chitarra / batteria | D F J K | pulsanti in basso |
@@ -58,7 +58,7 @@ Ogni città ha anche un brano proprio: giro armonico e pattern di chitarra, bass
 ## Contenuti presenti
 
 - Tre strumenti, otto stili, accompagnamento che suona le parti reali degli altri due strumenti.
-- Musicodex: 8 capacità di ascolto e 24 per strumento, completabili cambiando strumento nelle sale prove.
+- Repertorio: 8 capacità di ascolto e 24 per strumento, completabili cambiando strumento nelle sale prove.
 - Abitanti diversi per città, con battute che cambiano con i progressi; rivali che ricompaiono lungo il viaggio; un incontro e un cartello per ogni sentiero.
 - Interni arredati, tutti diversi, con un dettaglio da esaminare.
 - Salvataggio locale automatico (anche su sentieri e interni), esportazione e importazione JSON.
@@ -66,7 +66,7 @@ Ogni città ha anche un brano proprio: giro armonico e pattern di chitarra, bass
 
 ## Telefono, messaggi e percorsi (0.7)
 
-- Il mondo non ha scritte: porte, uscite, trasporti e palchi si riconoscono dal disegno. L’unica interfaccia è il telefono (Invio, Esc o START) con le app Mappa, Note, Messaggi, Musicodex, Band, Metro, Bici, Salva e Impostazioni.
+- Il mondo non ha scritte: porte, uscite, trasporti e palchi si riconoscono dal disegno. L’unica interfaccia è il telefono (Invio, Esc o START) con le app Mappa, Note, Messaggi, Repertorio, Band, Metro, Bici, Salva e Impostazioni.
 - La metro è un viaggio vero: si sale in un vagone percorribile, dura da 8 a 15 secondi secondo la distanza, e a bordo si incontrano persone già conosciute con cui fare due chiacchiere. Il tempo si ferma mentre si parla; un annuncio avvisa della fermata.
 - Le persone conosciute in viaggio scrivono al telefono quando la storia lo permette. Alcuni messaggi aprono missioni secondarie (una sfida di Elia in Virtuoso, una foto per la radio di Emma, la funivia per Sami…) che si completano giocando e danno una ricompensa.
 - I sentieri Borgo → Rivafosca, Rivafosca → Officina e Officina → Binario Nord sono disegnati a mano in `dist/routes.js`: curve, bivi, radure, erba alta, bosco fitto ai lati e un segreto da trovare. Gli altri sentieri usano ancora il tracciato semplice e si possono aggiungere allo stesso file.
@@ -95,7 +95,7 @@ dist/core.js        Stato, salvataggi, progressione e partiture
 dist/music.js       Stili musicali, giri armonici e pattern per strumento
 dist/puzzles.js     Le otto prove (logica verificabile e interfaccia)
 dist/adventure.js   Personaggi, abitanti, interni, sentieri e mistero
-dist/progress.js    Musicodex, metro e itinerari
+dist/progress.js    Repertorio, metro e itinerari
 dist/world.js       Città, percorsi, collisioni, trasporti e disegno del mondo
 dist/concert.js     Scena del concerto
 dist/audio.js       Sintesi e accompagnamento
@@ -146,9 +146,9 @@ Arredi illustrati, sprite proporzionati, abitanti e rivali distinti, otto ricost
 
 Pista in prospettiva, band illustrata con strumenti assegnati, palette dei generi, pubblico che reagisce alle serie, feedback sui colpi e comandi touch con colori di corsia. Il rendering non modifica partiture, finestre di precisione o punteggio. Movimento decorativo ridotto secondo le preferenze del dispositivo. Verificati renderer largo e stretto; il collaudo audio/multitouch su iPhone resta da fare.
 
-## Revisione 0.4 — atlante, Musicodex e trasporti
+## Revisione 0.4 — atlante, Musicodex (ora Repertorio) e trasporti
 
-L’illustrazione è la mappa principale con 12 luoghi selezionabili, zoom, percorsi e dettaglio progressi. Musicodex: 8 capacità di ascolto e 24 per strumento, completabili in una sola campagna cambiando ruolo nei garage; acquisizione dopo una prova riuscita e padronanza a 85%. I salvataggi precedenti conservano i pass e migrano le capacità guadagnate sullo strumento iniziale.
+L’illustrazione è la mappa principale con 12 luoghi selezionabili, zoom, percorsi e dettaglio progressi. Repertorio: 8 capacità di ascolto e 24 per strumento, completabili in una sola campagna cambiando ruolo nei garage; acquisizione dopo una prova riuscita e padronanza a 85%. I salvataggi precedenti conservano i pass e migrano le capacità guadagnate sullo strumento iniziale.
 
 A Binario Nord due missioni: recuperare la pompa e riportarla ad Arturo per la bici; ricomporre gli annunci in stazione e consegnare il nastro per il pass metro. La metro parte esclusivamente dagli ingressi fisici nelle città servite: Rivafosca, Officina, Binario Nord, Bellavista, Grooveto, Porto del Sol, Notturnia e Settembre. Le destinazioni devono essere già visitate; i requisiti del festival restano validi. Monteferro ha una funivia da Valdaccordo e nessuna metro. L’isola richiede la prima traversata in nave da Porto del Sol, poi si può ripercorrere il pontile tra Notturnia e l’isola; il traghetto resta disponibile. Il pontile è una mappa percorribile sul mare con ringhiere e collisioni.
 

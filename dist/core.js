@@ -166,6 +166,9 @@ export const CITIES = [{
   text: 'Il palco che sembrava lontanissimo. Tutte le strade portano qui.'
  }
 ];
+// Le città hanno mappe più grandi dei paesini; il contenuto storico è spostato al centro.
+export const CITY_IDS = [2, 4, 5, 8, 10];
+export const CITY_MAP = { w: 64, h: 44, ox: 8, oy: 5 };
 export const EDGES = [
  [0, 1],
  [1, 2],
@@ -192,6 +195,7 @@ export const DEFAULT_SETTINGS = {
 export function initialState(instrument = 'guitar') {
  return {
   version: 1,
+  mapv: 2,
   instrument,
   starter: instrument,
   mastery: {},
@@ -239,8 +243,11 @@ export function validateState(s) {
   for (const [k, v] of Object.entries(s.mastery))
    if (/^(1|2|4|5|7|8|9|10):(guitar|bass|drums)$/.test(k) && Number.isFinite(v) && v >= 0 && v <= 100) out.mastery[k] = v;
  out.city = s.city;
- out.x = Number.isFinite(s.x) ? Math.min(46.7, Math.max(1.3, s.x)) : 10.5;
- out.y = Number.isFinite(s.y) ? Math.min(32.7, Math.max(1.3, s.y)) : 14;
+ const big = CITY_IDS.includes(s.city), old = s.mapv !== 2, inTown = !s.scene || s.scene.type === 'interior';
+ const sx = Number.isFinite(s.x) ? s.x + (big && old && !s.scene ? CITY_MAP.ox : 0) : 10.5,
+  sy = Number.isFinite(s.y) ? s.y + (big && old && !s.scene ? CITY_MAP.oy : 0) : 14;
+ out.x = Math.min((big && inTown ? CITY_MAP.w : 48) - 1.3, Math.max(1.3, sx));
+ out.y = Math.min((big && inTown ? CITY_MAP.h : 34) - 1.3, Math.max(1.3, sy));
  out.facing = ['north', 'south', 'east', 'west'].includes(s.facing) ? s.facing : 'south';
  out.introDone = s.introDone === undefined ? true : s.introDone === true;
  if (s.scene?.type === 'road' && s.scene.from === s.city && neighbors(s.scene.from).includes(s.scene.to)) out.scene = {
@@ -334,7 +341,8 @@ export function findPath(start, target, canEnter, maxX = 66, maxY = 34) {
    const x = p[0] + dx,
     y = p[1] + dy,
     k = key(x, y);
-   if (x < 0 || y < 0 || x > maxX || y > maxY || parents.has(k) || !canEnter(x, y)) continue;
+   // Controlla anche i punti intermedi: un ostacolo sottile (tronco, panchina) può stare tra due caselle libere.
+   if (x < 0 || y < 0 || x > maxX || y > maxY || parents.has(k) || !canEnter(x, y) || [.125, .25, .375, .5, .625, .75, .875].some(f => !canEnter(p[0] + dx * f, p[1] + dy * f))) continue;
    parents.set(k, p);
    queue.push([x, y]);
   }
