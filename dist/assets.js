@@ -27,6 +27,11 @@ export const EXTRA_FILES = {
  'trail-props.png': 'trail',
  'city-props.png': 'cityProps',
  'buildings-extra.png': 'buildings2',
+ 'hero-walk.png': 'heroWalk',
+ 'hero-girl-walk.png': 'heroGirlWalk',
+ 'hero-girl-bike.png': 'heroGirlBike',
+ 'farm-props.png': 'farm',
+ 'nature-props.png': 'nature',
  'concert/blues.jpg': 'concert:Blues',
  'concert/rock.jpg': 'concert:Rock',
  'concert/pop.jpg': 'concert:Pop',
@@ -133,7 +138,8 @@ export function drawSprite(ctx, atlas, row, col, x, y, w, h = w, flip = false) {
 }
 export function spriteCell(direction, moving = false, walk = 0) {
  return {
-  row: moving ? 1 + (Math.floor(walk * 6) % 2) : 0,
+  // Ciclo del passo in quattro tempi: passo, appoggio, altro passo, appoggio.
+  row: moving ? [1, 0, 2, 0][Math.floor(walk * 8) % 4] : 0,
   col: moving && direction === 'west' ? 2 : ({
    south: 0,
    west: 1,

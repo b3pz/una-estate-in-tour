@@ -92,6 +92,8 @@ import {
  cameraFor,
  renderWorld,
  drawCharacter,
+ setHeroLook,
+ heroLookAvailable,
  drawStage as smoothStage
 } from './world.js';
 const $ = id => document.getElementById(id),
@@ -133,6 +135,7 @@ function syncAudio() {
  audio.volume = state.settings.volume;
  audio.muted = state.settings.muted;
  audio.update();
+ setHeroLook(state.look);
  $('soundBtn').textContent = audio.muted ? 'OFF ♫' : 'ON ♪';
 }
 
@@ -201,13 +204,107 @@ function panel(title, body, actions = [], tag = 'IL TACCUINO DELLA BAND') {
   p.querySelector('.actions').appendChild(b);
  }
  overlay.classList.remove('clear');
- const complex = '.blues-grid,.signal-board,.fragments,.groove-grid,.tempo-box,.clave-grid,.planks,.puzzle-sequence,.atlas-scroll,.dex-entries,.metro-stops,.deduce-options,.case-parts,.instrument-choices,select,input,.result-number,.stat-row,.clue-list,.region-map';
+ const complex = '.blues-grid,.signal-board,.fragments,.groove-grid,.tempo-box,.clave-grid,.planks,.puzzle-sequence,.atlas-scroll,.dex-entries,.metro-stops,.metro-map,.hero-pick,.name-entry,.controls-list,.deduce-options,.case-parts,.instrument-choices,select,input,.result-number,.stat-row,.clue-list,.region-map';
  if (!p.querySelector(complex) && !p.classList.contains('narrative')) {
   p.classList.add('dialogue');
   overlay.classList.add('clear');
  }
  p.querySelector('button')?.focus();
+ if (p.classList.contains('dialogue')) paginate(p);
  return p;
+}
+
+// Dialoghi come nei giochi di una volta: il testo scorre lettera per lettera, un riquadro alla volta.
+// A (o un tocco) completa la frase o passa alla successiva; le scelte compaiono solo alla fine.
+const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+function splitLong(el) {
+ if (el.children.length || el.textContent.length < 190) return [el];
+ const sentences = el.textContent.match(/[^.!?…»]+[.!?…]+[»”]?\s*|[^.!?…]+$/g) || [el.textContent];
+ const chunks = [];
+ let cur = '';
+ for (const x of sentences) {
+  if (cur && (cur + x).length > 170) {
+   chunks.push(cur.trim());
+   cur = '';
+  }
+  cur += x;
+ }
+ if (cur.trim()) chunks.push(cur.trim());
+ if (chunks.length < 2) return [el];
+ const made = chunks.map(t => {
+  const q = document.createElement('p');
+  q.textContent = t;
+  return q;
+ });
+ el.replaceWith(...made);
+ return made;
+}
+function paginate(p) {
+ const actions = p.querySelector('.actions');
+ const pages = [...p.querySelectorAll('p')].filter(x => !x.classList.contains('fine') && !actions?.contains(x)).flatMap(splitLong);
+ if (!pages.length) return;
+ const fines = [...p.querySelectorAll('.fine')];
+ const more = document.createElement('span');
+ more.className = 'more-arrow';
+ more.textContent = '▼';
+ more.setAttribute('aria-hidden', 'true');
+ p.appendChild(more);
+ p.tabIndex = -1;
+ let i = 0, timer = null, typing = false, full = [];
+ const finish = () => {
+  clearInterval(timer);
+  timer = null;
+  full.forEach(([node, text]) => node.textContent = text);
+  typing = false;
+  const last = i === pages.length - 1;
+  more.hidden = last;
+  if (actions) actions.hidden = !last;
+  fines.forEach(f => f.hidden = !last);
+  if (last) (actions?.querySelector('button') || p).focus();
+ };
+ const show = () => {
+  pages.forEach((x, j) => x.hidden = j !== i);
+  more.hidden = true;
+  if (actions) actions.hidden = true;
+  fines.forEach(f => f.hidden = true);
+  p.focus();
+  const walker = document.createTreeWalker(pages[i], NodeFilter.SHOW_TEXT);
+  full = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) full.push([n, n.textContent]);
+  if (REDUCED_MOTION) return finish();
+  full.forEach(([node]) => node.textContent = '');
+  typing = true;
+  let k = 0, node = 0;
+  timer = setInterval(() => {
+   for (let step = 0; step < 2 && node < full.length; step++) {
+    const [n, text] = full[node];
+    n.textContent = text.slice(0, ++k);
+    if (k >= text.length) {
+     node++;
+     k = 0;
+    }
+   }
+   if (node >= full.length) finish();
+  }, 26);
+  puzzleTimers.push(timer);
+ };
+ p._advance = () => {
+  if (typing) {
+   finish();
+   return true;
+  }
+  if (i < pages.length - 1) {
+   i++;
+   show();
+   return true;
+  }
+  return false;
+ };
+ p.addEventListener('pointerdown', e => {
+  if (e.target.closest('button, input, select, a')) return;
+  p._advance();
+ });
+ show();
 }
 
 function close() {
@@ -341,11 +438,11 @@ function intro(page) {
   ['C’è musica, anche qui.', '«Mi chiamo Riva. Insegno musica nella vostra scuola. Qualcuno pensa che in questi paesi non succeda mai niente. Io credo che non abbia ascoltato abbastanza.»'],
   ['Otto città. Otto modi di suonare.', '«Oltre i campi ci sono officine, porti, club aperti fino a tardi. In ogni città la musica ha un accento diverso. Se vuoi impararlo, devi metterti in cammino.»'],
   ['Prima di tutto, gli amici.', '«Tu, Nico e Vale siete quelli dell’ultimo banco. Quelli che vengono scelti per ultimi. Ma avete una cosa in comune: quando parte una canzone, smettete di sentirvi fuori posto.»'],
-  ['L’ultima campanella.', '«Oggi finisce la scuola. A settembre ci sarà il Festival delle Otto Strade. Tre mesi per trovare il vostro suono. Cominciamo da te: che strumento suoni?»']
+  ['L’ultima campanella.', '«Oggi finisce la scuola. A settembre ci sarà il Festival delle Otto Strade. Tre mesi per trovare il vostro suono. Ma prima: come ti chiami?»']
  ];
  const [title, body] = pages[page], p = panel(title, `<p>${body}</p>`, [{
-  label: page === 3 ? 'Il mio strumento ▶' : 'Continua ▼',
-  run: () => page === 3 ? chooseInstrument() : intro(page + 1)
+  label: page === 3 ? 'Mi presento ▶' : 'Continua ▼',
+  run: () => page === 3 ? chooseHero() : intro(page + 1)
  }, ...(page > 0 ? [{
   label: 'Indietro',
   run: () => intro(page - 1),
@@ -355,7 +452,7 @@ function intro(page) {
 }
 
 // Scena a schermo intero: titolo del momento in alto, personaggi al centro, riquadro di testo in basso.
-function cutscene(p, stage, step = '') {
+function cutscene(p, stage, step = '', typed = true) {
  p.classList.add('narrative', 'cutscene');
  p.classList.remove('dialogue');
  overlay.classList.remove('clear');
@@ -376,6 +473,67 @@ function cutscene(p, stage, step = '') {
  caption.className = 'cutscene-caption';
  p.append(caption, scene, content);
  p.querySelector('.actions button')?.focus();
+ if (typed) paginate(content);
+}
+
+// Il tuo personaggio: aspetto (se ci sono gli sprite) e nome, con una tastiera a schermo come sulle console.
+let heroPick = { name: '', look: 'boy' };
+function chooseHero() {
+ const looks = ['boy', 'girl'].filter(heroLookAvailable);
+ const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+ const p = panel('Come ti chiami?', `<div class="hero-pick">${looks.map(l => `<button class="hero-card" data-look="${l}"><canvas width="96" height="110"></canvas><b>${l === 'girl' ? 'Ragazza' : 'Ragazzo'}</b></button>`).join('')}</div><div class="name-entry"><div class="name-field" aria-live="polite"></div><div class="letter-grid">${letters.map(c => `<button class="key" data-key="${c}">${c}</button>`).join('')}<button class="key wide" data-key=" ">SPAZIO</button><button class="key wide" data-key="⌫">⌫</button><button class="key wide ok" data-key="OK">FINE</button></div></div><p class="instrument-help"></p><p class="fine">Croce per scegliere · A per scrivere · B per cancellare · START per confermare. Puoi anche scrivere con la tastiera.</p>`, [], 'MAESTRO RIVA');
+ const stage = p.querySelector('.hero-pick'), entry = p.querySelector('.name-entry');
+ stage.remove();
+ entry.remove();
+ cutscene(p, '', '', false);
+ const scene = p.querySelector('.narrative-scene');
+ scene.classList.add('hero-scene');
+ scene.append(stage, entry);
+ const help = p.querySelector('.instrument-help'), field = p.querySelector('.name-field');
+ const render = () => {
+  field.innerHTML = (heroPick.name || '') + '<span class="caret">_</span>';
+  help.textContent = heroPick.name ? `«Piacere, ${heroPick.name}. Adesso scegli il tuo strumento.»` : '«Prima di tutto: come ti chiami?»';
+  stage.querySelectorAll('.hero-card').forEach(c => c.classList.toggle('chosen', c.dataset.look === heroPick.look));
+ };
+ const type = k => {
+  if (k === '⌫') heroPick.name = heroPick.name.slice(0, -1);
+  else if (k === 'OK') return confirm();
+  else if (heroPick.name.length < 10) heroPick.name += heroPick.name ? k.toLowerCase() : k;
+  render();
+ };
+ const confirm = () => {
+  if (!heroPick.name.trim()) {
+   help.textContent = '«Un nome, anche solo un soprannome.»';
+   return;
+  }
+  heroPick.name = heroPick.name.trim();
+  chooseInstrument();
+ };
+ stage.querySelectorAll('.hero-card').forEach(c => {
+  const cv = c.querySelector('canvas'), g = cv.getContext('2d');
+  setHeroLook(c.dataset.look);
+  g.translate(48, 104);
+  g.scale(1.5, 1.5);
+  drawCharacter(g, 0, 0, { facing: 'south' });
+  c.onclick = () => {
+   heroPick.look = c.dataset.look;
+   render();
+   p.querySelector('.key')?.focus();
+  };
+ });
+ setHeroLook(heroPick.look);
+ p.querySelectorAll('.key').forEach(b => b.onclick = () => type(b.dataset.key));
+ p._typeKey = raw => {
+  if (raw === 'backspace') type('⌫');
+  else if (raw === 'enter') confirm();
+  else if (/^[\p{L}' ]$/u.test(raw)) type(raw.toUpperCase());
+  else return false;
+  return true;
+ };
+ p._back = () => type('⌫');
+ p._start = confirm;
+ render();
+ (looks.length > 1 ? stage.querySelector('.hero-card') : p.querySelector('.key'))?.focus();
 }
 
 function chooseInstrument() {
@@ -393,6 +551,8 @@ function chooseInstrument() {
   b.onclick = async () => {
    state = initialState(id);
    state.introDone = true;
+   state.name = heroPick.name;
+   state.look = heroPick.look;
    syncAudio();
    try {
     await audio.init();
@@ -409,9 +569,10 @@ function chooseInstrument() {
  }
  const stage = p.querySelector('.instrument-choices');
  stage.remove();
- cutscene(p, '');
+ cutscene(p, '', '', false);
  p.querySelector('.narrative-scene').appendChild(stage);
  p.querySelector('.speaker').textContent = 'TRE STRUMENTI. UNA BAND.';
+ p.querySelector('.cutscene-caption').textContent = `${heroPick.name || 'E tu'}, qual è il tuo suono?`;
  p.querySelector('.instrument-card')?.focus();
 }
 
@@ -1358,9 +1519,6 @@ function showMap() {
   lines = false;
  const links = CITIES.flatMap(c => neighbors(c.id).filter(id => id > c.id).map(id => [c.id, id]));
  const p = panel('La mappa delle Otto Strade', `<p class="fine">Tocca una città per vedere pass e abilità. Scorri la mappa dopo averla ingrandita.</p><div class="atlas-toolbar"><button class="btn secondary" id="zoomOut" aria-label="Riduci mappa">−</button><button class="btn secondary" id="zoomIn" aria-label="Ingrandisci mappa">+</button><button class="btn secondary" id="mapRoutes" aria-pressed="false">Percorsi</button></div><div class="atlas-scroll"><div class="atlas-surface"><img src="./assets/region-map.jpg" alt="Il mondo delle Otto Strade: campagne, città, montagne e isola"><svg viewBox="0 0 1000 447" class="atlas-routes" aria-hidden="true">${links.map(([a,b])=>`<line data-from="${a}" data-to="${b}" x1="${MAP_POINTS[a][0]*10}" y1="${MAP_POINTS[a][1]*4.47}" x2="${MAP_POINTS[b][0]*10}" y2="${MAP_POINTS[b][1]*4.47}"/>`).join('')}</svg>${CITIES.map(c=>`<button class="atlas-pin ${state.visited.includes(c.id)?'visited':''} ${c.id===current?'here':''}" data-city="${c.id}" style="left:${MAP_POINTS[c.id][0]}%;top:${MAP_POINTS[c.id][1]}%" aria-label="${c.name}, ${c.genre}${c.id===current?', sei qui':''}">${c.id+1}</button>`).join('')}</div></div><div class="atlas-city-list">${CITIES.map(c=>`<button class="btn secondary" data-city="${c.id}">${c.id+1} · ${c.name}</button>`).join('')}</div><section class="map-detail" id="mapDetail" aria-live="polite"></section><section id="journeyDetail" class="journey-detail" aria-live="polite"></section>`, [{
-  label: 'Metro · scegli una fermata',
-  run: showMetro
- }, {
   label: 'Repertorio · le abilità',
   run: showDex
  }, {
@@ -1374,8 +1532,7 @@ function showMap() {
   const c = CITIES[id],
    skills = abilityDex(state).filter(a => a.city === id),
    reason = metroReason(state, id) || (!atMetro() ? `Prima raggiungi l’ingresso M di ${CITIES[state.city].name}.` : null);
-  p.querySelector('#mapDetail').innerHTML = `<h4>${c.name} · ${c.genre}</h4><p>${id===current?'◆ Sei qui. ':''}${state.visited.includes(id)?'Luogo visitato.':'Fermata da scoprire.'} ${state.passes.includes(id)?'Pass ottenuto.':''}</p><p>${c.text||c.lesson||''}</p>${skills.length?`<p>Abilità acquisite: ${skills.filter(a=>a.learned).length} / ${skills.length}</p>`:''}<button class="btn" id="takeMetro" ${reason?'disabled':''}>${reason||'Raggiungi in metro'}</button>`;
-  p.querySelector('#takeMetro').onclick = () => travelMetro(id);
+  p.querySelector('#mapDetail').innerHTML = `<h4>${c.name} · ${c.genre}</h4><p>${id===current?'◆ Sei qui. ':''}${state.visited.includes(id)?'Luogo visitato.':'Fermata da scoprire.'} ${state.passes.includes(id)?'Pass ottenuto.':''}</p><p>${c.text||c.lesson||''}</p>${skills.length?`<p>Abilità acquisite: ${skills.filter(a=>a.learned).length} / ${skills.length}</p>`:''}`;
   const route = journeyRoute(state, id),
    detail = p.querySelector('#journeyDetail');
   detail.innerHTML = id === current ? '<p>Sei qui. Scegli una destinazione per preparare il viaggio.</p>' : route ? `<h4>Il viaggio verso ${c.name}</h4><ol class="journey-legs">${route.legs.map(l=>`<li><strong>${CITIES[l.from].name} → ${CITIES[l.to].name}</strong><span>${l.mode}${l.mode==='Sentiero'&&state.bicycle?' · percorribile anche in bici':''}</span>${l.requirement?`<p>${l.requirement}</p>`:''}</li>`).join('')}</ol><p class="fine">L’itinerario segue i collegamenti del mondo. Raggiungi le uscite e gli imbarchi per proseguire.</p>` : `<h4>Prima di partire</h4><p>${gate(state,id)||'Raggiungi prima Isola Levante in traghetto da Porto del Sol.'}</p>`;
@@ -1404,16 +1561,34 @@ function showMap() {
  select(selected);
 }
 
+// Metro: si prende solo dagli ingressi M. Si apre la mappa disegnata con le fermate e si sceglie con la croce.
 function showMetro() {
+ if (!atMetro()) {
+  toast('La metro si prende dagli ingressi M nelle città.');
+  return;
+ }
  const unlocked = state.transport.metro === 3;
- const p = panel('Metro delle Otto Strade', `<p>${unlocked?'Il pass di Arturo permette di tornare nelle città raggiunte. L’isola e la montagna sono servite da pontile, nave e funivia, non dalla metro.':'A Binario Nord completa le missioni di Arturo: prima la bicicletta, poi gli annunci della metro. Le fermate si attivano dopo la prima visita.'}</p><div class="metro-stops">${CITIES.filter(c=>METRO_STOPS.includes(c.id)).map(c=>{const reason=metroReason(state,c.id)||(!atMetro()?`Prima raggiungi l’ingresso M di ${CITIES[state.city].name}.`:null);return `<button class="metro-stop ${state.visited.includes(c.id)?'visited':''}" data-stop="${c.id}" ${reason?'disabled':''}><strong>${c.name}</strong><span>${reason||'Fermata aperta · sali a bordo'}</span></button>`;}).join('')}</div>`, [{
-  label: 'Torna alla mappa',
-  run: showMap
- }, {
-  label: 'Chiudi',
-  run: close
- }], 'VIAGGIO RAPIDO · METRO E COINCIDENZE');
- for (const b of p.querySelectorAll('[data-stop]')) b.onclick = () => travelMetro(Number(b.dataset.stop));
+ const stops = CITIES.filter(c => METRO_STOPS.includes(c.id));
+ const p = panel('Dove vuoi andare?', `<div class="metro-map"><img src="./assets/region-map.jpg" alt="La mappa delle Otto Strade"><svg viewBox="0 0 100 100" preserveAspectRatio="none" class="metro-lines" aria-hidden="true">${stops.filter(c => c.id !== state.city && !metroReason(state, c.id)).map(c => `<line x1="${MAP_POINTS[state.city][0]}" y1="${MAP_POINTS[state.city][1]}" x2="${MAP_POINTS[c.id][0]}" y2="${MAP_POINTS[c.id][1]}"/>`).join('')}</svg>${stops.map(c => {
+  const reason = c.id === state.city ? null : metroReason(state, c.id);
+  return `<button class="metro-pin ${c.id === state.city ? 'here' : reason ? 'off' : 'on'}" data-stop="${c.id}" style="left:${MAP_POINTS[c.id][0]}%;top:${MAP_POINTS[c.id][1]}%" aria-label="${c.name}${c.id === state.city ? ', sei qui' : reason ? ', ' + reason : ''}"><span>M</span><b>${state.visited.includes(c.id) ? c.name : '???'}</b></button>`;
+ }).join('')}</div><p class="metro-info"></p>`, [{
+  label: 'Resta qui',
+  run: close,
+  secondary: true
+ }], 'METRO DELLE OTTO STRADE');
+ p.classList.add('metro-panel');
+ const info = p.querySelector('.metro-info');
+ for (const b of p.querySelectorAll('[data-stop]')) {
+  const id = Number(b.dataset.stop),
+   reason = id === state.city ? 'Sei qui.' : metroReason(state, id);
+  b.onfocus = b.onmouseenter = () => info.innerHTML = `<strong>${state.visited.includes(id) ? CITIES[id].name : 'Fermata da scoprire'}</strong> · ${reason || 'Sali a bordo con A.'}`;
+  b.onclick = () => reason ? toast(reason) : travelMetro(id);
+ }
+ if (!unlocked) info.innerHTML = 'Le porte sono chiuse. A Binario Nord, Arturo cerca qualcuno che lo aiuti con la metro.';
+ const first = p.querySelector('.metro-pin.on') || p.querySelector('.metro-pin.here');
+ first?.focus();
+ if (unlocked) first?.onfocus();
 }
 
 function atMetro() {
@@ -1607,7 +1782,7 @@ function showBand() {
  if (mode === 'rhythm') return;
  const missing = Object.keys(INSTRUMENTS).filter(id => id !== state.instrument),
   clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
- panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p>${state.found.length ? `<h4>Trovati per strada</h4><p>${Object.values(ROUTES).map(r => r.secret).filter(x => x && state.found.includes(x.id)).map(x => x.title).join(' · ')}</p>` : ''}<h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
+ panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>${state.name || 'Tu'}</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p>${state.found.length ? `<h4>Trovati per strada</h4><p>${Object.values(ROUTES).map(r => r.secret).filter(x => x && state.found.includes(x.id)).map(x => x.title).join(' · ')}</p>` : ''}<h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
   label: 'Repertorio · abilità',
   run: showDex
  }, {
@@ -1675,7 +1850,7 @@ function openPhone() {
   ['msg', 'Messaggi', '✉', messagesApp, unread],
   ['dex', 'Repertorio', '♪', showDex],
   ['band', 'Band', '★', showBand],
-  ['metro', 'Metro', 'M', () => state.transport.metro === 3 ? showMetro() : phonePanel('Metro', '<div class="app-head"><button class="phone-back">‹</button><b>Metro</b></div><p class="app-text">Il pass non c’è ancora. A Binario Nord, Arturo cerca qualcuno che lo aiuti.</p>')],
+  ['metro', 'Metro', 'M', () => phonePanel('Metro', `<div class="app-head"><button class="phone-back">‹</button><b>Metro</b></div><p class="app-text">${state.transport.metro === 3 ? 'Pass attivo. Raggiungi un ingresso M in città: lì si apre la mappa delle fermate.' : 'Il pass non c’è ancora. A Binario Nord, Arturo cerca qualcuno che lo aiuti.'}</p>`)],
   ...(state.bicycle ? [['bike', state.bike ? 'A piedi' : 'Bici', '⚙', () => { close(); toggleBike(); }]] : []),
   ['save', 'Salva', '⤓', () => { save(); close(); toast('Partita salvata su questo dispositivo.'); }],
   ['opt', 'Impostazioni', '☰', settings]
@@ -2063,8 +2238,10 @@ function update(dt) {
   checkMessages();
  }
  portalCooldown = Math.max(0, portalCooldown - dt);
- let dx = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0),
-  dy = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
+ // Solo quattro direzioni, come nei giochi di ruolo classici: vale l'ultima direzione premuta.
+ const held = [...keys].filter(k => DIRS.includes(k)), dir = held[held.length - 1];
+ let dx = dir === 'right' ? 1 : dir === 'left' ? -1 : 0,
+  dy = dir === 'down' ? 1 : dir === 'up' ? -1 : 0;
  if (dx || dy) {
   path = [];
   tapObject = null;
@@ -2176,6 +2353,8 @@ function backButton(root) {
 }
 function overlayAction(action, raw) {
  const root = overlay.querySelector('.panel') || overlay;
+ if (action === 'b' && root._back) return root._back(), true;
+ if (action === 'start' && root._start) return root._start(), true;
  if (DIRS.includes(action)) {
   const el = overlay.contains(document.activeElement) ? document.activeElement : null,
    side = action === 'left' ? -1 : action === 'right' ? 1 : 0;
@@ -2194,6 +2373,8 @@ function overlayAction(action, raw) {
   return true;
  }
  if (action === 'a') {
+  const talk = [...overlay.querySelectorAll('.panel, .narrative-content')].find(x => x._advance);
+  if (talk && talk._advance()) return true;
   const pad = overlay.querySelector('.tap-pad');
   if (pad && raw !== ' ' && raw !== 'j') {
    pad.onpointerdown?.({ preventDefault() {} });
@@ -2269,6 +2450,11 @@ document.addEventListener('keydown', e => {
    pressLane(lane);
    return;
   }
+ }
+ const typer = !overlay.hidden && !bootActive() && overlay.querySelector('.panel')?._typeKey;
+ if (typer && !(action && DIRS.includes(action)) && typer(key)) {
+  e.preventDefault();
+  return;
  }
  if (handleAction(action, true, key)) return;
  if (overlay.hidden && mode === 'world' && key === 'm') showMap();
@@ -2548,7 +2734,7 @@ function showTransportQuest() {
   save();
   updateJournal();
   panel('Una fermata dopo l’altra', '<p>Arturo ascolta il nastro. «Adesso sì. Quando sentirete queste note, saprete di essere sulla strada di casa.»</p><p><strong>Missione completata · Pass metro ottenuto.</strong> Raggiungi un ingresso contrassegnato M nelle città servite. Puoi viaggiare tra fermate già visitate. Per l’isola usa nave o pontile; per Monteferro la funivia.</p>', [{
-   label: 'Apri le fermate',
+   label: 'Scegli la fermata',
    run: showMetro
   }, {
    label: 'Torniamo in città',

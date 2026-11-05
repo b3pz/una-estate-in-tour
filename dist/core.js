@@ -197,6 +197,8 @@ export const DEFAULT_SETTINGS = {
 export function initialState(instrument = 'guitar') {
  return {
   version: 1,
+  name: '',
+  look: 'boy',
   mapv: 2,
   instrument,
   starter: instrument,
@@ -285,6 +287,8 @@ export function validateState(s) {
  if (!s.mastery)
   for (const id of out.passes) out.mastery[id + ':' + out.starter] = out.best[id] ?? 50;
  const st = s.settings || {};
+ out.name = typeof s.name === 'string' ? s.name.replace(/[^\p{L}\p{N} '’-]/gu, '').slice(0, 12) : '';
+ out.look = s.look === 'girl' ? 'girl' : 'boy';
  out.settings = {
   volume: Number.isFinite(st.volume) ? Math.max(0, Math.min(1, st.volume)) : .55,
   offset: Number.isFinite(st.offset) ? Math.max(-250, Math.min(250, st.offset)) : 0,

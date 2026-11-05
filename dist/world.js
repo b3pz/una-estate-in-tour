@@ -844,6 +844,14 @@ function label(ctx, s, x, y, size = 11, color = '#445b45') {
  ctx.fillStyle = color;
  ctx.fillText(s, x, y);
 }
+// Aspetto del protagonista scelto a inizio partita.
+let heroLook = 'boy';
+export function setHeroLook(look) {
+ heroLook = look === 'girl' ? 'girl' : 'boy';
+}
+export function heroLookAvailable(look) {
+ return look !== 'girl' || hasAtlas('heroGirlWalk');
+}
 export function drawCharacter(ctx, x, y, {
  color = '#c77c50',
  variant = 0,
@@ -857,8 +865,10 @@ export function drawCharacter(ctx, x, y, {
  if (portrait !== null && typeof portrait === 'string' && portrait.startsWith('x') && drawSprite(ctx, 'people2', Math.floor(+portrait.slice(1) / 4), +portrait.slice(1) % 4, x, y, 43, 64)) return;
  if (portrait !== null && typeof portrait === 'number' && drawSprite(ctx, 'peopleDir' + Math.floor(portrait / 4), portrait % 4, dirCol, x, y, 43, 64)) return;
  if (portrait !== null && typeof portrait === 'number' && drawSprite(ctx, 'people', Math.floor(portrait / 4), portrait % 4, x, y, 43, 64)) return;
- const cell = spriteCell(facing, moving, walk);
- if (bike && drawSprite(ctx, 'heroBike', dirCol, moving ? 1 + (Math.floor(walk * 8) % 2) : 0, x, y + 6, 78, 78)) return;
+ const cell = spriteCell(facing, moving, walk), girl = heroLook === 'girl' && !variant;
+ if (bike && drawSprite(ctx, girl ? 'heroGirlBike' : 'heroBike', dirCol, moving ? 1 + (Math.floor(walk * 8) % 2) : 0, x, y + 6, 78, 78)) return;
+ // Camminata a quattro fotogrammi (terza serie di sprite), se presente.
+ if (!bike && !variant && drawSprite(ctx, girl ? 'heroGirlWalk' : 'heroWalk', dirCol, moving ? Math.floor(walk * 8) % 4 : 0, x, y, 64, 64)) return;
  if (!bike && drawSprite(ctx, variant ? 'band' : 'hero', variant ? Math.min(2, variant - 1) : cell.row, cell.col, x, y, 64, 64, !variant && cell.flip)) return;
  ctx.save();
  ctx.translate(x, y);
