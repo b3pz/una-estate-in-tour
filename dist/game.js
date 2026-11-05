@@ -1012,7 +1012,7 @@ function openSongBrief(id, kind) {
   c = CITIES[id],
   short = kind === 'tutorial';
  let title = short ? 'La prima prova insieme.' : kind === 'rival' ? 'Alta Tensione vi aspetta.' : kind === 'boat' ? 'Un palco in mezzo al mare.' : kind === 'home' ? 'Il concerto a casa.' : kind === 'final' ? 'Questa è la vostra estate.' : `Suona a ${c.name}.`;
- const p = panel(title, `<p>${short?'Suona quando le note raggiungono la linea dorata. Le note lunghe vanno tenute premute fino alla fine.':kind==='rival'?'Gli Alta Tensione suonano insieme da anni. Voi da un pomeriggio. Stasera conta arrivare in fondo insieme: il pubblico ricorderà chi ci ha provato.':kind==='final'?'Un medley di tutta l’estate: otto città, otto accenti. Nico guarda Vale, poi guarda te.':kind==='home'?(state.rivalsJoined?'Tutto il paese in piazza. Per l’ultimo pezzo salgono anche gli Alta Tensione.':'Tutto il paese in piazza. Stasera suonate per chi vi ha visti partire.'):kind==='boat'?'Il capitano vi presta il ponte. Le onde fanno da metronomo, più o meno.':kind==='practice'?'Una prova senza pubblico, nello stile di '+c.name+'. Le abilità del Musicodex si ottengono anche qui, dopo la prova locale.':c.lesson||'La band è pronta. Adesso tocca a voi.'}</p><p><strong>${inst.name}</strong> · ${inst.role}<br>Tasti: <strong>${inst.labels.join(' · ')}</strong>. Su touch usa i pulsanti. ${state.instrument==='drums'?'D = cassa, F = rullante, J = charleston, K = piatto.':''}</p><label>Difficoltà <select id="songDifficulty"><option value="assist">Accessibile · soglia 35%</option><option value="normal">Normale · soglia 50%</option><option value="expert">Virtuoso · soglia 50%</option></select></label><p class="fine">Pausa con Spazio. Puoi uscire senza perdere i pass ottenuti.<br>${short?'Il tutorial introduce i comandi e può essere completato senza una soglia minima.':'Un errore non interrompe il brano. Puoi riprovare subito.'}</p>`, [{
+ const p = panel(title, `<p>${short?'Suona quando le note raggiungono la linea dorata. Le note lunghe vanno tenute premute fino alla fine.':kind==='rival'?'Gli Alta Tensione suonano insieme da anni. Voi da un pomeriggio. Stasera conta arrivare in fondo insieme: il pubblico ricorderà chi ci ha provato.':kind==='final'?'Un medley di tutta l’estate: otto città, otto accenti. Nico guarda Vale, poi guarda te.':kind==='home'?(state.rivalsJoined?'Tutto il paese in piazza. Per l’ultimo pezzo salgono anche gli Alta Tensione.':'Tutto il paese in piazza. Stasera suonate per chi vi ha visti partire.'):kind==='boat'?'Il capitano vi presta il ponte. Le onde fanno da metronomo, più o meno.':kind==='practice'?'Una prova senza pubblico, nello stile di '+c.name+'. Le abilità del Repertorio si ottengono anche qui, dopo la prova locale.':c.lesson||'La band è pronta. Adesso tocca a voi.'}</p><p><strong>${inst.name}</strong> · ${inst.role}<br>Tasti: <strong>${inst.labels.join(' · ')}</strong>. Su touch usa i pulsanti. ${state.instrument==='drums'?'D = cassa, F = rullante, J = charleston, K = piatto.':''}</p><label>Difficoltà <select id="songDifficulty"><option value="assist">Accessibile · soglia 35%</option><option value="normal">Normale · soglia 50%</option><option value="expert">Virtuoso · soglia 50%</option></select></label><p class="fine">Pausa con Spazio. Puoi uscire senza perdere i pass ottenuti.<br>${short?'Il tutorial introduce i comandi e può essere completato senza una soglia minima.':'Un errore non interrompe il brano. Puoi riprovare subito.'}</p>`, [{
   label: 'Conta fino a quattro…',
   run: () => {
    state.settings.difficulty = p.querySelector('select').value;
@@ -1300,7 +1300,7 @@ function endingScene(page, score) {
  const pages = [
   ['Ci chiedono il bis.', `<div class="result-number">${score}<span style="font-size:20px">%</span></div><p>Otto città in un brano solo: il blues di Nino, il rock di Ada, la promessa di Lia, il silenzio di Tito, il ferro di Iris, la clave di Rosa, il levare di Teo, la risposta di Mina.</p><p>Tra il pubblico riconoscete Leo, Sami, Emma, Arturo. Elia, Bea e Tommi cantano più forte di tutti.</p>`],
   mysteryEnding(state) ? ['Quattro nomi.', '<p>Prima del bis Riva sale sul palco e legge piano i quattro nomi della sua vecchia band. Poi aggiunge: «Le Otto Strade. Musica di Riva e di Andrea.»</p><p>Dario — Andrea — resta immobile. Poi sale anche lui. Nico gli porge il plettro; lui lo rifiuta, sorride, e lo rimette nella mano di Nico: «Adesso è vostro. Suonate per chi non viene ascoltato.»</p>'] : ['Tre nomi, e un fruscio.', `<p>Prima del bis Riva legge i nomi della sua vecchia band. Sono tre. Il quarto resta sospeso, come il fruscio del lato B.</p><p>${clues < 8 ? `Nel taccuino avete ${clues} indizi su 8: qualche città custodisce ancora una testimonianza.` : 'Avete tutti gli indizi: Dario, all’archivio di Valdaccordo, vi aspetta ancora.'}</p>`],
-  ['Domani dove andiamo?', `<p>Le luci si spengono una alla volta. Nico ride: «Domani dove andiamo?»</p><p class="fine">Pass ${state.passes.length} / 8 · Musicodex ${dex} / 32 · Indizi ${clues} / 8 · Mistero ${mysteryEnding(state) ? 'risolto' : 'aperto'}</p><p>Il viaggio continua: potete tornare in ogni città, completare il Musicodex con gli altri strumenti${mysteryEnding(state) ? '' : ' e chiudere il mistero del plettro'}, rigiocare i concerti.</p>`]
+  ['Domani dove andiamo?', `<p>Le luci si spengono una alla volta. Nico ride: «Domani dove andiamo?»</p><p class="fine">Pass ${state.passes.length} / 8 · Repertorio ${dex} / 32 · Indizi ${clues} / 8 · Mistero ${mysteryEnding(state) ? 'risolto' : 'aperto'}</p><p>Il viaggio continua: potete tornare in ogni città, completare il Repertorio con gli altri strumenti${mysteryEnding(state) ? '' : ' e chiudere il mistero del plettro'}, rigiocare i concerti.</p>`]
  ];
  const [title, body] = pages[page];
  panel(title, body, [{
@@ -1341,7 +1341,7 @@ function showMap() {
   label: 'Metro · scegli una fermata',
   run: showMetro
  }, {
-  label: 'Musicodex · le abilità',
+  label: 'Repertorio · le abilità',
   run: showDex
  }, {
   label: 'Chiudi mappa · M',
@@ -1542,7 +1542,7 @@ function showDex() {
  if (mode === 'rhythm') return;
  let filter = 'all';
  const all = abilityDex(state),
-  p = panel('Musicodex', `<p>Una pagina per ogni capacità: scoperta, acquisita e perfezionata. Puoi completarle tutte nella stessa estate cambiando strumento in sala prove.</p><div class="dex-total">${all.filter(a=>a.learned).length}<span> / ${all.length} abilità acquisite</span></div><p class="fine">Specialità iniziale: ${INSTRUMENTS[state.starter].name}. Le altre parti della band cambiano insieme alla tua.</p><div class="dex-filters">${[['all','Tutte'],['shared','Ascolto'],['guitar','Chitarra'],['bass','Basso'],['drums','Batteria']].map(([id,label])=>`<button class="btn secondary" data-filter="${id}">${label}</button>`).join('')}</div><div id="dexEntries" class="dex-entries"></div>`, [{
+  p = panel('Repertorio', `<p>Una pagina per ogni capacità: scoperta, acquisita e perfezionata. Puoi completarle tutte nella stessa estate cambiando strumento in sala prove.</p><div class="dex-total">${all.filter(a=>a.learned).length}<span> / ${all.length} abilità acquisite</span></div><p class="fine">Specialità iniziale: ${INSTRUMENTS[state.starter].name}. Le altre parti della band cambiano insieme alla tua.</p><div class="dex-filters">${[['all','Tutte'],['shared','Ascolto'],['guitar','Chitarra'],['bass','Basso'],['drums','Batteria']].map(([id,label])=>`<button class="btn secondary" data-filter="${id}">${label}</button>`).join('')}</div><div id="dexEntries" class="dex-entries"></div>`, [{
    label: 'La nostra band',
    run: showBand
   }, {
@@ -1565,7 +1565,7 @@ function showDex() {
 }
 
 function instrumentStudio(id) {
- panel('Tre strumenti. La stessa band.', `<p>La tua specialità iniziale resta ${INSTRUMENTS[state.starter].name.toLowerCase()}. Qui puoi scambiare il ruolo con Nico e Vale e completare il Musicodex nella stessa partita.</p><p>Le abilità di una città si acquisiscono superando una prova o un concerto dopo l’enigma locale. La padronanza richiede almeno 85%.</p>`, Object.entries(INSTRUMENTS).map(([key, inst]) => ({
+ panel('Tre strumenti. La stessa band.', `<p>La tua specialità iniziale resta ${INSTRUMENTS[state.starter].name.toLowerCase()}. Qui puoi scambiare il ruolo con Nico e Vale e completare il Repertorio nella stessa partita.</p><p>Le abilità di una città si acquisiscono superando una prova o un concerto dopo l’enigma locale. La padronanza richiede almeno 85%.</p>`, Object.entries(INSTRUMENTS).map(([key, inst]) => ({
   label: inst.name + (state.instrument === key ? ' · in uso' : ''),
   run: () => {
    state.instrument = key;
@@ -1574,7 +1574,7 @@ function instrumentStudio(id) {
    openSongBrief(id, 'practice');
   }
  })).concat([{
-  label: 'Apri Musicodex',
+  label: 'Apri il Repertorio',
   run: showDex
  }, {
   label: 'Torna in sala',
@@ -1588,7 +1588,7 @@ function showBand() {
  const missing = Object.keys(INSTRUMENTS).filter(id => id !== state.instrument),
   clues = cluesFound(state).sort((a, b) => clueIndex(state, a.city) - clueIndex(state, b.city));
  panel(state.bandName || 'Ancora senza nome.', `<p>${state.bandName ? 'La band nata in un garage di Borgo delle Cicale.' : 'Una band nata in un garage. Il nome lo troveremo per strada.'}</p><div class="stat-row"><span>Tu</span><strong>${INSTRUMENTS[state.instrument].name}</strong></div><div class="stat-row"><span>Nico</span><strong>${INSTRUMENTS[missing[0]].name}</strong></div><div class="stat-row"><span>Vale</span><strong>${INSTRUMENTS[missing[1]].name}</strong></div><div class="stat-row"><span>Fama</span><strong>${fameTitle().toLowerCase()} · ${state.xp} punti</strong></div><div class="stat-row"><span>Luoghi scoperti</span><strong>${state.visited.length} / 12</strong></div><h4>I ricordi della strada</h4><p>${state.memories.length?state.memories.map(k=>{const [a,b]=k.slice(5).split('-').map(Number);return CITIES[a].name+' ↔ '+CITIES[b].name;}).join(' · '):'La prima sosta insieme deve ancora arrivare.'}</p>${state.found.length ? `<h4>Trovati per strada</h4><p>${Object.values(ROUTES).map(r => r.secret).filter(x => x && state.found.includes(x.id)).map(x => x.title).join(' · ')}</p>` : ''}<h4>Il plettro delle Otto Strade · indizi ${clues.length} / 8</h4>${clues.length ? `<ol class="clue-list">${clues.map(c => `<li>${c.text}</li>`).join('')}</ol>` : '<p>Gli insegnanti delle città della musica custodiscono le testimonianze. Superate le loro prove.</p>'}<p>${mysteryEnding(state) ? '<strong>Mistero risolto.</strong> Il tema delle Otto Strade è di Riva e Andrea. Andrea è Dario, il custode dell’archivio. Il plettro è una promessa: suonare anche per chi non è stato ascoltato.' : mysteryReady(state) ? 'Gli indizi sono completi: portateli a Dario, all’archivio di Valdaccordo.' : state.mystery ? 'All’archivio di Valdaccordo il nastro aspetta le testimonianze mancanti.' : 'Un archivio, a Valdaccordo, custodisce il nastro della vecchia band di Riva.'}</p>`, [{
-  label: 'Musicodex · abilità',
+  label: 'Repertorio · abilità',
   run: showDex
  }, {
   label: 'Torniamo fuori',
@@ -1653,7 +1653,7 @@ function openPhone() {
   ['map', 'Mappa', '⌖', showMap],
   ['notes', 'Note', '✎', notesApp],
   ['msg', 'Messaggi', '✉', messagesApp, unread],
-  ['dex', 'Musicodex', '♪', showDex],
+  ['dex', 'Repertorio', '♪', showDex],
   ['band', 'Band', '★', showBand],
   ['metro', 'Metro', 'M', () => state.transport.metro === 3 ? showMetro() : phonePanel('Metro', '<div class="app-head"><button class="phone-back">‹</button><b>Metro</b></div><p class="app-text">Il pass non c’è ancora. A Binario Nord, Arturo cerca qualcuno che lo aiuti.</p>')],
   ...(state.bicycle ? [['bike', state.bike ? 'A piedi' : 'Bici', '⚙', () => { close(); toggleBike(); }]] : []),
