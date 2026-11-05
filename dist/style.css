@@ -2408,3 +2408,405 @@ button {
 }
 .save-slot strong { font-family: Fredoka, Nunito, sans-serif; font-size: 1.15em }
 .save-slot span { font-size: .92em; opacity: .85 }
+
+/* ===== Stile finestre da videogioco (0.8): niente schede web, riquadri con bordo e cursore ▶ ===== */
+:root {
+ --win-bg: #fdfaf1;
+ --win-ink: #22253a;
+ --win-line: #22253a;
+ --win-inner: #d8cdb4;
+ --win-accent: #d0562b
+}
+body .overlay {
+ background: #0d0f1a99;
+ backdrop-filter: none
+}
+body .panel {
+ background: var(--win-bg);
+ color: var(--win-ink);
+ border: 4px solid var(--win-line);
+ border-radius: 10px;
+ box-shadow: inset 0 0 0 3px var(--win-bg), inset 0 0 0 5px var(--win-inner), 0 6px 0 #0006;
+ padding: 22px 26px
+}
+body .panel h3 {
+ font: 600 28px/1.15 var(--font-title);
+ letter-spacing: 0;
+ color: var(--win-ink);
+ margin: 6px 0 12px
+}
+body .panel p {
+ color: #3b3f52;
+ font-size: 15px;
+ line-height: 1.6
+}
+body .panel .fine {
+ color: #6d6a78;
+ font-size: 12px
+}
+body .eyebrow {
+ font: 700 11px var(--font-text);
+ letter-spacing: 2px;
+ color: var(--win-accent)
+}
+body .actions {
+ gap: 2px 14px;
+ margin-top: 14px
+}
+body .btn,
+body .btn.secondary,
+body .panel.dialogue .btn,
+.menu-item {
+ background: transparent;
+ border: 0;
+ border-radius: 0;
+ box-shadow: none;
+ color: var(--win-ink);
+ font: 500 17px/1.2 var(--font-title);
+ padding: 7px 10px 7px 26px;
+ position: relative;
+ cursor: pointer;
+ outline: none
+}
+body .btn.secondary {
+ color: #6d6a78
+}
+body .btn:hover,
+body .btn:focus,
+body .panel.dialogue .btn:hover,
+body .panel.dialogue .btn:focus,
+.menu-item:hover,
+.menu-item:focus {
+ background: transparent;
+ color: var(--win-accent)
+}
+body .btn::before,
+body .panel.dialogue .btn::before,
+.menu-item::before {
+ content: '▶';
+ position: absolute;
+ left: 6px;
+ top: 50%;
+ transform: translateY(-50%);
+ font-size: 12px;
+ opacity: 0
+}
+body .btn:hover::before,
+body .btn:focus::before,
+body .panel.dialogue .btn:hover::before,
+body .panel.dialogue .btn:focus::before,
+.menu-item:hover::before,
+.menu-item:focus::before {
+ opacity: 1;
+ animation: cursor-nudge .7s steps(2) infinite
+}
+@keyframes cursor-nudge {
+ 50% { transform: translate(3px, -50%) }
+}
+body .panel button:focus-visible {
+ outline: none
+}
+body .panel.dialogue {
+ background: var(--win-bg);
+ border: 4px solid var(--win-line);
+ border-radius: 10px;
+ box-shadow: inset 0 0 0 3px var(--win-bg), inset 0 0 0 5px var(--win-inner), 0 6px 0 #0005;
+ font: 600 18px/1.45 var(--font-text);
+ color: var(--win-ink)
+}
+body .panel.dialogue h3 {
+ color: var(--win-accent)
+}
+body .panel input[type=range] {
+ accent-color: var(--win-accent)
+}
+body .panel select:focus,
+body .panel input:focus {
+ outline: 3px solid var(--win-accent);
+ outline-offset: 2px
+}
+
+/* Schermata del titolo: menu sotto il logo */
+.boot-menu {
+ position: absolute;
+ left: 50%;
+ top: 58%;
+ transform: translateX(-50%);
+ width: min(420px, calc(100% - 32px));
+ display: flex;
+ flex-direction: column;
+ align-items: stretch;
+ gap: 2px;
+ padding: 16px 18px;
+ background: var(--win-bg);
+ border: 4px solid var(--win-line);
+ border-radius: 10px;
+ box-shadow: inset 0 0 0 3px var(--win-bg), inset 0 0 0 5px var(--win-inner), 0 6px 0 #0006;
+ animation: menu-pop .22s ease-out
+}
+@keyframes menu-pop {
+ from { transform: translate(-50%, 12px); opacity: 0 }
+}
+.boot-menu .menu-item {
+ text-align: left;
+ font-size: 20px;
+ letter-spacing: 1px;
+ padding: 9px 10px 9px 32px
+}
+.boot-menu .menu-item::before {
+ left: 10px
+}
+.boot-menu .menu-note {
+ margin: 4px 6px 8px;
+ color: #3b3f52;
+ font: 14px/1.5 var(--font-text)
+}
+.boot-menu .save-slot {
+ margin: 2px 0 8px;
+ border-radius: 6px;
+ border: 2px solid var(--win-inner);
+ background: #fff
+}
+.boot-screen.menu-open .boot-start {
+ display: none
+}
+
+/* Scene a schermo intero (maestro Riva, scelta dello strumento) */
+body .overlay:has(.cutscene) {
+ padding: 0;
+ align-items: stretch;
+ background: radial-gradient(ellipse at 50% 62%, #3a3550 0%, #15131f 70%)
+}
+body .panel.cutscene {
+ width: 100%;
+ max-width: none;
+ max-height: none;
+ height: 100%;
+ background: transparent;
+ border: 0;
+ border-radius: 0;
+ box-shadow: none;
+ padding: max(18px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ overflow: hidden
+}
+.cutscene-caption {
+ font: 600 clamp(22px, 4vmin, 34px)/1.2 var(--font-title) !important;
+ color: #fff4d6 !important;
+ text-shadow: 0 3px 0 #0008;
+ text-align: center;
+ margin: 4px 0 0 !important
+}
+body .cutscene .narrative-scene {
+ flex: 1;
+ width: 100%;
+ height: auto;
+ min-height: 0;
+ background: radial-gradient(ellipse 34% 9% at 50% 88%, #fff3c255 0%, #fff3c200 100%);
+ display: flex;
+ align-items: flex-end;
+ justify-content: center;
+ overflow: visible;
+ position: relative
+}
+body .cutscene .narrative-scene::before,
+body .cutscene .narrative-scene::after {
+ display: none
+}
+body .cutscene .maestro-sprite {
+ width: min(38vmin, 300px);
+ height: min(50vmin, 390px);
+ margin-bottom: 4%
+}
+body .cutscene .intro-steps {
+ position: absolute;
+ top: 6px;
+ right: 8px;
+ color: #fff4d6aa;
+ font: 600 12px var(--font-text)
+}
+body .cutscene .narrative-content {
+ width: min(860px, 100%);
+ background: var(--win-bg);
+ border: 4px solid var(--win-line);
+ border-radius: 10px;
+ box-shadow: inset 0 0 0 3px var(--win-bg), inset 0 0 0 5px var(--win-inner), 0 6px 0 #0006;
+ padding: 16px 22px 10px;
+ position: relative
+}
+body .cutscene .speaker {
+ position: absolute;
+ top: -17px;
+ left: 18px;
+ background: var(--win-ink);
+ color: #fff4d6;
+ font: 700 12px var(--font-text);
+ letter-spacing: 2px;
+ padding: 5px 12px;
+ border-radius: 6px
+}
+body .cutscene .narrative-content p {
+ font: 600 18px/1.5 var(--font-text);
+ color: var(--win-ink);
+ margin: 8px 0
+}
+body .cutscene .narrative-content .fine {
+ font: 12px/1.5 var(--font-text);
+ color: #6d6a78
+}
+body .cutscene .actions {
+ justify-content: flex-end;
+ flex-direction: row-reverse;
+ margin-top: 4px
+}
+.instrument-help {
+ min-height: 2.6em
+}
+body .cutscene .instrument-choices {
+ display: flex;
+ gap: clamp(10px, 4vw, 48px);
+ justify-content: center;
+ align-items: flex-end;
+ margin-bottom: 4%;
+ width: 100%
+}
+body .cutscene .instrument-card {
+ background: transparent;
+ border: 0;
+ border-radius: 0;
+ padding: 10px 10px 4px;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ color: #fff4d6;
+ transition: transform .15s;
+ outline: none;
+ position: relative
+}
+body .cutscene .instrument-card .instrument-art {
+ width: clamp(80px, 20vmin, 180px);
+ height: clamp(80px, 20vmin, 180px);
+ filter: brightness(.65) saturate(.8);
+ transition: filter .15s
+}
+body .cutscene .instrument-card b {
+ font: 600 clamp(16px, 2.6vmin, 22px) var(--font-title);
+ margin: 8px 0 0;
+ color: #fff4d6aa
+}
+body .cutscene .instrument-card:focus,
+body .cutscene .instrument-card:hover {
+ transform: translateY(-10px);
+ background: transparent
+}
+body .cutscene .instrument-card:focus .instrument-art,
+body .cutscene .instrument-card:hover .instrument-art {
+ filter: drop-shadow(0 0 18px #ffd16688)
+}
+body .cutscene .instrument-card:focus b,
+body .cutscene .instrument-card:hover b {
+ color: #ffd166
+}
+body .cutscene .instrument-card:focus::after {
+ content: '▼';
+ position: absolute;
+ top: -22px;
+ color: #ffd166;
+ font-size: 16px;
+ animation: cursor-bob .7s steps(2) infinite
+}
+@keyframes cursor-bob {
+ 50% { transform: translateY(4px) }
+}
+
+/* Comandi */
+.controls-list {
+ display: grid;
+ gap: 2px;
+ margin: 6px 0
+}
+.control-row {
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ background: transparent;
+ border: 0;
+ border-bottom: 1px dashed var(--win-inner);
+ padding: 8px 8px 8px 26px;
+ font: 500 15px var(--font-title);
+ color: var(--win-ink);
+ position: relative;
+ cursor: pointer;
+ outline: none
+}
+.control-row::before {
+ content: '▶';
+ position: absolute;
+ left: 6px;
+ font-size: 12px;
+ opacity: 0
+}
+.control-row:focus::before,
+.control-row:hover::before {
+ opacity: 1
+}
+.control-row:focus,
+.control-row:hover {
+ color: var(--win-accent)
+}
+.control-row kbd {
+ font: 700 13px var(--font-text);
+ background: var(--win-ink);
+ color: #fff4d6;
+ border-radius: 5px;
+ padding: 4px 9px;
+ min-width: 34px;
+ text-align: center
+}
+.control-row.waiting kbd {
+ background: var(--win-accent)
+}
+.boot-menu button:focus-visible,
+.cutscene button:focus-visible,
+.control-row:focus-visible {
+ outline: none
+}
+body .dex-entry {
+ background: #fff;
+ border: 2px solid var(--win-inner);
+ border-radius: 6px;
+ color: var(--win-ink)
+}
+body .dex-entry.learned {
+ background: #fff8e8;
+ border-color: #e8c27a
+}
+body .dex-filters button,
+body .dex-filters [aria-pressed=true] {
+ background: transparent;
+ color: var(--win-ink);
+ border: 0
+}
+body .dex-filters [aria-pressed=true] {
+ color: var(--win-accent);
+ text-decoration: underline;
+ text-underline-offset: 4px
+}
+body .rhythm-hud {
+ background: #12141fe6;
+ border: 3px solid #fdfaf1;
+ border-radius: 10px
+}
+body .rhythm-hud button {
+ background: transparent;
+ border: 2px solid #fdfaf155;
+ color: #fff4d6;
+ border-radius: 6px
+}
+body .rhythm-hud button:hover,
+body .rhythm-hud button:focus {
+ border-color: #ffd166;
+ color: #ffd166
+}

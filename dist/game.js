@@ -2,6 +2,15 @@ import {
  playIntro
 } from './intro.js';
 import {
+ actionFor,
+ pollGamepad,
+ moveFocus,
+ keyName,
+ ACTIONS,
+ ACTION_NAMES,
+ DEFAULT_KEYS
+} from './input.js';
+import {
  abilityDex,
  journeyRoute,
  MAP_POINTS,
@@ -294,50 +303,37 @@ function updateJournal() {
  $('instrumentTag').textContent = `${INSTRUMENTS[state.instrument].name.toUpperCase()} · ${state.bike?'IN BICICLETTA':state.bicycle?'BICI SBLOCCATA · B':'A PIEDI'} · ${fameTitle()}`;
 }
 
-function welcome() {
- // Menu principale, come sulle console portatili: dopo START si sceglie se cominciare o caricare.
- const p = panel('Fuori<br><em>Tempo.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’estate in tour · Versione 0.7</p>`, [{
-  label: '▶ Nuova partita',
-  run: () => saved ? panel('Nuova partita?', `<p>La nuova estate sostituirà la partita salvata su questo dispositivo. Puoi conservarla con Salva → Esporta nel telefono.</p>`, [{
-   label: 'Comincia da capo',
-   run: () => intro(0)
-  }, {
-   label: 'Indietro',
-   run: welcome,
-   secondary: true
-  }], 'NUOVA PARTITA') : intro(0)
- }, {
-  label: '▶ Carica partita',
-  run: loadMenu
- }], 'UNA STORIA DI B3PZ');
- p.classList.add('chapter-title', 'main-menu');
- p.classList.remove('dialogue');
- overlay.classList.remove('clear');
- p.querySelector('button')?.focus();
-}
-
-function loadMenu() {
- const s = saved,
-  card = s ? `<div class="save-slot"><strong>${s.bandName || 'Band senza nome'}</strong><span>${CITIES[s.city].name} · ${month(s).toLowerCase()}</span><span>${INSTRUMENTS[s.instrument]?.name || 'Strumento da scegliere'} · pass ${s.passes.length} / 8 · luoghi ${s.visited.length} / 12</span></div>` : '<p>Nessuna partita salvata su questo dispositivo.</p>';
- const p = panel('Carica partita', card + '<p class="fine">Puoi anche caricare un salvataggio esportato da un altro dispositivo.</p>', [...(s ? [{
-  label: 'Continua il viaggio',
-  run: () => {
+// Schermata del titolo con il menu principale (vedi intro.js).
+let introControl = null;
+function titleOptions(skip) {
+ return {
+  audio,
+  skip,
+  getSave: () => saved,
+  describeSave: s => `<strong>${s.bandName || 'Band senza nome'}</strong><span>${CITIES[s.city].name} · ${month(s).toLowerCase()}</span><span>${INSTRUMENTS[s.instrument]?.name || 'Strumento da scegliere'} · pass ${s.passes.length} / 8 · luoghi ${s.visited.length} / 12</span>`,
+  onNew: () => {
+   introControl = null;
+   intro(0);
+  },
+  onLoad: () => {
+   introControl = null;
    state = saved;
    syncAudio();
    restoreScene();
    close();
-  }
- }] : []), {
-  label: 'Carica da file',
-  run: importSave,
-  secondary: !!s
- }, {
-  label: 'Indietro',
-  run: welcome,
-  secondary: true
- }], 'SALVATAGGIO');
- p.querySelector('button')?.focus();
+  },
+  onImport: done => importSave(() => {
+   introControl = null;
+   done();
+  })
+ };
 }
+function welcome() {
+ close();
+ introControl = playIntro(titleOptions(true));
+ introControl.menu();
+}
+
 const maestroPortrait = `<svg viewBox="0 0 130 170" aria-label="Il maestro Riva" role="img"><path d="M17 173Q14 111 65 108Q116 111 113 173" fill="#607e6d"/><path d="M51 109L65 139L80 109" fill="#f6e8ba"/><path d="M56 118L65 147L74 118" fill="#b67d53"/><ellipse cx="65" cy="74" rx="33" ry="42" fill="#e3b68d"/><path d="M30 69Q20 18 65 20Q111 18 100 70L87 43Q63 55 43 42Z" fill="#d1cfb8"/><path d="M31 62Q20 80 35 93M99 62Q111 80 96 93" fill="#e3b68d"/><g fill="none" stroke="#42594f" stroke-width="3"><ellipse cx="51" cy="72" rx="14" ry="11"/><ellipse cx="80" cy="72" rx="14" ry="11"/><path d="M65 70H67"/></g><path d="M50 93Q65 78 81 93Q71 101 65 94Q59 101 50 93" fill="#c3bca3"/><path d="M60 105Q65 108 71 104" fill="none" stroke="#9d765e" stroke-width="2"/></svg>`;
 
 function intro(page) {
@@ -348,33 +344,52 @@ function intro(page) {
   ['L’ultima campanella.', '«Oggi finisce la scuola. A settembre ci sarà il Festival delle Otto Strade. Tre mesi per trovare il vostro suono. Cominciamo da te: che strumento suoni?»']
  ];
  const [title, body] = pages[page], p = panel(title, `<p>${body}</p>`, [{
-  label: page === 3 ? 'Il mio strumento…' : 'Continua →',
+  label: page === 3 ? 'Il mio strumento ▶' : 'Continua ▼',
   run: () => page === 3 ? chooseInstrument() : intro(page + 1)
  }, ...(page > 0 ? [{
-  label: '← Indietro',
+  label: 'Indietro',
   run: () => intro(page - 1),
   secondary: true
  }] : [])], 'MAESTRO RIVA');
- p.classList.add('narrative');
+ cutscene(p, `<span class="maestro-sprite" role="img" aria-label="Maestro Riva"></span>`, `${page + 1} / 4`);
+}
+
+// Scena a schermo intero: titolo del momento in alto, personaggi al centro, riquadro di testo in basso.
+function cutscene(p, stage, step = '') {
+ p.classList.add('narrative', 'cutscene');
  p.classList.remove('dialogue');
  overlay.classList.remove('clear');
+ const caption = p.querySelector('h3'),
+  speaker = p.querySelector('.eyebrow');
  const content = document.createElement('div');
  content.className = 'narrative-content';
- while (p.firstChild) content.appendChild(p.firstChild);
- p.appendChild(content);
+ const name = document.createElement('div');
+ name.className = 'speaker';
+ name.textContent = speaker?.textContent || '';
+ content.appendChild(name);
+ for (const el of [...p.children])
+  if (el !== caption && el !== speaker) content.appendChild(el);
+ speaker?.remove();
  const scene = document.createElement('div');
  scene.className = 'narrative-scene';
- scene.innerHTML = '<span class="maestro-sprite" role="img" aria-label="Maestro Riva"></span>' + `<span class="intro-steps">${page+1} / 4</span>`;
- p.prepend(scene);
- p.querySelector('button')?.focus();
+ scene.innerHTML = stage + (step ? `<span class="intro-steps">${step}</span>` : '');
+ caption.className = 'cutscene-caption';
+ p.append(caption, scene, content);
+ p.querySelector('.actions button')?.focus();
 }
 
 function chooseInstrument() {
- const p = panel('Qual è il tuo suono?', `<p>Lo strumento che porti con te cambia tutte le prove musicali. Gli amici suoneranno le altre due parti.</p><div class="instrument-choices"></div><p class="fine">Quattro tasti, tre modi diversi di suonare. Su telefono usa i pulsanti sullo schermo.</p>`, [], 'TRE STRUMENTI. UNA BAND.');
+ const p = panel('Qual è il tuo suono?', `<div class="instrument-choices"></div><p class="instrument-help"></p><p class="fine">← → per scegliere · A per confermare. Gli amici suoneranno le altre due parti.</p>`, [], 'TRE STRUMENTI. UNA BAND.');
+ const help = p.querySelector('.instrument-help');
  for (const [id, data] of Object.entries(INSTRUMENTS)) {
   const b = document.createElement('button');
   b.className = 'instrument-card';
-  b.innerHTML = `<span class="instrument-art raster-instrument ${id}" aria-hidden="true"></span><b>${data.name}</b><small>${data.role}</small>`;
+  b.innerHTML = `<span class="instrument-art raster-instrument ${id}" aria-hidden="true"></span><b>${data.name}</b>`;
+  b.setAttribute('aria-label', data.name + ': ' + data.role);
+  b.onfocus = b.onmouseenter = () => {
+   help.innerHTML = `<strong>${data.name}.</strong> ${data.role} ${data.lanes === 4 ? 'Quattro corsie: ← ↓ ↑ →.' : 'Tre corsie: ← ↓ →.'}`;
+   if (document.activeElement !== b) b.focus();
+  };
   b.onclick = async () => {
    state = initialState(id);
    state.introDone = true;
@@ -385,14 +400,19 @@ function chooseInstrument() {
    } catch {}
    setupTown();
    save();
-   panel('Oggi finisce la scuola.', `<p>«Ti aspettiamo nel pomeriggio. Ho trovato un posto per provare!»</p><p>Nico e Vale hanno lasciato un biglietto sul cancello. Prima però c’è l’ultima mattinata di scuola.</p><p class="fine">Frecce o WASD per camminare, E o A per parlare. Il telefono — Invio o START — ha mappa, note e messaggi.</p>`, [{
+   panel('Oggi finisce la scuola.', `<p>«Ti aspettiamo nel pomeriggio. Ho trovato un posto per provare!»</p><p>Nico e Vale hanno lasciato un biglietto sul cancello. Prima però c’è l’ultima mattinata di scuola.</p><p class="fine">Frecce per camminare, A per parlare, S per la bici. Invio (START) apre il telefono con mappa, note e messaggi.</p>`, [{
     label: 'Esci di casa',
     run: close
    }], 'BORGO DELLE CICALE / ORE 08:00');
   };
   p.querySelector('.instrument-choices').appendChild(b);
  }
- p.querySelector('button')?.focus();
+ const stage = p.querySelector('.instrument-choices');
+ stage.remove();
+ cutscene(p, '');
+ p.querySelector('.narrative-scene').appendChild(stage);
+ p.querySelector('.speaker').textContent = 'TRE STRUMENTI. UNA BAND.';
+ p.querySelector('.instrument-card')?.focus();
 }
 
 function setupTown() {
@@ -1012,7 +1032,7 @@ function openSongBrief(id, kind) {
   c = CITIES[id],
   short = kind === 'tutorial';
  let title = short ? 'La prima prova insieme.' : kind === 'rival' ? 'Alta Tensione vi aspetta.' : kind === 'boat' ? 'Un palco in mezzo al mare.' : kind === 'home' ? 'Il concerto a casa.' : kind === 'final' ? 'Questa è la vostra estate.' : `Suona a ${c.name}.`;
- const p = panel(title, `<p>${short?'Suona quando le note raggiungono la linea dorata. Le note lunghe vanno tenute premute fino alla fine.':kind==='rival'?'Gli Alta Tensione suonano insieme da anni. Voi da un pomeriggio. Stasera conta arrivare in fondo insieme: il pubblico ricorderà chi ci ha provato.':kind==='final'?'Un medley di tutta l’estate: otto città, otto accenti. Nico guarda Vale, poi guarda te.':kind==='home'?(state.rivalsJoined?'Tutto il paese in piazza. Per l’ultimo pezzo salgono anche gli Alta Tensione.':'Tutto il paese in piazza. Stasera suonate per chi vi ha visti partire.'):kind==='boat'?'Il capitano vi presta il ponte. Le onde fanno da metronomo, più o meno.':kind==='practice'?'Una prova senza pubblico, nello stile di '+c.name+'. Le abilità del Repertorio si ottengono anche qui, dopo la prova locale.':c.lesson||'La band è pronta. Adesso tocca a voi.'}</p><p><strong>${inst.name}</strong> · ${inst.role}<br>Tasti: <strong>${inst.labels.join(' · ')}</strong>. Su touch usa i pulsanti. ${state.instrument==='drums'?'D = cassa, F = rullante, J = charleston, K = piatto.':''}</p><label>Difficoltà <select id="songDifficulty"><option value="assist">Accessibile · soglia 35%</option><option value="normal">Normale · soglia 50%</option><option value="expert">Virtuoso · soglia 50%</option></select></label><p class="fine">Pausa con Spazio. Puoi uscire senza perdere i pass ottenuti.<br>${short?'Il tutorial introduce i comandi e può essere completato senza una soglia minima.':'Un errore non interrompe il brano. Puoi riprovare subito.'}</p>`, [{
+ const p = panel(title, `<p>${short?'Suona quando le note raggiungono la linea dorata. Le note lunghe vanno tenute premute fino alla fine.':kind==='rival'?'Gli Alta Tensione suonano insieme da anni. Voi da un pomeriggio. Stasera conta arrivare in fondo insieme: il pubblico ricorderà chi ci ha provato.':kind==='final'?'Un medley di tutta l’estate: otto città, otto accenti. Nico guarda Vale, poi guarda te.':kind==='home'?(state.rivalsJoined?'Tutto il paese in piazza. Per l’ultimo pezzo salgono anche gli Alta Tensione.':'Tutto il paese in piazza. Stasera suonate per chi vi ha visti partire.'):kind==='boat'?'Il capitano vi presta il ponte. Le onde fanno da metronomo, più o meno.':kind==='practice'?'Una prova senza pubblico, nello stile di '+c.name+'. Le abilità del Repertorio si ottengono anche qui, dopo la prova locale.':c.lesson||'La band è pronta. Adesso tocca a voi.'}</p><p><strong>${inst.name}</strong> · ${inst.role}<br>Corsie: <strong>${inst.labels.join(' ')}</strong> sulla croce (o ${inst.lanes === 4 ? 'D F J K' : 'D F J'}). Su touch usa i pulsanti. ${state.instrument==='drums'?'← cassa, ↓ rullante, ↑ charleston, → piatto.':''}</p><label>Difficoltà <select id="songDifficulty"><option value="assist">Accessibile · soglia 35%</option><option value="normal">Normale · soglia 50%</option><option value="expert">Virtuoso · soglia 50%</option></select></label><p class="fine">Pausa con START (Invio). Puoi uscire senza perdere i pass ottenuti.<br>${short?'Il tutorial introduce i comandi e può essere completato senza una soglia minima.':'Un errore non interrompe il brano. Puoi riprovare subito.'}</p>`, [{
   label: 'Conta fino a quattro…',
   run: () => {
    state.settings.difficulty = p.querySelector('select').value;
@@ -1700,6 +1720,9 @@ function settings() {
    close();
   }
  }, {
+  label: 'Comandi',
+  run: controlsMenu
+ }, {
   label: 'Esporta partita',
   run: exportSave
  }, {
@@ -1730,6 +1753,43 @@ function settings() {
  };
 }
 
+// Comandi: ogni azione della console si può assegnare a un tasto diverso. Il joystick usa la mappatura standard.
+function controlsMenu() {
+ const k = state.settings.keys;
+ const p = panel('Comandi', `<div class="controls-list">${ACTIONS.map(a => `<button class="control-row" data-action="${a}"><span>${ACTION_NAMES[a]}</span><kbd>${keyName(k[a])}</kbd></button>`).join('')}</div><p class="fine">${padInfo.connected ? 'Controller collegato: croce o levetta, A, B, START e SELECT.' : 'Collega un controller e premi un tasto: croce o levetta, A, B, START e SELECT funzionano subito.'}<br>Nei concerti le corsie si suonano con la croce: ← ↓ ↑ →. Funzionano anche D F J K.</p>`, [{
+  label: 'Tasti predefiniti',
+  run: () => {
+   state.settings.keys = { ...DEFAULT_KEYS };
+   save();
+   controlsMenu();
+  }
+ }, {
+  label: 'Indietro',
+  run: settings,
+  secondary: true
+ }], 'IMPOSTAZIONI');
+ p.querySelectorAll('.control-row').forEach(row => row.onclick = () => {
+  const action = row.dataset.action;
+  row.querySelector('kbd').textContent = 'premi un tasto…';
+  row.classList.add('waiting');
+  setTimeout(() => {
+   remapping = key => {
+    remapping = null;
+    if (key !== 'escape') {
+     const keys = { ...state.settings.keys };
+     const other = ACTIONS.find(a => a !== action && keys[a] === key);
+     if (other) keys[other] = keys[action];
+     keys[action] = key;
+     state.settings.keys = keys;
+     save();
+    }
+    controlsMenu();
+    overlay.querySelector(`[data-action="${action}"]`)?.focus();
+   };
+  }, 60);
+ });
+}
+
 function exportSave() {
  const blob = new Blob([JSON.stringify(state, null, 2)], {
    type: 'application/json'
@@ -1742,7 +1802,7 @@ function exportSave() {
  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function importSave() {
+function importSave(onDone = null) {
  const input = document.createElement('input');
  input.type = 'file';
  input.accept = '.json,application/json';
@@ -1755,6 +1815,7 @@ function importSave() {
    restoreScene();
    save();
    close();
+   onDone?.();
    toast('Partita importata. Buon viaggio!');
   } catch {
    toast('Questo file non è un salvataggio valido.');
@@ -2002,8 +2063,8 @@ function update(dt) {
   checkMessages();
  }
  portalCooldown = Math.max(0, portalCooldown - dt);
- let dx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0),
-  dy = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
+ let dx = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0),
+  dy = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
  if (dx || dy) {
   path = [];
   tapObject = null;
@@ -2089,6 +2150,7 @@ function update(dt) {
 function frame(ts) {
  const dt = Math.min(.12, (ts - last) / 1000);
  last = ts;
+ pollPad();
  update(dt);
  ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
  ctx.clearRect(0, 0, W, H);
@@ -2096,55 +2158,136 @@ function frame(ts) {
  else drawWorld(ts);
  requestAnimationFrame(frame);
 }
+// ==== Comandi: croce, A, B, START, SELECT (tastiera rimappabile e joystick) ====
+const DIRS = ['up', 'down', 'left', 'right'];
+let remapping = null;
+// Corsie dei concerti: ← ↓ ↑ → (il basso ha tre corsie: ← ↓ →, anche ↑ suona quella centrale).
+function laneFor(action) {
+ const n = INSTRUMENTS[state.instrument].lanes;
+ return n === 4 ? ({ left: 0, down: 1, up: 2, right: 3 })[action] ?? -1 : ({ left: 0, down: 1, up: 1, right: 2 })[action] ?? -1;
+}
+function legacyLane(key) {
+ return ['d', 'f', 'j', 'k'].slice(0, INSTRUMENTS[state.instrument].lanes).indexOf(key);
+}
+// Pulsante «indietro» della finestra aperta: B chiude o torna alla schermata precedente.
+function backButton(root) {
+ const buttons = [...root.querySelectorAll('button:not([disabled])')].filter(b => b.offsetParent !== null);
+ return root.querySelector('.phone-back') || buttons.find(b => /^(←\s*)?(Indietro|Chiudi|Esci|Torna|Annulla|Resta qui|No|Torniamo|Più tardi|Non ora)/i.test(b.textContent.trim())) || null;
+}
+function overlayAction(action, raw) {
+ const root = overlay.querySelector('.panel') || overlay;
+ if (DIRS.includes(action)) {
+  const el = overlay.contains(document.activeElement) ? document.activeElement : null,
+   side = action === 'left' ? -1 : action === 'right' ? 1 : 0;
+  // ← → regolano cursori e scelte; ↑ ↓ passano alla voce successiva.
+  if (side && el?.type === 'range') {
+   el.value = String(Number(el.value) + side * Number(el.step || 1));
+   el.dispatchEvent(new Event('input', { bubbles: true }));
+   return true;
+  }
+  if (side && el?.tagName === 'SELECT') {
+   el.selectedIndex = Math.max(0, Math.min(el.options.length - 1, el.selectedIndex + side));
+   el.dispatchEvent(new Event('change', { bubbles: true }));
+   return true;
+  }
+  moveFocus(root, action);
+  return true;
+ }
+ if (action === 'a') {
+  const pad = overlay.querySelector('.tap-pad');
+  if (pad && raw !== ' ' && raw !== 'j') {
+   pad.onpointerdown?.({ preventDefault() {} });
+   return true;
+  }
+  const el = overlay.contains(document.activeElement) ? document.activeElement : root.querySelector('button:not([disabled])');
+  if (el && ['SELECT', 'INPUT'].includes(el.tagName)) return true;
+  el?.click();
+  return true;
+ }
+ if (action === 'b') {
+  const back = backButton(root);
+  if (back) back.click();
+  else if (!overlay.querySelector('.narrative, .instrument-choices')) close();
+  return true;
+ }
+ if (action === 'start') {
+  if (overlay.querySelector('.phone')) close();
+  else if (mode === 'rhythm' && song?.paused) overlay.querySelector('button')?.click();
+  return true;
+ }
+ if (action === 'select' && overlay.querySelector('.map-panel')) close();
+ return true;
+}
+function handleAction(action, down, raw = null) {
+ if (!action) return false;
+ if (bootActive()) {
+  if (down) introControl.handle(action);
+  return true;
+ }
+ if (mode === 'rhythm') {
+  if (down && action === 'start') {
+   if (song?.paused) overlay.querySelector('button')?.click();
+   else pauseSong();
+   return true;
+  }
+  if (!overlay.hidden) return down ? overlayAction(action, raw) : true;
+  const lane = laneFor(action);
+  if (lane >= 0) down ? pressLane(lane) : releaseLane(lane);
+  return true;
+ }
+ if (DIRS.includes(action) && !down) {
+  keys.delete(action);
+  return true;
+ }
+ if (!down) return true;
+ if (!overlay.hidden) return overlayAction(action, raw);
+ if (DIRS.includes(action)) keys.add(action);
+ else if (action === 'a') interact();
+ else if (action === 'b') raw === 'escape' ? startMenu() : toggleBike();
+ else if (action === 'start') startMenu();
+ else if (action === 'select') showMap();
+ return true;
+}
+function bootActive() {
+ return !!document.getElementById('bootScreen') && !!introControl;
+}
 document.addEventListener('keydown', e => {
  const key = e.key.toLowerCase();
- if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key) && !['INPUT', 'SELECT'].includes(e.target.tagName)) e.preventDefault();
- if (e.repeat) return;
- if (mode === 'rhythm') {
-  if (key === ' ') {
-   if (song?.paused) {
-    overlay.querySelector('button')?.click();
-   } else pauseSong();
-   return;
-  }
-  if (!overlay.hidden) return;
-  const lane = INSTRUMENTS[state.instrument].labels.map(k => k.toLowerCase()).indexOf(key);
-  if (lane >= 0) pressLane(lane);
+ if (remapping) {
+  e.preventDefault();
+  remapping(key);
   return;
  }
- if (!overlay.hidden) {
-  const phone = overlay.querySelector('.phone');
-  if (phone && ['arrowdown', 'arrowup', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
-   const list = [...phone.querySelectorAll('.app, .thread, .phone-back')],
-    i = Math.max(0, list.indexOf(document.activeElement)),
-    step = phone.querySelector('.app') ? ({ arrowdown: 3, s: 3, arrowup: -3, w: -3, arrowright: 1, d: 1, arrowleft: -1, a: -1 })[key] : ({ arrowdown: 1, s: 1, arrowup: -1, w: -1 })[key] || 0;
-   list[(i + step + list.length) % list.length]?.focus();
+ const typing = e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(e.target.type));
+ if (typing && !['enter', 'escape'].includes(key)) return;
+ const action = actionFor(key, state.settings.keys);
+ if (action || ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) e.preventDefault();
+ if (e.repeat && !(action && DIRS.includes(action) && !overlay.hidden && mode !== 'rhythm')) return;
+ if (mode === 'rhythm' && overlay.hidden && !bootActive()) {
+  const lane = legacyLane(key);
+  if (lane >= 0 && !action) {
+   pressLane(lane);
    return;
   }
-  if (key === 'm' && overlay.querySelector('.map-panel')) close();
-  else if (key === 'escape' && !overlay.querySelector('.narrative') && !overlay.querySelector('.chapter-title') && !overlay.querySelector('.instrument-choices')) close();
-  return;
  }
- if (key === 'e' || key === ' ' || key === 'z') interact();
- else if (key === 'enter') {
-  e.preventDefault();
-  startMenu();
- }
- else if (key === 'b') toggleBike();
- else if (key === 'm') showMap();
- else if (key === 'escape') {
-  e.preventDefault();
-  startMenu();
- }
- else keys.add(key);
+ if (handleAction(action, true, key)) return;
+ if (overlay.hidden && mode === 'world' && key === 'm') showMap();
 });
 document.addEventListener('keyup', e => {
- keys.delete(e.key.toLowerCase());
+ const key = e.key.toLowerCase();
  if (mode === 'rhythm') {
-  const lane = INSTRUMENTS[state.instrument].labels.map(k => k.toLowerCase()).indexOf(e.key.toLowerCase());
-  if (lane >= 0) releaseLane(lane);
+  const lane = legacyLane(key);
+  if (lane >= 0 && !actionFor(key, state.settings.keys)) releaseLane(lane);
  }
+ handleAction(actionFor(key, state.settings.keys), false, key);
 });
+let padInfo = { connected: false, name: '' };
+function pollPad() {
+ const r = pollGamepad();
+ if (r.connected !== padInfo.connected) toast(r.connected ? 'Controller collegato' : 'Controller scollegato');
+ padInfo = r;
+ for (const ev of r.events) handleAction(ev.action, ev.down, 'pad');
+}
 window.addEventListener('blur', () => {
  keys.clear();
  if (song && !song.paused) pauseSong();
@@ -2158,10 +2301,10 @@ document.addEventListener('visibilitychange', () => {
 });
 document.querySelectorAll('[data-move]').forEach(b => {
  const k = {
-  up: 'arrowup',
-  down: 'arrowdown',
-  left: 'arrowleft',
-  right: 'arrowright'
+  up: 'up',
+  down: 'down',
+  left: 'left',
+  right: 'right'
  } [b.dataset.move];
  b.onpointerdown = e => {
   if (!overlay.hidden || mode !== 'world') return;
@@ -2242,11 +2385,7 @@ loadExtras().then(keys => {
  else img.onload = apply;
 });
 setupTown();
-if (QA || new URLSearchParams(location.search).has('nointro')) welcome();
-else playIntro({
- audio,
- onStart: welcome
-});
+introControl = playIntro(titleOptions(QA || new URLSearchParams(location.search).has('nointro')));
 requestAnimationFrame(frame);
 
 function portraitCard(id) {

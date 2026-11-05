@@ -246,7 +246,7 @@ function groove(info, api) {
 
 function tempo(info, api) {
  let stage = 0, taps = [], listening = false;
- const p = frame(api, info, `<div class="tempo-box"><div class="tempo-stage">${TEMPO_STAGES.map((b, i) => `<span data-st="${i}">${b} BPM</span>`).join('')}</div><button class="tap-pad" aria-label="Batti il tempo">BATTI<br><small>o premi Spazio</small></button><p class="tempo-readout">Premi «Conta quattro», ascolta e continua da solo per otto colpi.</p></div>`, [
+ const p = frame(api, info, `<div class="tempo-box"><div class="tempo-stage">${TEMPO_STAGES.map((b, i) => `<span data-st="${i}">${b} BPM</span>`).join('')}</div><button class="tap-pad" aria-label="Batti il tempo">BATTI<br><small>o premi A</small></button><p class="tempo-readout">Premi «Conta quattro», ascolta e continua da solo per otto colpi.</p></div>`, [
   { label: 'Conta quattro', run: start },
   { label: 'Esci', run: api.back, secondary: true }
  ]);
@@ -282,7 +282,7 @@ function clave(info, api) {
  const bpm = 96, step = 60 / bpm / 4, cycle = step * 32, labels = ['1', 'e', '2', 'e', '3', 'e', '4', 'e'];
  let running = false, cycleStart = 0, taps = [], good = 0, cyclesLeft = 0, demo = false;
  const grid = [0, 1].map(bar => `<div class="clave-bar">${labels.map((l, i) => `<span data-cell="${bar * 8 + i}"><small>${l}</small></span>`).join('')}</div>`).join('');
- const p = frame(api, info, `<div class="clave-grid">${grid}</div><button class="tap-pad" aria-label="Suona la clave">CLAVE<br><small>o premi Spazio</small></button><p class="tempo-readout">Due giri corretti di fila per ritrovare i percussionisti.</p>`, [
+ const p = frame(api, info, `<div class="clave-grid">${grid}</div><button class="tap-pad" aria-label="Suona la clave">CLAVE<br><small>o premi A</small></button><p class="tempo-readout">Due giri corretti di fila per ritrovare i percussionisti.</p>`, [
   { label: '▶ Esempio di Rosa', run: () => start(true) },
   { label: 'Suona tu', run: () => start(false) },
   { label: 'Esci', run: api.back, secondary: true }
