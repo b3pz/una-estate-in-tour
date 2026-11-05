@@ -1,24 +1,25 @@
 import { STYLES, songPlan, partNotes } from './music.js';
+import { DEFAULT_KEYS, validKeys } from './input.js';
 export const INSTRUMENTS = {
  guitar: {
   name: 'Chitarra',
   role: 'Riff, accordi e note sostenute.',
   lanes: 4,
-  labels: ['D', 'F', 'J', 'K'],
+  labels: ['←', '↓', '↑', '→'],
   colors: ['#d48d5b', '#d9bd65', '#80ad96', '#9b91bc']
  },
  bass: {
   name: 'Basso',
   role: 'Pause, sincopi e groove.',
   lanes: 3,
-  labels: ['D', 'F', 'J'],
+  labels: ['←', '↓', '→'],
   colors: ['#d48d5b', '#d9bd65', '#80ad96']
  },
  drums: {
   name: 'Batteria',
   role: 'Cassa, rullante, charleston e piatto.',
   lanes: 4,
-  labels: ['D', 'F', 'J', 'K'],
+  labels: ['←', '↓', '↑', '→'],
   colors: ['#d48d5b', '#d9bd65', '#80ad96', '#9b91bc']
  }
 };
@@ -190,11 +191,14 @@ export const DEFAULT_SETTINGS = {
  volume: .55,
  offset: 0,
  difficulty: 'normal',
- muted: false
+ muted: false,
+ keys: { ...DEFAULT_KEYS }
 };
 export function initialState(instrument = 'guitar') {
  return {
   version: 1,
+  name: '',
+  look: 'boy',
   mapv: 2,
   instrument,
   starter: instrument,
@@ -283,11 +287,14 @@ export function validateState(s) {
  if (!s.mastery)
   for (const id of out.passes) out.mastery[id + ':' + out.starter] = out.best[id] ?? 50;
  const st = s.settings || {};
+ out.name = typeof s.name === 'string' ? s.name.replace(/[^\p{L}\p{N} '’-]/gu, '').slice(0, 12) : '';
+ out.look = s.look === 'girl' ? 'girl' : 'boy';
  out.settings = {
   volume: Number.isFinite(st.volume) ? Math.max(0, Math.min(1, st.volume)) : .55,
   offset: Number.isFinite(st.offset) ? Math.max(-250, Math.min(250, st.offset)) : 0,
   difficulty: ['assist', 'normal', 'expert'].includes(st.difficulty) ? st.difficulty : 'normal',
-  muted: st.muted === true
+  muted: st.muted === true,
+  keys: validKeys(st.keys)
  };
  return out;
 }

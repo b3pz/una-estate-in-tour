@@ -20,20 +20,23 @@ Apri `http://localhost:8080`. Usa un server HTTP: aprire direttamente il file co
 
 Lo schermo mostra solo il mondo, come nei giochi di ruolo classici: la telecamera segue il personaggio e tutto il resto passa dal menu Start. Entrando in un luogo compare per qualche secondo il suo nome; quando cambia l’obiettivo, un breve avviso lo riassume. Un fumetto «!» segnala persone e oggetti con cui interagire.
 
-| Azione | Tastiera | Touch |
-|---|---|---|
-| Cammina | WASD / frecce | croce, oppure tocca il terreno |
-| Parla, entra, usa | E / Spazio / Z | A |
-| Menu Start (obiettivo, mappa, Repertorio, band, bici, opzioni) | Invio / Esc | START |
-| Bicicletta, dopo averla ottenuta | B | B |
-| Mappa rapida | M | dal menu |
-| Chitarra / batteria | D F J K | pulsanti in basso |
-| Basso | D F J | pulsanti in basso |
-| Pausa durante il brano | Spazio | Pausa |
+Comandi da console portatile: croce, A, B, START e SELECT. I tasti si cambiano in Impostazioni → Comandi; un controller (mappatura standard) funziona subito.
+
+| Azione | Tastiera (predefinita) | Controller | Touch |
+|---|---|---|---|
+| Cammina (solo quattro direzioni) / sposta il cursore | frecce | croce o levetta | croce, oppure tocca il terreno |
+| A · parla, entra, conferma, fa avanzare il testo | A (anche Z, Spazio) | A | A |
+| B · indietro, cancella; bici quando sei in giro | S (anche X, ⌫) | B | B |
+| START · telefono (mappa, messaggi, Repertorio…), pausa | Invio (Esc nel mondo) | START | START |
+| SELECT · mappa | Maiusc | SELECT | dal telefono |
+| Concerto: corsie | ← ↓ ↑ → (il basso: ← ↓ →); anche D F J K | croce | pulsanti in basso |
+| Pausa durante il brano | Invio | START | Pausa |
+
+I dialoghi scorrono lettera per lettera, un riquadro alla volta: A completa la frase o passa alla successiva. La metro si prende solo dagli ingressi M: si apre la mappa delle fermate e si sceglie con la croce.
 
 ### Percorso
 
-1. Prologo con il maestro Riva e scelta dello strumento (chitarra, basso o batteria). Scuola a nord-est, poi la sala prove a sud-ovest con Nico e Vale, poi la sfida agli Alta Tensione in piazza.
+1. Schermata del titolo (PREMI START, Nuova partita / Carica partita), prologo con il maestro Riva, nome e personaggio, scelta dello strumento (chitarra, basso o batteria). Scuola a nord-est, poi la sala prove a sud-ovest con Nico e Vale, poi la sfida agli Alta Tensione in piazza.
 2. Il viaggio: i cartelli ai bordi dei paesi portano sui sentieri. L’obiettivo in basso suggerisce sempre la tappa musicale più vicina; la mappa (M) mostra l’itinerario fisico.
 3. In ogni città musicale l’insegnante propone una prova con una meccanica propria; superata la prova, il palco assegna il pass.
 4. Binario Nord: due missioni di Arturo, la bici (B) e poi il pass della metro. La metro collega solo fermate già visitate; Monteferro si raggiunge in funivia da Valdaccordo; l’isola prima in traghetto da Porto del Sol, poi anche dal pontile di Notturnia.

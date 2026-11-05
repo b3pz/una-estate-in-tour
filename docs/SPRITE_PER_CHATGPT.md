@@ -220,3 +220,59 @@ Le città (Officina, Bellavista, Grooveto, Porto del Sol, Notturnia) hanno isola
 | righe 2 e 3 | riserva | lasciare vuote |
 
 > Prompt (uno per tavola): «Tavola sprite 1536×1536 a sfondo trasparente, griglia 4×4 da 384 px, stesso stile dipinto delle tavole di riferimento allegate. Una figura per cella, centrata, base nella parte bassa con circa 20 px di margine, nessun testo. Contenuto delle celle: [tabella della tavola].»
+
+---
+
+# Terza serie (0.8): camminata fluida, protagonista ragazza, orti e campi
+
+Il protagonista oggi ha solo due passi per direzione e la camminata sembra a scatti. Orti, campi, aiuole e bancarelle sono ancora disegnati dal codice e stonano accanto agli sprite dipinti. Questi quattro file li sostituiscono. Finché mancano, il gioco usa i disegni attuali; la scelta «Ragazza» compare all’inizio della partita solo quando `hero-girl-walk.png` è presente.
+
+Stesse regole delle serie precedenti: 1536×1536, PNG trasparente, griglia 4×4 da 384 px, una figura per cella, piedi o base in basso con circa 20 px di margine, nessun testo, stessa scala del ragazzo di `hero-world-atlas.png`.
+
+## 11. `hero-walk.png` — il protagonista che cammina (quattro fotogrammi)
+
+Lo stesso ragazzo di `hero-world-atlas.png` (cappellino rosso, maglietta gialla, zaino verde, pantaloncini blu). Un ciclo di camminata completo per ogni direzione, come nei giochi di ruolo classici: il personaggio resta alla stessa altezza in tutte le celle, cambiano solo gambe e braccia.
+
+| Riga | Direzione | Col. 0 | Col. 1 | Col. 2 | Col. 3 |
+|---|---|---|---|---|---|
+| 0 | verso il basso (si vede il viso) | fermo, piedi uniti | passo: piede sinistro avanti | appoggio: piedi quasi uniti | passo: piede destro avanti |
+| 1 | verso sinistra (profilo) | fermo | passo A | appoggio | passo B |
+| 2 | verso destra (profilo) | fermo | passo A | appoggio | passo B |
+| 3 | verso l’alto (di spalle) | fermo | passo A | appoggio | passo B |
+
+> Prompt: «Tavola sprite 1536×1536 a sfondo trasparente, griglia 4×4 da 384 px. Il ragazzo del riferimento allegato (cappellino rosso, maglietta gialla, zaino verde, pantaloncini blu). Ogni riga è una direzione: riga 0 di fronte, riga 1 verso sinistra, riga 2 verso destra, riga 3 di spalle. Ogni colonna è un fotogramma del ciclo di camminata: 0 fermo, 1 passo con il piede sinistro avanti, 2 piedi quasi uniti, 3 passo con il piede destro avanti. Stessa altezza e stessa posizione della testa in tutte le celle, piedi sulla stessa linea a 20 px dal bordo basso. Stesso stile dipinto del riferimento, nessun testo.»
+
+## 12. `hero-girl-walk.png` — la protagonista (ragazza)
+
+Stessa disposizione di `hero-walk.png`. Una ragazza della stessa età e della stessa scala del ragazzo, nello stesso stile: capelli castani raccolti in una coda bassa, bandana arancione, maglietta a righe bianche e blu, salopette corta di jeans, scarpe da ginnastica rosse, zaino verde come il ragazzo (sono della stessa band). Deve distinguersi bene da Vale (capelli ricci e fascia gialla) e da Emma.
+
+> Prompt: come il punto 11, sostituendo il personaggio con la descrizione qui sopra. Allegare anche `band-instruments-atlas.png`, per evitare che somigli a Vale.
+
+## 13. `hero-girl-bike.png` — la protagonista in bicicletta
+
+Stessa disposizione di `hero-bike.png` (righe = direzioni, colonne 0 fermo, 1 e 2 pedalata, 3 vuota), con la ragazza del punto 12 sulla stessa bici verde salvia con cestino.
+
+## 14. `farm-props.png` — orti, campi e bancarelle
+
+Sostituiscono gli elementi ancora disegnati dal codice nei paesi. Le celle «larghe» vanno disegnate in orizzontale (circa il doppio della larghezza rispetto all’altezza) e si ripetono affiancate: i bordi destro e sinistro devono potersi accostare senza stacco.
+
+| Cella | Oggetto | Note |
+|---|---|---|
+| (0,0) | Orto di insalate e cavoli | larga; terra scura a solchi, file di verdure, bordo di assi |
+| (0,1) | Orto di pomodori | larga; piante legate a canne, pomodori rossi |
+| (0,2) | Campo di grano | larga; spighe dorate fitte |
+| (0,3) | Fila di girasoli | larga; girasoli alti affiancati |
+| (1,0) | Covone di fieno | rotondo |
+| (1,1) | Spaventapasseri | con cappello di paglia e camicia a quadri |
+| (1,2) | Pozzo di pietra | con secchio e tettoia di legno |
+| (1,3) | Carriola | piena di zucche |
+| (2,0) | Staccionata | larga; pezzo modulare di legno chiaro |
+| (2,1) | Cancelletto | di legno, chiuso |
+| (2,2) | Cassette di verdura | due o tre cassette impilate |
+| (2,3) | Annaffiatoio e attrezzi | annaffiatoio di latta, rastrello appoggiato |
+| (3,0) | Aiuola fiorita | rotonda, bordo di sassi, fiori rosa e gialli |
+| (3,1) | Aiuola rettangolare | larga; fiori misti |
+| (3,2) | Bancarella del mercato | tenda a righe rosse e bianche, cassette di frutta |
+| (3,3) | Bancarella del mercato | tenda a righe gialle e bianche, formaggi e pane |
+
+> Prompt: «Tavola sprite 1536×1536 a sfondo trasparente, griglia 4×4 da 384 px, stesso stile dipinto delle tavole di riferimento allegate (`towns-props-atlas.png`, `trail-props.png`). Vista dall’alto di tre quarti come gli altri oggetti del mondo. Una figura per cella, centrata, base in basso con circa 20 px di margine, nessun testo. Contenuto delle celle: [tabella].»
