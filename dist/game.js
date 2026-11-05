@@ -1695,6 +1695,14 @@ function drawMetro(ts) {
  }
  // cassa del vagone
  const x0 = 6 * T, x1 = 42 * T;
+ const car = atlases.metroCar;
+ if (car && car.complete && car.naturalWidth) ctx.drawImage(car, x0 - 8, 12.6 * T, x1 - x0 + 16, 9 * T);
+ else drawCarriage(x0, x1, shift);
+ const actors = [];
+ drawMetroActors(actors);
+}
+
+function drawCarriage(x0, x1, shift) {
  ctx.fillStyle = '#c9cdc4';
  ctx.beginPath();
  ctx.roundRect(x0 - 8, 12.6 * T, x1 - x0 + 16, 9 * T, 18);
@@ -1730,9 +1738,11 @@ function drawMetro(ts) {
   ctx.fill();
  }
  rect(x0, 20.6 * T, x1 - x0, .6 * T, '#3e6f63');
+}
+
+function drawMetroActors(actors) {
  // pali e maniglie
- const actors = [];
- for (const px of [11, 19, 24, 31, 37]) actors.push({ depth: 17.4 * T, draw: () => { rect(px * T - 2, 15.4 * T, 4, 2.1 * T, '#e3e7e0'); ctx.fillStyle = '#7f8c86'; ctx.beginPath(); ctx.ellipse(px * T, 17.5 * T, 6, 3, 0, 0, 7); ctx.fill(); } });
+ if (!atlases.metroCar?.naturalWidth) for (const px of [11, 19, 24, 31, 37]) actors.push({ depth: 17.4 * T, draw: () => { rect(px * T - 2, 15.4 * T, 4, 2.1 * T, '#e3e7e0'); ctx.fillStyle = '#7f8c86'; ctx.beginPath(); ctx.ellipse(px * T, 17.5 * T, 6, 3, 0, 0, 7); ctx.fill(); } });
  for (const o of objects) actors.push({ depth: o.y * T, draw: () => drawCharacter(ctx, o.x * T, o.y * T, { portrait: o.portrait, facing: o.facing || 'south' }) });
  actors.push({ depth: state.y * T, draw: () => drawCharacter(ctx, state.x * T, state.y * T, { facing: state.facing, moving: hasMoved, walk }) });
  actors.sort((a, b) => a.depth - b.depth).forEach(a => a.draw());
@@ -2106,6 +2116,20 @@ function interactBubble(x, y) {
  ctx.textAlign = 'left';
 }
 
+// Tipo di stanza per lo sfondo dipinto: dipende dall'edificio.
+function roomStyle(entry) {
+ const st = entry.building?.style || '';
+ if (entry.kind === 'garage') return 'sala-prove';
+ if (entry.kind === 'school') return 'scuola';
+ if (entry.label === 'Bottega' || st === 'market') return 'negozio';
+ if (['club', 'night', 'theatre', 'tent'].includes(st)) return 'locale';
+ if (st === 'factory') return 'officina';
+ if (['stone', 'castle', 'academy'].includes(st)) return 'pietra';
+ if (st === 'hut') return 'capanna';
+ if (st === 'station') return 'stazione';
+ return 'casa';
+}
+
 function drawInterior() {
  const cam = cameraNow();
  rect(0, 0, W, H, '#14110e');
@@ -2115,13 +2139,18 @@ function drawInterior() {
   sy = 7 * T,
   rw = 28 * T,
   rh = 22 * T;
- ctx.fillStyle = '#e2d3b1';
- ctx.beginPath();
- ctx.roundRect(sx, sy, rw, rh, 12);
- ctx.fill();
- rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
- for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
- for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
+ // Sfondo dipinto della stanza (quarta serie di sprite), altrimenti pavimento e pareti semplici.
+ const bg = atlases['room:' + roomStyle(room.entry)];
+ if (bg && bg.complete && bg.naturalWidth) ctx.drawImage(bg, sx, sy, rw, rh);
+ else {
+  ctx.fillStyle = '#e2d3b1';
+  ctx.beginPath();
+  ctx.roundRect(sx, sy, rw, rh, 12);
+  ctx.fill();
+  rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
+  for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
+  for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
+ }
  const items = roomPlan(room.entry).items;
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
