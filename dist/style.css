@@ -3108,3 +3108,112 @@ body .overlay .letter-grid .key:focus {
  outline: none !important;
  box-shadow: none !important
 }
+
+/* Comandi touch grandi, come su una console portatile */
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls {
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  align-items: flex-end
+ }
+ .dpad {
+  width: auto;
+  grid-template-columns: repeat(3, 62px);
+  grid-template-rows: repeat(3, 62px);
+  gap: 0
+ }
+ .dpad button {
+  font-size: 26px;
+  border-radius: 10px;
+  background: #15172acc;
+  border: 2px solid #ffffff40;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none
+ }
+ .dpad button:first-child { grid-column: 2; grid-row: 1 }
+ .dpad button:nth-child(2) { grid-column: 1; grid-row: 2 }
+ .dpad button:nth-child(3) { grid-column: 2; grid-row: 3 }
+ .dpad button:nth-child(4) { grid-column: 3; grid-row: 2 }
+ .dpad button:active,
+ .dpad button.held {
+  background: #ffb703;
+  color: #15172a
+ }
+ .touch-controls .start-btn {
+  height: 42px;
+  min-width: 96px;
+  border-radius: 21px;
+  font: bold 14px var(--font-text);
+  letter-spacing: 2px;
+  margin-bottom: 4px
+ }
+ .ab-buttons {
+  gap: 16px
+ }
+ .ab-buttons button {
+  width: 78px;
+  height: 78px;
+  font-size: 28px;
+  touch-action: manipulation
+ }
+ .ab-buttons button:active {
+  transform: scale(.94);
+  filter: brightness(1.3)
+ }
+ .ab-buttons button:last-child {
+  margin-bottom: 40px
+ }
+ .toast {
+  bottom: 220px
+ }
+ .toast,
+ .overlay:has(.dialogue) {
+  padding-bottom: 220px
+ }
+ .objective-card {
+  bottom: 220px
+ }
+ .lane-controls {
+  width: min(520px, 96%);
+  gap: 10px
+ }
+ .lane-controls button {
+  height: 86px;
+  border-radius: 16px
+ }
+ .lane-controls button strong {
+  font-size: 30px
+ }
+ .lane-controls button span {
+  font-size: 10px
+ }
+}
+@media (pointer:coarse) and (max-width: 360px) {
+ .dpad { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(3, 54px) }
+ .ab-buttons button { width: 68px; height: 68px }
+}
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls { justify-content: space-between }
+ .dpad { grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 58px) }
+ .ab-buttons button { width: 72px; height: 72px }
+ /* START al centro, sopra i comandi, come sulle console portatili */
+ .touch-controls .start-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  min-width: 84px;
+  height: 36px;
+  margin: 0
+ }
+}
+@media (pointer:coarse) and (max-width: 360px) {
+ .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px) }
+ .ab-buttons button { width: 62px; height: 62px }
+ .touch-controls .start-btn { bottom: 168px }
+}
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls .start-btn { bottom: 150px; left: 52% }
+}

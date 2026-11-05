@@ -2535,8 +2535,12 @@ document.querySelectorAll('[data-move]').forEach(b => {
   e.preventDefault();
   b.setPointerCapture(e.pointerId);
   keys.add(k);
+  b.classList.add('held');
  };
- b.onpointerup = b.onpointercancel = () => keys.delete(k);
+ b.onpointerup = b.onpointercancel = () => {
+  keys.delete(k);
+  b.classList.remove('held');
+ };
 });
 $('touchAction').onclick = interact;
 $('touchStart').onclick = startMenu;
