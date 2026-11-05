@@ -276,3 +276,43 @@ Sostituiscono gli elementi ancora disegnati dal codice nei paesi. Le celle «lar
 | (3,3) | Bancarella del mercato | tenda a righe gialle e bianche, formaggi e pane |
 
 > Prompt: «Tavola sprite 1536×1536 a sfondo trasparente, griglia 4×4 da 384 px, stesso stile dipinto delle tavole di riferimento allegate (`towns-props-atlas.png`, `trail-props.png`). Vista dall’alto di tre quarti come gli altri oggetti del mondo. Una figura per cella, centrata, base in basso con circa 20 px di margine, nessun testo. Contenuto delle celle: [tabella].»
+
+---
+
+# Quarta serie (0.8): interni, vagone della metro, porto e binari
+
+Dopo la terza serie restano disegnati dal codice: i pavimenti e le pareti di tutte le stanze (oggi un rettangolo beige uguale ovunque), il vagone della metro, il pontile del porto, i binari di Binario Nord e le bandierine del festival. Come sempre, finché i file mancano il gioco usa i disegni attuali.
+
+## 15. Stanze — `rooms/*.jpg` (cartella `dist/assets/extra/rooms/`)
+
+Nove sfondi, uno per tipo di stanza. **1344×1056 px, JPEG**, vista dall’alto di tre quarti come gli interni dei giochi di ruolo classici: parete in alto (circa il 18% dell’altezza) con finestre o decorazioni, pavimento su tutto il resto, bordo sottile delle pareti a sinistra, a destra e in basso. **In basso al centro lasciare un varco libero nella parete** (circa 120 px) per la porta, che il gioco disegna da solo. **Nessun mobile**: i mobili sono sprite separati e vengono appoggiati sopra; il pavimento deve essere libero, al massimo un tappeto piatto o delle assi. Nessun testo.
+
+| File | Stanza | Pavimento e pareti |
+|---|---|---|
+| `rooms/casa.jpg` | casa di paese | parquet caldo, pareti color crema con battiscopa, una finestra con tende |
+| `rooms/sala-prove.jpg` | sala prove (garage) | cemento con macchie, pareti di mattoni con pannelli fonoassorbenti, una lampadina |
+| `rooms/scuola.jpg` | aula | linoleum a quadrotti, pareti verde chiaro, due finestre alte |
+| `rooms/negozio.jpg` | bottega / mercato | assi di legno scuro, pareti con mensole vuote |
+| `rooms/locale.jpg` | club / teatro / caffè | parquet scuro lucido, pareti bordeaux con applique accese |
+| `rooms/officina.jpg` | officina | cemento grigio, pareti di mattoni rossi, grandi finestre a griglia |
+| `rooms/pietra.jpg` | fortezza / fucina / accademia | lastre di pietra, pareti di pietra con un arazzo |
+| `rooms/capanna.jpg` | capanna sull’isola | stuoie di bambù, pareti di canne |
+| `rooms/stazione.jpg` | sala d’attesa della stazione | piastrelle chiare a scacchi, pareti con boiserie e un orologio |
+
+> Prompt (uno per file): «Sfondo di una stanza per un gioco di ruolo, 1344×1056, vista dall’alto di tre quarti, stesso stile dipinto delle tavole allegate (`interiors-atlas.png`, `interiors-extra.png`). Parete in alto (circa un quinto dell’altezza), pavimento [descrizione], pareti [descrizione]. Stanza vuota, senza mobili né persone. In basso al centro un varco nella parete largo circa 120 px. Nessun testo.»
+
+## 16. `metro-car.png` — l’interno del vagone
+
+**2048×512 px, PNG trasparente** (solo il vagone, angoli arrotondati). Vista dall’alto, il vagone in orizzontale come nel gioco: in alto la parete con 7 finestrini e 2 porte (finestrini scuri, si è in galleria), subito sotto una fila di sedili rossi lungo tutta la parete; al centro il corridoio con il pavimento grigio chiaro e cinque pali verticali con le maniglie; in basso un’altra fila di sedili rossi e la parete inferiore. Nessuna persona, nessun testo.
+
+## 17. `misc-props.png` — porto, binari, festival
+
+Stesse regole delle tavole 4×4 (1536×1536, trasparente, celle da 384 px). Si usa solo la prima riga.
+
+| Cella | Oggetto | Note |
+|---|---|---|
+| (0,0) | Pontile del porto | assi di legno su pali, **verticale** (stretto e lungo), visto dall’alto |
+| (0,1) | Barca a remi ormeggiata | di legno, con una cima legata, vista dall’alto di tre quarti |
+| (0,2) | Binari | tratto **orizzontale** di ferrovia con traversine, si ripete affiancato senza stacco |
+| (0,3) | Fila di bandierine | **orizzontale**, triangoli colorati su un filo, si ripete affiancata |
+| righe 1–3 | riserva | lasciare vuote |

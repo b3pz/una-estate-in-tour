@@ -277,8 +277,8 @@ button:disabled {
 }
 
 .btn {
- border: 1px solid #335245;
- background: #335245;
+ border: 1px solid #22253a;
+ background: #22253a;
  color: #fff5dc;
  border-radius: 5px;
  padding: 12px 18px;
@@ -286,12 +286,12 @@ button:disabled {
 }
 
 .btn:hover {
- background: #4c6c54
+ background: #3a3f5c
 }
 
 .btn.secondary {
  background: transparent;
- color: #57705b;
+ color: #4a4d5e;
  border-color: #c4cbb1
 }
 
@@ -302,7 +302,7 @@ button:disabled {
 }
 
 .instrument-card {
- background: #e9edd9;
+ background: #f6efdf;
  border: 1px solid #c5cfaf;
  border-radius: 8px;
  text-align: left;
@@ -390,7 +390,7 @@ button:disabled {
  top: 16px;
  right: 18px;
  font: 10px var(--font-text);
- color: #486853
+ color: #4a4d5e
 }
 
 .chapter-title {
@@ -400,7 +400,7 @@ button:disabled {
 
 .chapter-title h3 {
  font-size: 58px;
- color: #365745;
+ color: #22253a;
  letter-spacing: -2px
 }
 
@@ -555,8 +555,8 @@ button:disabled {
 .puzzle-key {
  width: 58px;
  height: 58px;
- border: 1px solid #acc59a;
- background: #3c614e;
+ border: 1px solid #5a5f80;
+ background: #2f3350;
  color: #fae6b4;
  border-radius: 50%;
  font: 23px var(--font-title)
@@ -829,7 +829,7 @@ select {
  }
 
  .dpad button {
-  background: #25463ee6;
+  background: #22253ae6;
   color: #f8e9b9;
   border: 1px solid #f4e3a34d;
   border-radius: 7px;
@@ -858,7 +858,7 @@ select {
 
  .touch-controls>button {
   border: 1px solid #f5e3ad66;
-  background: #25463ee6;
+  background: #22253ae6;
   color: #f9e7ba;
   border-radius: 30px;
   height: 53px;
@@ -1295,7 +1295,7 @@ select {
 }
 
 .metro-stop:enabled:hover {
- background: #d9e4c8
+ background: #f1e6cf
 }
 
 .dex-total {
@@ -1309,7 +1309,7 @@ select {
 }
 
 .dex-filters [aria-pressed=true] {
- background: #34594b;
+ background: #22253a;
  color: #fff1ce
 }
 
@@ -1330,7 +1330,7 @@ select {
 }
 
 .dex-entry.learned {
- background: #dce8ce;
+ background: #f1e6cf;
  border-color: #8fa77f
 }
 
@@ -1444,7 +1444,7 @@ select {
 }
 
 .puzzle-feedback.good {
- color: #2f6b4c;
+ color: #2b6b45;
  font-weight: bold
 }
 
@@ -1458,8 +1458,8 @@ select {
 .blues-bar,
 .groove-grid button,
 .fragment {
- border: 1px solid #acc59a;
- background: #3c614e;
+ border: 1px solid #5a5f80;
+ background: #2f3350;
  color: #fae6b4;
  border-radius: 10px;
  padding: 8px 4px;
@@ -1560,7 +1560,7 @@ select {
 }
 
 .tempo-stage span.now {
- background: #3c614e;
+ background: #2f3350;
  color: #fae6b4
 }
 
@@ -1622,7 +1622,7 @@ select {
 }
 
 .clave-bar span.now {
- background: #3c614e;
+ background: #2f3350;
  color: #fae6b4
 }
 
@@ -1683,7 +1683,7 @@ select {
 }
 
 .rule {
- background: #eef0dc;
+ background: #f6efdf;
  padding: 8px 12px;
  border-radius: 6px
 }
@@ -1779,13 +1779,13 @@ select {
  left: 14px;
  z-index: 8;
  background: #fffdf4;
- border: 3px solid #2a3b33;
- box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a;
+ border: 3px solid #22253a;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #d8cdb4;
  border-radius: 10px;
  padding: 10px 18px 9px;
  min-width: 180px;
  max-width: min(420px, calc(100% - 28px));
- color: #2a3b33;
+ color: #22253a;
  animation: signIn .3s ease-out;
  pointer-events: none
 }
@@ -1840,10 +1840,10 @@ select {
  width: min(760px, calc(100% - 24px));
  max-width: none;
  background: #fffdf4;
- border: 3px solid #2a3b33;
- box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a;
+ border: 3px solid #22253a;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #d8cdb4;
  border-radius: 10px;
- color: #2a3b33;
+ color: #22253a;
  font: 16px/1.4 var(--font-title);
  text-align: left;
  padding: 14px 20px;
@@ -1869,9 +1869,9 @@ select {
  width: min(820px, 100%);
  max-height: 52%;
  background: #fffdf4;
- border: 3px solid #2a3b33;
+ border: 3px solid #22253a;
  border-radius: 12px;
- box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a, 0 6px 0 #0003;
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #d8cdb4, 0 6px 0 #0003;
  padding: 16px 22px 14px;
  font: 600 18px/1.45 var(--font-text);
  color: #22322b
@@ -1914,7 +1914,7 @@ select {
 .panel.dialogue .btn:focus-visible,
 .panel.dialogue .btn:hover {
  outline: none;
- background: #eef1e2;
+ background: #f6efdf;
  border-radius: 6px
 }
 
@@ -1958,9 +1958,9 @@ select {
  padding: 10px 8px;
  margin-top: max(0px, env(safe-area-inset-top));
  background: #fffdf4;
- border: 3px solid #2a3b33;
+ border: 3px solid #22253a;
  border-radius: 12px;
- box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #9fb39a, 0 6px 0 #0003
+ box-shadow: inset 0 0 0 2px #fffdf4, inset 0 0 0 4px #d8cdb4, 0 6px 0 #0003
 }
 
 .panel.start-menu h3,
@@ -1988,7 +1988,7 @@ select {
 .start-item:focus,
 .start-item:hover {
  outline: none;
- background: #eef1e2
+ background: #f6efdf
 }
 
 .start-item:focus::before,
@@ -2007,7 +2007,7 @@ select {
  }
 
  .dpad button {
-  background: #1d2a25b3;
+  background: #15172ab3;
   border-color: #ffffff33
  }
 
@@ -2017,7 +2017,7 @@ select {
   padding: 0 14px;
   font: bold 10px var(--font-text);
   letter-spacing: 1px;
-  background: #1d2a25b3;
+  background: #15172ab3;
   margin-bottom: 8px
  }
 
@@ -3039,4 +3039,267 @@ body .area-sign.note {
 body .area-sign span,
 body .area-sign small {
  color: #4a4d5e
+}
+.hero-card canvas {
+ background: transparent !important
+}
+
+/* Prova del blues: ogni battuta mostra con un colore l'accordo scelto */
+body .blues-bar {
+ background: #fff;
+ color: var(--win-ink);
+ border: 3px dashed #c9bfa6;
+ transition: transform .12s
+}
+body .blues-bar b {
+ font-size: 18px
+}
+body .blues-bar[data-chord] {
+ border-style: solid;
+ color: #fff
+}
+body .blues-bar[data-chord="La7"] { background: #d0562b; border-color: #a33f1c }
+body .blues-bar[data-chord="Re7"] { background: #2f6fa8; border-color: #1f4f7a }
+body .blues-bar[data-chord="Mi7"] { background: #7a4fa0; border-color: #553674 }
+body .blues-bar.given {
+ background: #f1e6cf;
+ border: 3px solid #d8cdb4;
+ color: var(--win-ink)
+}
+body .blues-bar.given::after {
+ content: 'dato';
+ font: 10px var(--font-text);
+ opacity: .6
+}
+body .blues-bar:not(.given):hover,
+body .blues-bar:not(.given):focus {
+ outline: 3px solid #ffd166;
+ outline-offset: 2px;
+ transform: translateY(-2px)
+}
+body .blues-bar.changed {
+ animation: bar-pop .25s ease-out
+}
+@keyframes bar-pop {
+ 50% { transform: scale(1.12) }
+}
+
+/* Cursore ben visibile: tutto ciò che è selezionato con la croce ha una cornice gialla spessa */
+body .overlay button:not(.btn):not(.menu-item):not(.control-row):not(.instrument-card):not(.hero-card):not(.metro-pin):focus,
+body .overlay [tabindex="0"]:focus,
+body .overlay select:focus,
+body .overlay input:focus {
+ outline: 4px solid #ffb703 !important;
+ outline-offset: 2px !important;
+ box-shadow: 0 0 0 8px #ffb70340 !important;
+ position: relative;
+ z-index: 2
+}
+body .overlay .btn:focus,
+body .boot-menu .menu-item:focus,
+body .overlay .control-row:focus {
+ background: #ffe9a8 !important;
+ color: var(--win-ink) !important;
+ border-radius: 6px
+}
+body .overlay .letter-grid .key:focus {
+ background: #ffb703 !important;
+ color: var(--win-ink) !important;
+ outline: none !important;
+ box-shadow: none !important
+}
+
+/* Comandi touch grandi, come su una console portatile */
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls {
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  align-items: flex-end
+ }
+ .dpad {
+  width: auto;
+  grid-template-columns: repeat(3, 62px);
+  grid-template-rows: repeat(3, 62px);
+  gap: 0
+ }
+ .dpad button {
+  font-size: 26px;
+  border-radius: 10px;
+  background: #15172acc;
+  border: 2px solid #ffffff40;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none
+ }
+ .dpad button:first-child { grid-column: 2; grid-row: 1 }
+ .dpad button:nth-child(2) { grid-column: 1; grid-row: 2 }
+ .dpad button:nth-child(3) { grid-column: 2; grid-row: 3 }
+ .dpad button:nth-child(4) { grid-column: 3; grid-row: 2 }
+ .dpad button:active,
+ .dpad button.held {
+  background: #ffb703;
+  color: #15172a
+ }
+ .touch-controls .start-btn {
+  height: 42px;
+  min-width: 96px;
+  border-radius: 21px;
+  font: bold 14px var(--font-text);
+  letter-spacing: 2px;
+  margin-bottom: 4px
+ }
+ .ab-buttons {
+  gap: 16px
+ }
+ .ab-buttons button {
+  width: 78px;
+  height: 78px;
+  font-size: 28px;
+  touch-action: manipulation
+ }
+ .ab-buttons button:active {
+  transform: scale(.94);
+  filter: brightness(1.3)
+ }
+ .ab-buttons button:last-child {
+  margin-bottom: 40px
+ }
+ .toast {
+  bottom: 220px
+ }
+ .toast,
+ .overlay:has(.dialogue) {
+  padding-bottom: 220px
+ }
+ .objective-card {
+  bottom: 220px
+ }
+ .lane-controls {
+  width: min(520px, 96%);
+  gap: 10px
+ }
+ .lane-controls button {
+  height: 86px;
+  border-radius: 16px
+ }
+ .lane-controls button strong {
+  font-size: 30px
+ }
+ .lane-controls button span {
+  font-size: 10px
+ }
+}
+@media (pointer:coarse) and (max-width: 360px) {
+ .dpad { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(3, 54px) }
+ .ab-buttons button { width: 68px; height: 68px }
+}
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls { justify-content: space-between }
+ .dpad { grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 58px) }
+ .ab-buttons button { width: 72px; height: 72px }
+ /* START al centro, sopra i comandi, come sulle console portatili */
+ .touch-controls .start-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  min-width: 84px;
+  height: 36px;
+  margin: 0
+ }
+}
+@media (pointer:coarse) and (max-width: 360px) {
+ .dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px) }
+ .ab-buttons button { width: 62px; height: 62px }
+ .touch-controls .start-btn { bottom: 168px }
+}
+@media(pointer:coarse), (max-width:700px) {
+ .touch-controls .start-btn { bottom: 150px; left: 52% }
+}
+
+/* Telefono in verticale: invito a ruotarlo (il gioco rende meglio in orizzontale) */
+.rotate-hint {
+ display: none
+}
+@media (pointer:coarse) and (orientation: portrait) {
+ .rotate-hint:not(.dismissed) {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+  background: #15172af2;
+  color: #fff4d6;
+  font: 600 18px/1.4 var(--font-title)
+ }
+}
+.rotate-hint .phone-icon {
+ width: 54px;
+ height: 92px;
+ border: 5px solid #fff4d6;
+ border-radius: 12px;
+ animation: rotate-phone 2.2s ease-in-out infinite
+}
+@keyframes rotate-phone {
+ 0%, 25% { transform: rotate(0) }
+ 55%, 100% { transform: rotate(-90deg) }
+}
+.rotate-hint button {
+ background: transparent;
+ border: 2px solid #fff4d655;
+ color: #fff4d6aa;
+ border-radius: 20px;
+ padding: 8px 18px;
+ font: 14px var(--font-text)
+}
+
+/* Telefono in orizzontale: comandi ai lati, schermo libero al centro */
+@media (pointer:coarse) and (orientation: landscape) and (max-height: 520px) {
+ .touch-controls {
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right))
+ }
+ .dpad { grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px) }
+ .ab-buttons button { width: 64px; height: 64px; font-size: 24px }
+ .ab-buttons button:last-child { margin-bottom: 34px }
+ .touch-controls .start-btn { bottom: 4px; left: 50%; height: 30px; min-width: 76px; font-size: 12px }
+ .toast { bottom: 12px; width: min(520px, calc(100% - 330px)) }
+ .toast,
+ .overlay:has(.dialogue) { padding-bottom: 12px }
+ .overlay:has(.dialogue) { padding-left: 190px; padding-right: 170px }
+ .objective-card { bottom: 50px }
+ .lane-controls { width: min(640px, 92%) }
+ .lane-controls button { height: 70px }
+}
+.rotate-hint p { margin: 0; max-width: 300px }
+
+/* Concerto su telefono in orizzontale: due tasti a sinistra della pista, gli altri a destra, sotto i pollici */
+@media (pointer:coarse) and (orientation: landscape) and (max-height: 520px) {
+ .lane-controls {
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  width: auto;
+  transform: none;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 96px 96px 1fr 96px 96px;
+  gap: 10px;
+  pointer-events: none
+ }
+ .lane-controls button {
+  height: min(150px, 42vh);
+  pointer-events: auto
+ }
+ .lane-controls button:nth-child(1) { grid-column: 1 }
+ .lane-controls button:nth-child(2) { grid-column: 2 }
+ .lane-controls button:nth-child(3) { grid-column: 4 }
+ .lane-controls button:nth-child(4) { grid-column: 5 }
+ .lane-controls[data-lanes="3"] button:nth-child(3) { grid-column: 4 / span 2 }
 }

@@ -31,6 +31,17 @@ export const EXTRA_FILES = {
  'hero-girl-walk.png': 'heroGirlWalk',
  'hero-girl-bike.png': 'heroGirlBike',
  'farm-props.png': 'farm',
+ 'metro-car.png': 'metroCar',
+ 'misc-props.png': 'misc',
+ 'rooms/casa.jpg': 'room:casa',
+ 'rooms/sala-prove.jpg': 'room:sala-prove',
+ 'rooms/scuola.jpg': 'room:scuola',
+ 'rooms/negozio.jpg': 'room:negozio',
+ 'rooms/locale.jpg': 'room:locale',
+ 'rooms/officina.jpg': 'room:officina',
+ 'rooms/pietra.jpg': 'room:pietra',
+ 'rooms/capanna.jpg': 'room:capanna',
+ 'rooms/stazione.jpg': 'room:stazione',
  'concert/blues.jpg': 'concert:Blues',
  'concert/rock.jpg': 'concert:Rock',
  'concert/pop.jpg': 'concert:Pop',
@@ -67,6 +78,30 @@ export async function loadExtras() {
  }
 }
 const bounds = new WeakMap();
+// Tavole animate: tutti i fotogrammi di una riga usano lo stesso riquadro, così il personaggio
+// non cambia dimensione né posizione mentre cammina o pedala.
+const ANIMATED = new Set(['heroWalk', 'heroGirlWalk', 'heroBike', 'heroGirlBike']);
+const rows = new Map();
+function rowBounds(image, row, col) {
+ const key = image.src + ':' + row;
+ let local = rows.get(key);
+ if (!local) {
+  const cw = image.naturalWidth / 4;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let c = 0; c < 4; c++) {
+   const b = cellBounds(image, row, c);
+   if (b.w >= cw - 1) continue;
+   x0 = Math.min(x0, b.x - c * cw);
+   y0 = Math.min(y0, b.y);
+   x1 = Math.max(x1, b.x - c * cw + b.w);
+   y1 = Math.max(y1, b.y + b.h);
+  }
+  local = Number.isFinite(x0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  rows.set(key, local);
+ }
+ if (!local) return cellBounds(image, row, col);
+ return { x: col * image.naturalWidth / 4 + local.x, y: local.y, w: local.w, h: local.h };
+}
 export function spriteFit(sw, sh, w, h) {
  const scale = Math.min(w / sw, h / sh);
  return {
@@ -124,7 +159,7 @@ function cellBounds(image, row, col) {
 export function drawSprite(ctx, atlas, row, col, x, y, w, h = w, flip = false) {
  const image = atlases[atlas];
  if (!image || !image.complete || !image.naturalWidth) return false;
- const box = cellBounds(image, row, col),
+ const box = ANIMATED.has(atlas) ? rowBounds(image, row, col) : cellBounds(image, row, col),
   fit = spriteFit(box.w, box.h, w, h);
  ctx.save();
  ctx.imageSmoothingEnabled = true;

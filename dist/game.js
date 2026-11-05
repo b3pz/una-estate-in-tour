@@ -241,7 +241,7 @@ function splitLong(el) {
 }
 function paginate(p) {
  const actions = p.querySelector('.actions');
- const pages = [...p.querySelectorAll('p')].filter(x => !x.classList.contains('fine') && !actions?.contains(x)).flatMap(splitLong);
+ const pages = [...p.querySelectorAll('p')].filter(x => !x.classList.contains('fine') && !actions?.contains(x) && !x.closest('.person-card, .clue-card')).flatMap(splitLong);
  if (!pages.length) return;
  const fines = [...p.querySelectorAll('.fine')];
  const more = document.createElement('span');
@@ -1251,6 +1251,7 @@ async function startSong(id, kind) {
  $('sceneBadge').hidden = true;
  $('songLabel').textContent = `${kind==='tutorial'?'TUTORIAL':kind==='final'?'FESTIVAL':kind==='rival'?'LA SFIDA':kind==='home'?'CONCERTO A CASA':kind==='boat'?'TRAGHETTO':CITIES[id].genre.toUpperCase()} / ${INSTRUMENTS[state.instrument].name.toUpperCase()}`;
  $('laneControls').innerHTML = '';
+ $('laneControls').dataset.lanes = INSTRUMENTS[state.instrument].lanes;
  INSTRUMENTS[state.instrument].labels.forEach((key, lane) => {
   const b = document.createElement('button');
   b.style.setProperty('--lane-color', INSTRUMENTS[state.instrument].colors[lane]);
@@ -1632,7 +1633,7 @@ function startRide(from, to) {
  path = [];
  tapObject = null;
  layout = { width: WIDTH, height: HEIGHT, theme: 'metro', buildings: [], waters: [], gates: [], paths: [], objects: [] };
- const seats = [[9, 14.6, 'south'], [16, 14.6, 'south'], [21, 19.9, 'north'], [29, 14.6, 'south'], [33, 19.9, 'north'], [38, 14.6, 'south']];
+ const seats = [[9, 15.6, 'south'], [16, 15.6, 'south'], [21, 20.2, 'north'], [26, 15.6, 'south'], [33, 20.2, 'north'], [38, 15.6, 'south']];
  objects = metroPassengers(state, to, seed).map((p, i) => ({
   x: seats[(seed + i * 2) % seats.length][0],
   y: seats[(seed + i * 2) % seats.length][1],
@@ -1695,6 +1696,14 @@ function drawMetro(ts) {
  }
  // cassa del vagone
  const x0 = 6 * T, x1 = 42 * T;
+ const car = atlases.metroCar;
+ if (car && car.complete && car.naturalWidth) ctx.drawImage(car, x0 - 8, 12.6 * T, x1 - x0 + 16, 9 * T);
+ else drawCarriage(x0, x1, shift);
+ const actors = [];
+ drawMetroActors(actors);
+}
+
+function drawCarriage(x0, x1, shift) {
  ctx.fillStyle = '#c9cdc4';
  ctx.beginPath();
  ctx.roundRect(x0 - 8, 12.6 * T, x1 - x0 + 16, 9 * T, 18);
@@ -1730,9 +1739,11 @@ function drawMetro(ts) {
   ctx.fill();
  }
  rect(x0, 20.6 * T, x1 - x0, .6 * T, '#3e6f63');
+}
+
+function drawMetroActors(actors) {
  // pali e maniglie
- const actors = [];
- for (const px of [11, 19, 24, 31, 37]) actors.push({ depth: 17.4 * T, draw: () => { rect(px * T - 2, 15.4 * T, 4, 2.1 * T, '#e3e7e0'); ctx.fillStyle = '#7f8c86'; ctx.beginPath(); ctx.ellipse(px * T, 17.5 * T, 6, 3, 0, 0, 7); ctx.fill(); } });
+ if (!atlases.metroCar?.naturalWidth) for (const px of [11, 19, 24, 31, 37]) actors.push({ depth: 17.4 * T, draw: () => { rect(px * T - 2, 15.4 * T, 4, 2.1 * T, '#e3e7e0'); ctx.fillStyle = '#7f8c86'; ctx.beginPath(); ctx.ellipse(px * T, 17.5 * T, 6, 3, 0, 0, 7); ctx.fill(); } });
  for (const o of objects) actors.push({ depth: o.y * T, draw: () => drawCharacter(ctx, o.x * T, o.y * T, { portrait: o.portrait, facing: o.facing || 'south' }) });
  actors.push({ depth: state.y * T, draw: () => drawCharacter(ctx, state.x * T, state.y * T, { facing: state.facing, moving: hasMoved, walk }) });
  actors.sort((a, b) => a.depth - b.depth).forEach(a => a.draw());
@@ -2106,6 +2117,20 @@ function interactBubble(x, y) {
  ctx.textAlign = 'left';
 }
 
+// Tipo di stanza per lo sfondo dipinto: dipende dall'edificio.
+function roomStyle(entry) {
+ const st = entry.building?.style || '';
+ if (entry.kind === 'garage') return 'sala-prove';
+ if (entry.kind === 'school') return 'scuola';
+ if (entry.label === 'Bottega' || st === 'market') return 'negozio';
+ if (['club', 'night', 'theatre', 'tent'].includes(st)) return 'locale';
+ if (st === 'factory') return 'officina';
+ if (['stone', 'castle', 'academy'].includes(st)) return 'pietra';
+ if (st === 'hut') return 'capanna';
+ if (st === 'station') return 'stazione';
+ return 'casa';
+}
+
 function drawInterior() {
  const cam = cameraNow();
  rect(0, 0, W, H, '#14110e');
@@ -2115,20 +2140,27 @@ function drawInterior() {
   sy = 7 * T,
   rw = 28 * T,
   rh = 22 * T;
- ctx.fillStyle = '#e2d3b1';
- ctx.beginPath();
- ctx.roundRect(sx, sy, rw, rh, 12);
- ctx.fill();
- rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
- for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
- for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
+ // Sfondo dipinto della stanza (quarta serie di sprite), altrimenti pavimento e pareti semplici.
+ const bg = atlases['room:' + roomStyle(room.entry)];
+ if (bg && bg.complete && bg.naturalWidth) ctx.drawImage(bg, sx, sy, rw, rh);
+ else {
+  ctx.fillStyle = '#e2d3b1';
+  ctx.beginPath();
+  ctx.roundRect(sx, sy, rw, rh, 12);
+  ctx.fill();
+  rect(sx, sy, rw, 70, room.entry.kind === 'garage' ? '#a5b29a' : '#b7c5ae');
+  for (let y = 11; y < 29; y++) rect(sx, y * T, rw, 1, '#b6a58644');
+  for (let x = 11; x < 38; x += 3) rect(x * T, 11 * T, 1, 18 * T, '#b6a58622');
+ }
  const items = roomPlan(room.entry).items;
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
  // Porta d’uscita nella parete in basso, con zerbino: si capisce senza scritte.
- rect(10 * T, 29 * T - 6, 28 * T, 14, '#9c8a68');
- rect(22.6 * T, 29 * T - 8, 2.8 * T, 22, '#3a2c20');
- rect(22.75 * T, 29 * T - 6, 2.5 * T, 18, '#1c140e');
+ if (!(bg && bg.complete && bg.naturalWidth)) {
+  rect(10 * T, 29 * T - 6, 28 * T, 14, '#9c8a68');
+  rect(22.6 * T, 29 * T - 8, 2.8 * T, 22, '#3a2c20');
+  rect(22.75 * T, 29 * T - 6, 2.5 * T, 18, '#1c140e');
+ }
  ctx.fillStyle = '#a4503d';
  ctx.beginPath();
  ctx.roundRect(22.8 * T, 27.7 * T, 2.4 * T, 1.05 * T, 5);
@@ -2224,8 +2256,8 @@ function tapPath(target) {
 }
 
 function canMove(x, y) {
- if (area === 'metro') return x > 6.6 && x < 41.4 && y > 15.4 && y < 19.4;
- if (area === 'interior') return x > 10.5 && x < 37.5 && y > 10.8 && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
+ if (area === 'metro') return x > 6.6 && x < 41.4 && y > (atlases.metroCar?.naturalWidth ? 16.6 : 15.4) && y < 19.4;
+ if (area === 'interior') return x > 10.5 && x < 37.5 && y > (atlases['room:' + roomStyle(room.entry)]?.naturalWidth ? 12.2 : 10.8) && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
  return isWalkable(layout, x, y);
 }
 let saveClock = 0,
@@ -2504,9 +2536,25 @@ document.querySelectorAll('[data-move]').forEach(b => {
   e.preventDefault();
   b.setPointerCapture(e.pointerId);
   keys.add(k);
+  b.classList.add('held');
  };
- b.onpointerup = b.onpointercancel = () => keys.delete(k);
+ b.onpointerup = b.onpointercancel = () => {
+  keys.delete(k);
+  b.classList.remove('held');
+ };
 });
+$('rotateSkip').onclick = () => {
+ $('rotateHint').classList.add('dismissed');
+ try { sessionStorage.setItem('rotate-ok', '1'); } catch {}
+};
+try { if (sessionStorage.getItem('rotate-ok')) $('rotateHint').classList.add('dismissed'); } catch {}
+// Al primo tocco su telefono: schermo intero e orizzontale, dove il browser lo permette (Android).
+document.addEventListener('pointerdown', function landscape(e) {
+ if (e.pointerType !== 'touch') return;
+ document.removeEventListener('pointerdown', landscape, true);
+ const el = document.documentElement;
+ Promise.resolve(el.requestFullscreen?.({ navigationUI: 'hide' })).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+}, true);
 $('touchAction').onclick = interact;
 $('touchStart').onclick = startMenu;
 $('touchBike').onclick = toggleBike;

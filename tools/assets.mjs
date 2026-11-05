@@ -8,7 +8,9 @@ const ROOT = new URL('../dist/assets/extra/', import.meta.url).pathname;
 const SPEC = {
  png: { size: [1536, 1536], alpha: true },
  'title-art.jpg': { size: [1920, 1080] },
- concert: { size: [1600, 600] }
+ concert: { size: [1600, 600] },
+ rooms: { size: [1344, 1056] },
+ 'metro-car.png': { size: [2048, 512], alpha: true }
 };
 
 function pngInfo(buf) {
@@ -34,7 +36,7 @@ for (const file of Object.keys(EXTRA_FILES)) {
  const buf = fs.readFileSync(full);
  const info = file.endsWith('.png') ? pngInfo(buf) : jpgInfo(buf);
  if (!info) { problems.push(`${file}: formato non valido (serve ${file.endsWith('.png') ? 'PNG' : 'JPEG'})`); continue; }
- const spec = file.endsWith('.png') ? SPEC.png : file.startsWith('concert/') ? SPEC.concert : SPEC[file];
+ const spec = SPEC[file] || (file.endsWith('.png') ? SPEC.png : file.startsWith('concert/') ? SPEC.concert : file.startsWith('rooms/') ? SPEC.rooms : null) || { size: [info.w, info.h] };
  const before = problems.length;
  if (spec.alpha && !info.alpha) problems.push(`${file}: manca la trasparenza (canale alfa)`);
  const ratio = info.w / info.h, want = spec.size[0] / spec.size[1];

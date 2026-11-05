@@ -1422,8 +1422,10 @@ function villageFields(ctx, layout, p, time) {
 
 // Ripete uno sprite largo lungo un'area di w×h caselle (orti, campi di grano, girasoli).
 function tileSprite(ctx, atlas, row, col, x, y, w, h, unit) {
- const n = Math.max(1, Math.round(w / unit)), cw = w / n;
- for (let i = 0; i < n; i++) drawSprite(ctx, atlas, row, col, (x + cw * (i + .5)) * TILE, (y + h) * TILE, cw * TILE + 6, h * TILE + 6);
+ // Più file affiancate e sovrapposte, così l'orto riempie tutta l'area e non resta una striscia sottile.
+ const n = Math.max(1, Math.round(w / unit)), cw = w / n, m = Math.max(1, Math.round(h / (cw * .42))), rh = h / m;
+ for (let j = 0; j < m; j++)
+  for (let i = 0; i < n; i++) drawSprite(ctx, atlas, row, col, (x + cw * (i + .5)) * TILE, (y + rh * (j + 1)) * TILE + 4, cw * TILE + 6, rh * TILE * 1.6);
 }
 
 function waterArt(ctx, w, time) {
@@ -1458,7 +1460,9 @@ function landmark(ctx, layout, p, time) {
   }], '#d2bf7b', 3);
   for (let i = 0; i < 20; i++) oval(ctx, (4 + i * .7) * TILE, 31 * TILE, 3, 7, '#d7c887');
  }
- if (type === 'train') {
+ if (type === 'train' && hasAtlas('misc')) {
+  for (let x = 2; x < 46; x += 4) drawSprite(ctx, 'misc', 0, 2, (x + 2) * TILE, 11.7 * TILE, 4 * TILE + 4, 1.6 * TILE);
+ } else if (type === 'train') {
   line(ctx, [{
    x: 2 * TILE,
    y: 11 * TILE
@@ -1525,7 +1529,10 @@ function landmark(ctx, layout, p, time) {
   // Rocce dipinte al posto dei triangoli disegnati dal codice.
   for (let i = 0; i < 9; i++) drawSprite(ctx, 'trail', 0, 2, (4 + i * 5.2) * TILE, (2.6 + (i % 2) * .8) * TILE, 64, 48);
  }
- if (type === 'harbor') {
+ if (type === 'harbor' && hasAtlas('misc')) {
+  drawSprite(ctx, 'misc', 0, 0, 39.5 * TILE, 33.2 * TILE, 5 * TILE, 6.4 * TILE);
+  drawSprite(ctx, 'misc', 0, 1, 45 * TILE, 31.6 * TILE, 4 * TILE, 3 * TILE);
+ } else if (type === 'harbor') {
   rounded(ctx, 37 * TILE, 27 * TILE, 5 * TILE, 6 * TILE, 4, '#b4996d');
   for (let i = 0; i < 12; i++) line(ctx, [{
    x: 37 * TILE,
@@ -1552,7 +1559,9 @@ function landmark(ctx, layout, p, time) {
    }], '#394f59', 4);
    oval(ctx, x * TILE, (y - 2) * TILE, 7, 9, '#f3d394');
   }
- if (type === 'festival') {
+ if (type === 'festival' && hasAtlas('misc')) {
+  for (let i = 0; i < 9; i++) drawSprite(ctx, 'misc', 0, 3, (9 + i * 4) * TILE, 18.2 * TILE, 4 * TILE + 4, 1.4 * TILE);
+ } else if (type === 'festival') {
   for (let i = 0; i < 9; i++) {
    const x = (7 + i * 4) * TILE;
    line(ctx, [{
