@@ -142,8 +142,8 @@ function chord7(A, rootSemi, t, dur) {
 function blues(info, api) {
  const answer = BLUES_TARGET.map((c, i) => BLUES_GIVEN.includes(i) ? c : null);
  let attempts = 0, helps = 0;
- const cells = BLUES_TARGET.map((_, i) => `<button class="blues-bar ${BLUES_GIVEN.includes(i) ? 'given' : ''}" data-bar="${i}" ${BLUES_GIVEN.includes(i) ? 'disabled' : ''}><small>${i + 1}</small><b>${answer[i] || '?'}</b></button>`).join('');
- const p = frame(api, info, `<div class="blues-grid">${cells}</div><p class="fine">Tocca una battuta per cambiare accordo: La7 → Re7 → Mi7.</p>`, [
+ const cells = BLUES_TARGET.map((_, i) => `<button class="blues-bar ${BLUES_GIVEN.includes(i) ? 'given' : ''}" data-bar="${i}" ${answer[i] ? `data-chord="${answer[i]}"` : ''} ${BLUES_GIVEN.includes(i) ? 'disabled' : ''}><small>${i + 1}</small><b>${answer[i] || '?'}</b></button>`).join('');
+ const p = frame(api, info, `<div class="blues-grid">${cells}</div><p class="fine">Ogni tocco (o A) cambia l’accordo della battuta: <b style="color:#d0562b">La7</b> → <b style="color:#2f6fa8">Re7</b> → <b style="color:#7a4fa0">Mi7</b>. Le battute col bordo tratteggiato sono ancora da scegliere.</p>`, [
   { label: '▶ Il nastro di Nino', run: () => play(BLUES_TARGET) },
   { label: '▶ La tua versione', run: () => play(answer) },
   { label: 'Confronta', run: compare },
@@ -153,7 +153,10 @@ function blues(info, api) {
   const i = +b.dataset.bar, order = ['La7', 'Re7', 'Mi7'];
   answer[i] = order[(order.indexOf(answer[i]) + 1) % 3];
   b.querySelector('b').textContent = answer[i];
-  const A = api.audio; if (A.ctx) chord7(A, BLUES_CHORDS[answer[i]], A.ctx.currentTime, .5);
+  // Ogni accordo ha il suo colore: si vede subito cosa hai scelto in ogni battuta.
+  b.dataset.chord = answer[i];
+  b.classList.remove('changed'); void b.offsetWidth; b.classList.add('changed');
+  const A = api.audio; A.init().then(() => chord7(A, BLUES_CHORDS[answer[i]], A.ctx.currentTime, .5)).catch(() => {});
  });
  async function play(seq) {
   const ctx = await ready(api); if (!ctx) return;
