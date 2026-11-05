@@ -1632,7 +1632,7 @@ function startRide(from, to) {
  path = [];
  tapObject = null;
  layout = { width: WIDTH, height: HEIGHT, theme: 'metro', buildings: [], waters: [], gates: [], paths: [], objects: [] };
- const seats = [[9, 14.6, 'south'], [16, 14.6, 'south'], [21, 19.9, 'north'], [29, 14.6, 'south'], [33, 19.9, 'north'], [38, 14.6, 'south']];
+ const seats = [[9, 15.6, 'south'], [16, 15.6, 'south'], [21, 20.2, 'north'], [26, 15.6, 'south'], [33, 20.2, 'north'], [38, 15.6, 'south']];
  objects = metroPassengers(state, to, seed).map((p, i) => ({
   x: seats[(seed + i * 2) % seats.length][0],
   y: seats[(seed + i * 2) % seats.length][1],
@@ -2255,7 +2255,7 @@ function tapPath(target) {
 }
 
 function canMove(x, y) {
- if (area === 'metro') return x > 6.6 && x < 41.4 && y > 15.4 && y < 19.4;
+ if (area === 'metro') return x > 6.6 && x < 41.4 && y > (atlases.metroCar?.naturalWidth ? 16.6 : 15.4) && y < 19.4;
  if (area === 'interior') return x > 10.5 && x < 37.5 && y > (atlases['room:' + roomStyle(room.entry)]?.naturalWidth ? 12.2 : 10.8) && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
  return isWalkable(layout, x, y);
 }
