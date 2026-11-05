@@ -1251,6 +1251,7 @@ async function startSong(id, kind) {
  $('sceneBadge').hidden = true;
  $('songLabel').textContent = `${kind==='tutorial'?'TUTORIAL':kind==='final'?'FESTIVAL':kind==='rival'?'LA SFIDA':kind==='home'?'CONCERTO A CASA':kind==='boat'?'TRAGHETTO':CITIES[id].genre.toUpperCase()} / ${INSTRUMENTS[state.instrument].name.toUpperCase()}`;
  $('laneControls').innerHTML = '';
+ $('laneControls').dataset.lanes = INSTRUMENTS[state.instrument].lanes;
  INSTRUMENTS[state.instrument].labels.forEach((key, lane) => {
   const b = document.createElement('button');
   b.style.setProperty('--lane-color', INSTRUMENTS[state.instrument].colors[lane]);

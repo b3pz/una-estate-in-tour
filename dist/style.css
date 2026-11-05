@@ -3279,3 +3279,27 @@ body .overlay .letter-grid .key:focus {
  .lane-controls button { height: 70px }
 }
 .rotate-hint p { margin: 0; max-width: 300px }
+
+/* Concerto su telefono in orizzontale: due tasti a sinistra della pista, gli altri a destra, sotto i pollici */
+@media (pointer:coarse) and (orientation: landscape) and (max-height: 520px) {
+ .lane-controls {
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  width: auto;
+  transform: none;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 96px 96px 1fr 96px 96px;
+  gap: 10px;
+  pointer-events: none
+ }
+ .lane-controls button {
+  height: min(150px, 42vh);
+  pointer-events: auto
+ }
+ .lane-controls button:nth-child(1) { grid-column: 1 }
+ .lane-controls button:nth-child(2) { grid-column: 2 }
+ .lane-controls button:nth-child(3) { grid-column: 4 }
+ .lane-controls button:nth-child(4) { grid-column: 5 }
+ .lane-controls[data-lanes="3"] button:nth-child(3) { grid-column: 4 / span 2 }
+}
