@@ -3022,3 +3022,21 @@ body .panel.metro-panel {
  min-height: 1.6em;
  margin: 10px 2px 0 !important
 }
+/* Mappa: i collegamenti veri del gioco, per tipo */
+.atlas-routes line.route-trail { stroke: #7a4f2a; stroke-dasharray: 10 6 }
+.atlas-routes line.route-ferry { stroke: #2f6fa8; stroke-dasharray: 4 6 }
+.atlas-routes line.route-pier { stroke: #8a6a3f; stroke-dasharray: 2 4 }
+.atlas-routes line.route-cable { stroke: #3d3d4a; stroke-dasharray: 14 4 }
+/* Avvisi e cartelli con lo stesso riquadro delle finestre (niente bordi verdi) */
+body .toast,
+body .area-sign,
+body .area-sign.note {
+ background: var(--win-bg);
+ border: 4px solid var(--win-line);
+ box-shadow: inset 0 0 0 3px var(--win-bg), inset 0 0 0 5px var(--win-inner), 0 4px 0 #0005;
+ color: var(--win-ink)
+}
+body .area-sign span,
+body .area-sign small {
+ color: #4a4d5e
+}

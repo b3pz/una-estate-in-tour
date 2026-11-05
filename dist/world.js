@@ -1227,6 +1227,11 @@ function borderTrees(ctx, layout, p, cam, W, H) {
  }
 }
 
+// Altezza del ponte ad arco nel punto (x, y): il personaggio sale e scende seguendo la curva.
+export function bridgeLift(layout, x, y) {
+ if (layout?.theme !== 'river' || Math.abs(y - 18) > 1.4 || x < 7.2 || x > 13.8) return 0;
+ return Math.sin(Math.PI * (x - 7.2) / 6.6) * 16;
+}
 export function bubble(ctx, x, y, time = 0) {
  const bob = Math.sin(time / 220) * 2;
  ctx.fillStyle = '#fffdf4';
@@ -1399,6 +1404,13 @@ function villageFields(ctx, layout, p, time) {
   if (layout.paths.some(path => path.some((q, i) => i && segDist(x + w / 2, y + h / 2, path[i - 1], q) < Math.max(w, h) / 2 + 1.6))) continue;
   if (layout.objects.some(o => !o.building && o.x > x - 1 && o.x < x + w + 1 && o.y > y - 1 && o.y < y + h + 2)) continue;
   if (layout.waters.some(wt => x < wt.x + wt.w && x + w > wt.x && y < wt.y + wt.h && y + h > wt.y)) continue;
+  // Terza serie di sprite: orti, staccionate e attrezzi disegnati come il resto del mondo.
+  if (hasAtlas('farm')) {
+   const kind = (x + y) % 2;
+   tileSprite(ctx, 'farm', 0, kind, x, y, w, h, 3.5);
+   drawSprite(ctx, 'farm', 1, (x + y) % 3 === 0 ? 1 : 0, (x + w + .6) * TILE, (y + 1.2) * TILE, 44, 52);
+   continue;
+  }
   rounded(ctx, x * TILE, y * TILE, w * TILE, h * TILE, 6, '#8a6f4c');
   for (let r = 0; r < h * 2 - 1; r++) {
    line(ctx, [{ x: x * TILE + 6, y: (y + .5 + r * .5) * TILE }, { x: (x + w) * TILE - 6, y: (y + .5 + r * .5) * TILE }], '#6f5838', 2);
@@ -1406,6 +1418,12 @@ function villageFields(ctx, layout, p, time) {
   }
   for (const fx of [x - .2, x + w + .2]) line(ctx, [{ x: fx * TILE, y: (y - .2) * TILE }, { x: fx * TILE, y: (y + h + .2) * TILE }], '#a5875e', 3);
  }
+}
+
+// Ripete uno sprite largo lungo un'area di w×h caselle (orti, campi di grano, girasoli).
+function tileSprite(ctx, atlas, row, col, x, y, w, h, unit) {
+ const n = Math.max(1, Math.round(w / unit)), cw = w / n;
+ for (let i = 0; i < n; i++) drawSprite(ctx, atlas, row, col, (x + cw * (i + .5)) * TILE, (y + h) * TILE, cw * TILE + 6, h * TILE + 6);
 }
 
 function waterArt(ctx, w, time) {
@@ -1426,7 +1444,11 @@ function waterArt(ctx, w, time) {
 
 function landmark(ctx, layout, p, time) {
  const type = layout.landmark;
- if (type === 'fields') {
+ if (type === 'fields' && hasAtlas('farm')) {
+  tileSprite(ctx, 'farm', 0, 2, 4, 29.6, 10, 2.6, 3.4);
+  tileSprite(ctx, 'farm', 0, 3, 14, 29.6, 4, 2.6, 4);
+  drawSprite(ctx, 'farm', 1, 0, 19.5 * TILE, 32.2 * TILE, 50, 46);
+ } else if (type === 'fields') {
   for (let i = 0; i < 8; i++) line(ctx, [{
    x: 4 * TILE,
    y: (30 + i * .32) * TILE
@@ -1470,12 +1492,8 @@ function landmark(ctx, layout, p, time) {
     [39, 8],
     [10, 27]
    ]) {
-   shape(ctx, '#d8ad72', () => {
-    ctx.moveTo(x * TILE, y * TILE);
-    ctx.lineTo((x + 2) * TILE, (y + 2) * TILE);
-    ctx.lineTo((x - 2) * TILE, (y + 2) * TILE);
-    ctx.closePath();
-   });
+   // Covoni di fieno accanto ai binari (sprite della terza serie, altrimenti niente).
+   drawSprite(ctx, 'farm', 1, 0, x * TILE, (y + 2) * TILE, 56, 50);
   }
  }
  if (type === 'fountain' && drawSprite(ctx, 'towns', 3, 0, 24 * TILE, 18 * TILE, 100, 95)) {} else if (type === 'fountain') {
@@ -1488,7 +1506,8 @@ function landmark(ctx, layout, p, time) {
     [26, 27],
     [40, 25]
    ])
-   for (let i = 0; i < 9; i++) oval(ctx, x * TILE + (i % 3) * 11, y * TILE + Math.floor(i / 3) * 9, 4, 4, i % 2 ? '#cf9c98' : '#ecd9a1');
+   if (!drawSprite(ctx, 'farm', 3, 0, x * TILE + 11, y * TILE + 24, 46, 36))
+    for (let i = 0; i < 9; i++) oval(ctx, x * TILE + (i % 3) * 11, y * TILE + Math.floor(i / 3) * 9, 4, 4, i % 2 ? '#cf9c98' : '#ecd9a1');
  }
  if (type === 'market') {
   for (const [x, y, col] of [
@@ -1496,28 +1515,15 @@ function landmark(ctx, layout, p, time) {
     [21, 8, '#d9af69'],
     [27, 26, '#76997d']
    ]) {
+   if (drawSprite(ctx, 'farm', 3, col === '#d9af69' ? 3 : 2, x * TILE + 30, y * TILE + 38, 80, 70)) continue;
    rounded(ctx, x * TILE, y * TILE, 60, 35, 4, '#b69468');
    rounded(ctx, x * TILE - 5, y * TILE - 16, 70, 22, 5, col);
    for (let i = 0; i < 5; i++) oval(ctx, x * TILE + 9 + i * 10, y * TILE + 12, 5, 5, '#dfc17e');
   }
  }
  if (type === 'mountain') {
-  for (let i = 0; i < 7; i++) {
-   const x = (3 + i * 7) * TILE;
-   shape(ctx, i % 2 ? '#7e9090' : '#8d9c96', () => {
-    ctx.moveTo(x - 70, 5 * TILE);
-    ctx.lineTo(x, 1 * TILE);
-    ctx.quadraticCurveTo(x + 35, 2 * TILE, x + 70, 5 * TILE);
-    ctx.closePath();
-   });
-   shape(ctx, '#c4ccbc', () => {
-    ctx.moveTo(x - 18, 2.1 * TILE);
-    ctx.lineTo(x, 1 * TILE);
-    ctx.lineTo(x + 19, 2.25 * TILE);
-    ctx.lineTo(x + 4, 2 * TILE);
-    ctx.closePath();
-   });
-  }
+  // Rocce dipinte al posto dei triangoli disegnati dal codice.
+  for (let i = 0; i < 9; i++) drawSprite(ctx, 'trail', 0, 2, (4 + i * 5.2) * TILE, (2.6 + (i % 2) * .8) * TILE, 64, 48);
  }
  if (type === 'harbor') {
   rounded(ctx, 37 * TILE, 27 * TILE, 5 * TILE, 6 * TILE, 4, '#b4996d');
@@ -1528,11 +1534,6 @@ function landmark(ctx, layout, p, time) {
    x: 42 * TILE,
    y: (27 + i * .5) * TILE
   }], '#d2bc8a', 2);
-  shape(ctx, '#e6dfba', () => {
-   ctx.moveTo(43 * TILE, 28 * TILE);
-   ctx.quadraticCurveTo(50 * TILE, 29 * TILE, 43 * TILE, 32 * TILE);
-   ctx.closePath();
-  });
  }
  if (type === 'lamps')
   for (const [x, y] of [
@@ -1778,12 +1779,24 @@ export function renderWorld(ctx, {
   });
  actors.push({
   depth: state.y * TILE,
-  draw: () => drawCharacter(ctx, state.x * TILE, state.y * TILE, {
+  draw: () => drawCharacter(ctx, state.x * TILE, state.y * TILE - bridgeLift(layout, state.x, state.y), {
    facing: state.facing,
    moving,
    walk,
    bike: state.bike
   })
+ });
+ // Ponte ad arco sul torrente: il parapetto davanti copre le gambe, così si vede che ci sei sopra.
+ if (layout.theme === 'river' && hasAtlas('towns')) actors.push({
+  depth: 19 * TILE + 2,
+  draw: () => {
+   ctx.save();
+   ctx.beginPath();
+   ctx.rect(7 * TILE - 20, 19 * TILE - 30, 7 * TILE + 40, 40);
+   ctx.clip();
+   drawSprite(ctx, 'towns', 3, 3, 10.5 * TILE, 19 * TILE, 7 * TILE, 92);
+   ctx.restore();
+  }
  });
  actors.sort((a, b) => a.depth - b.depth).forEach(a => a.draw());
  ctx.restore();

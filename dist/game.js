@@ -739,10 +739,17 @@ function setupRoom(entry, reset = true) {
 }
 
 function cameraNow() {
- return {
+ const cam = {
   x: state.x * T - W / 2,
   y: state.y * T - H / 2
  };
+ // Negli interni la telecamera resta dentro la stanza: niente vuoto nero sotto la porta.
+ if (area === 'interior') {
+  const fit = (v, lo, hi, view) => hi - lo <= view ? (lo + hi - view) / 2 : Math.max(lo, Math.min(hi - view, v));
+  cam.x = fit(cam.x, 9.5 * T, 38.5 * T, W);
+  cam.y = fit(cam.y, 6.5 * T, 30 * T, H);
+ }
+ return cam;
 }
 
 function leaveRoom() {
@@ -1518,7 +1525,7 @@ function showMap() {
   zoom = 1,
   lines = false;
  const links = CITIES.flatMap(c => neighbors(c.id).filter(id => id > c.id).map(id => [c.id, id]));
- const p = panel('La mappa delle Otto Strade', `<p class="fine">Tocca una città per vedere pass e abilità. Scorri la mappa dopo averla ingrandita.</p><div class="atlas-toolbar"><button class="btn secondary" id="zoomOut" aria-label="Riduci mappa">−</button><button class="btn secondary" id="zoomIn" aria-label="Ingrandisci mappa">+</button><button class="btn secondary" id="mapRoutes" aria-pressed="false">Percorsi</button></div><div class="atlas-scroll"><div class="atlas-surface"><img src="./assets/region-map.jpg" alt="Il mondo delle Otto Strade: campagne, città, montagne e isola"><svg viewBox="0 0 1000 447" class="atlas-routes" aria-hidden="true">${links.map(([a,b])=>`<line data-from="${a}" data-to="${b}" x1="${MAP_POINTS[a][0]*10}" y1="${MAP_POINTS[a][1]*4.47}" x2="${MAP_POINTS[b][0]*10}" y2="${MAP_POINTS[b][1]*4.47}"/>`).join('')}</svg>${CITIES.map(c=>`<button class="atlas-pin ${state.visited.includes(c.id)?'visited':''} ${c.id===current?'here':''}" data-city="${c.id}" style="left:${MAP_POINTS[c.id][0]}%;top:${MAP_POINTS[c.id][1]}%" aria-label="${c.name}, ${c.genre}${c.id===current?', sei qui':''}">${c.id+1}</button>`).join('')}</div></div><div class="atlas-city-list">${CITIES.map(c=>`<button class="btn secondary" data-city="${c.id}">${c.id+1} · ${c.name}</button>`).join('')}</div><section class="map-detail" id="mapDetail" aria-live="polite"></section><section id="journeyDetail" class="journey-detail" aria-live="polite"></section>`, [{
+ const p = panel('La mappa delle Otto Strade', `<p class="fine">Tocca una città per vedere pass e abilità. Scorri la mappa dopo averla ingrandita.</p><div class="atlas-toolbar"><button class="btn secondary" id="zoomOut" aria-label="Riduci mappa">−</button><button class="btn secondary" id="zoomIn" aria-label="Ingrandisci mappa">+</button><button class="btn secondary" id="mapRoutes" aria-pressed="false">Percorsi</button></div><div class="atlas-scroll"><div class="atlas-surface"><img src="./assets/region-map.jpg" alt="Il mondo delle Otto Strade: campagne, città, montagne e isola"><svg viewBox="0 0 1000 447" class="atlas-routes" aria-hidden="true">${links.map(([a,b])=>`<line class="${a===8&&b===9?'route-ferry':a===9&&b===10?'route-pier':a===6&&b===7?'route-cable':'route-trail'}" data-from="${a}" data-to="${b}" x1="${MAP_POINTS[a][0]*10}" y1="${MAP_POINTS[a][1]*4.47}" x2="${MAP_POINTS[b][0]*10}" y2="${MAP_POINTS[b][1]*4.47}"/>`).join('')}</svg>${CITIES.map(c=>`<button class="atlas-pin ${state.visited.includes(c.id)?'visited':''} ${c.id===current?'here':''}" data-city="${c.id}" style="left:${MAP_POINTS[c.id][0]}%;top:${MAP_POINTS[c.id][1]}%" aria-label="${c.name}, ${c.genre}${c.id===current?', sei qui':''}">${c.id+1}</button>`).join('')}</div></div><div class="atlas-city-list">${CITIES.map(c=>`<button class="btn secondary" data-city="${c.id}">${c.id+1} · ${c.name}</button>`).join('')}</div><section class="map-detail" id="mapDetail" aria-live="polite"></section><section id="journeyDetail" class="journey-detail" aria-live="polite"></section>`, [{
   label: 'Repertorio · le abilità',
   run: showDex
  }, {
@@ -2931,6 +2938,29 @@ if (QA) {
   },
   gates: () => (layout.gates || []).map(g => ({ ...g })),
   can: (x, y) => canMove(x, y),
+  // Solo per le verifiche visive: porta in una città o dentro un edificio senza camminare.
+  goCity: id => {
+   state.city = id;
+   state.x = -5;
+   state.y = -5;
+   close();
+   setupTown();
+  },
+  enter: label => {
+   const e = townLayout(state.city).objects.find(o => o.building && o.label === label);
+   if (e) setupRoom(e);
+   return !!e;
+  },
+  rooms: () => townLayout(state.city).objects.filter(o => o.building).map(o => o.label),
+  road: (from, to) => {
+   road = { from, to };
+   room = null;
+   area = 'road';
+   layout = roadLayout(from, to);
+   objects = layout.objects;
+   solids = [];
+   Object.assign(state, layout.spawn);
+  },
   objects: () => objects.map(o => ({ kind: o.kind, label: o.label, id: o.id, x: o.x, y: o.y, building: !!o.building })),
   log: () => {
    try {

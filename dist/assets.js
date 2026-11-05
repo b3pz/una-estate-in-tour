@@ -31,7 +31,6 @@ export const EXTRA_FILES = {
  'hero-girl-walk.png': 'heroGirlWalk',
  'hero-girl-bike.png': 'heroGirlBike',
  'farm-props.png': 'farm',
- 'nature-props.png': 'nature',
  'concert/blues.jpg': 'concert:Blues',
  'concert/rock.jpg': 'concert:Rock',
  'concert/pop.jpg': 'concert:Pop',

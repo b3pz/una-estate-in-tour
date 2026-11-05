@@ -35,6 +35,7 @@ Lavoriamo agli sprite del mio videogioco «Fuori Tempo» (un’estate in tour).
 
 Ordine consigliato: hero-bike.png, people-extra.png, transport-stage.png, interiors-extra.png, people-dir-1…4.png, gli sfondi concert/*.jpg, title-art.jpg.
 Seconda serie (sezioni 8–10 delle specifiche): buildings-extra.png, city-props.png, trail-props.png.
+Terza serie (sezioni 11–14 delle specifiche): hero-walk.png, hero-girl-walk.png, hero-girl-bike.png, farm-props.png. Allega come riferimento anche hero-world-atlas.png, hero-bike.png e band-instruments-atlas.png.
 ```
 
 ## Dopo ogni immagine
