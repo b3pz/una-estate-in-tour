@@ -693,7 +693,7 @@ export function isWalkable(layout, x, y) {
  for (const b of layout.buildings)
   if (x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .2 && y < b.y + b.h + .15) return false;
  for (const w of layout.waters)
-  if (x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h) {
+  if (x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) {
    if (layout.gates.some(g => Math.abs(y - g.y) < 1.8 && (g.side === 'east' || g.side === 'west'))) continue;
    return false;
   } return true;
