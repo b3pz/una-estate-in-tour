@@ -241,7 +241,7 @@ function splitLong(el) {
 }
 function paginate(p) {
  const actions = p.querySelector('.actions');
- const pages = [...p.querySelectorAll('p')].filter(x => !x.classList.contains('fine') && !actions?.contains(x)).flatMap(splitLong);
+ const pages = [...p.querySelectorAll('p')].filter(x => !x.classList.contains('fine') && !actions?.contains(x) && !x.closest('.person-card, .clue-card')).flatMap(splitLong);
  if (!pages.length) return;
  const fines = [...p.querySelectorAll('.fine')];
  const more = document.createElement('span');
@@ -2542,6 +2542,18 @@ document.querySelectorAll('[data-move]').forEach(b => {
   b.classList.remove('held');
  };
 });
+$('rotateSkip').onclick = () => {
+ $('rotateHint').classList.add('dismissed');
+ try { sessionStorage.setItem('rotate-ok', '1'); } catch {}
+};
+try { if (sessionStorage.getItem('rotate-ok')) $('rotateHint').classList.add('dismissed'); } catch {}
+// Al primo tocco su telefono: schermo intero e orizzontale, dove il browser lo permette (Android).
+document.addEventListener('pointerdown', function landscape(e) {
+ if (e.pointerType !== 'touch') return;
+ document.removeEventListener('pointerdown', landscape, true);
+ const el = document.documentElement;
+ Promise.resolve(el.requestFullscreen?.({ navigationUI: 'hide' })).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+}, true);
 $('touchAction').onclick = interact;
 $('touchStart').onclick = startMenu;
 $('touchBike').onclick = toggleBike;

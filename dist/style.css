@@ -3217,3 +3217,65 @@ body .overlay .letter-grid .key:focus {
 @media(pointer:coarse), (max-width:700px) {
  .touch-controls .start-btn { bottom: 150px; left: 52% }
 }
+
+/* Telefono in verticale: invito a ruotarlo (il gioco rende meglio in orizzontale) */
+.rotate-hint {
+ display: none
+}
+@media (pointer:coarse) and (orientation: portrait) {
+ .rotate-hint:not(.dismissed) {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+  background: #15172af2;
+  color: #fff4d6;
+  font: 600 18px/1.4 var(--font-title)
+ }
+}
+.rotate-hint .phone-icon {
+ width: 54px;
+ height: 92px;
+ border: 5px solid #fff4d6;
+ border-radius: 12px;
+ animation: rotate-phone 2.2s ease-in-out infinite
+}
+@keyframes rotate-phone {
+ 0%, 25% { transform: rotate(0) }
+ 55%, 100% { transform: rotate(-90deg) }
+}
+.rotate-hint button {
+ background: transparent;
+ border: 2px solid #fff4d655;
+ color: #fff4d6aa;
+ border-radius: 20px;
+ padding: 8px 18px;
+ font: 14px var(--font-text)
+}
+
+/* Telefono in orizzontale: comandi ai lati, schermo libero al centro */
+@media (pointer:coarse) and (orientation: landscape) and (max-height: 520px) {
+ .touch-controls {
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right))
+ }
+ .dpad { grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px) }
+ .ab-buttons button { width: 64px; height: 64px; font-size: 24px }
+ .ab-buttons button:last-child { margin-bottom: 34px }
+ .touch-controls .start-btn { bottom: 4px; left: 50%; height: 30px; min-width: 76px; font-size: 12px }
+ .toast { bottom: 12px; width: min(520px, calc(100% - 330px)) }
+ .toast,
+ .overlay:has(.dialogue) { padding-bottom: 12px }
+ .overlay:has(.dialogue) { padding-left: 190px; padding-right: 170px }
+ .objective-card { bottom: 50px }
+ .lane-controls { width: min(640px, 92%) }
+ .lane-controls button { height: 70px }
+}
+.rotate-hint p { margin: 0; max-width: 300px }
