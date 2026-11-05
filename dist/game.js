@@ -2155,9 +2155,11 @@ function drawInterior() {
  for (const [id, x, y, w, h] of items)
   if (id === 7) drawSprite(ctx, 'interiors', 1, 3, x * T, y * T, w, h);
  // Porta d’uscita nella parete in basso, con zerbino: si capisce senza scritte.
- rect(10 * T, 29 * T - 6, 28 * T, 14, '#9c8a68');
- rect(22.6 * T, 29 * T - 8, 2.8 * T, 22, '#3a2c20');
- rect(22.75 * T, 29 * T - 6, 2.5 * T, 18, '#1c140e');
+ if (!(bg && bg.complete && bg.naturalWidth)) {
+  rect(10 * T, 29 * T - 6, 28 * T, 14, '#9c8a68');
+  rect(22.6 * T, 29 * T - 8, 2.8 * T, 22, '#3a2c20');
+  rect(22.75 * T, 29 * T - 6, 2.5 * T, 18, '#1c140e');
+ }
  ctx.fillStyle = '#a4503d';
  ctx.beginPath();
  ctx.roundRect(22.8 * T, 27.7 * T, 2.4 * T, 1.05 * T, 5);
@@ -2254,7 +2256,7 @@ function tapPath(target) {
 
 function canMove(x, y) {
  if (area === 'metro') return x > 6.6 && x < 41.4 && y > 15.4 && y < 19.4;
- if (area === 'interior') return x > 10.5 && x < 37.5 && y > 10.8 && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
+ if (area === 'interior') return x > 10.5 && x < 37.5 && y > (atlases['room:' + roomStyle(room.entry)]?.naturalWidth ? 12.2 : 10.8) && y < 29 && !solids.some(b => x > b.x - .3 && x < b.x + b.w + .3 && y > b.y - .3 && y < b.y + b.h + .3);
  return isWalkable(layout, x, y);
 }
 let saveClock = 0,
