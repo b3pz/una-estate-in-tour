@@ -11,7 +11,7 @@ export function playIntro({ audio, onStart }) {
  box.id = 'bootScreen';
  box.className = 'boot-screen';
  box.setAttribute('role', 'dialog');
- box.setAttribute('aria-label', 'Una estate in tour. Premi Start per cominciare.');
+ box.setAttribute('aria-label', 'Fuori Tempo, un’estate in tour. Premi Start per cominciare.');
  box.innerHTML = '<canvas aria-hidden="true"></canvas><button class="boot-start" aria-label="Premi Start">PREMI START</button>';
  screen.appendChild(box);
  const canvas = box.querySelector('canvas'), ctx = canvas.getContext('2d');
@@ -71,16 +71,50 @@ export function playIntro({ audio, onStart }) {
   for (const [dx, dy, r] of [[0, -30, 15], [-11, -21, 11], [11, -21, 11]]) { ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, r * s, 0, 7); ctx.fill(); }
   ctx.fillStyle = '#5c9a5a'; ctx.beginPath(); ctx.arc(x - 4 * s, y - 34 * s, 7 * s, 0, 7); ctx.fill();
  };
- const title = (cx, cy, k, alpha) => {
-  ctx.save(); ctx.globalAlpha = alpha; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const big = Math.min(W * .12, H * .14) * k;
-  ctx.font = `700 ${big * .5}px Fredoka, Nunito, sans-serif`;
-  ctx.lineJoin = 'round'; ctx.lineWidth = big * .12; ctx.strokeStyle = '#2a1d2e'; ctx.fillStyle = '#fff4d6';
-  ctx.strokeText('UNA ESTATE', cx, cy - big * .48); ctx.fillText('UNA ESTATE', cx, cy - big * .48);
-  ctx.font = `700 ${big}px Fredoka, Nunito, sans-serif`;
-  const g = ctx.createLinearGradient(0, cy - big * .4, 0, cy + big * .5); g.addColorStop(0, '#ffd166'); g.addColorStop(1, '#f07c3e');
-  ctx.lineWidth = big * .16; ctx.strokeText('in tour', cx, cy + big * .3);
-  ctx.fillStyle = g; ctx.fillText('in tour', cx, cy + big * .3);
+ // Logo «Fuori Tempo»: le lettere ballano a tempo, tranne alcune che vanno in controtempo.
+ const title = (cx, cy, k, alpha, t) => {
+  ctx.save(); ctx.globalAlpha = alpha; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  const big = Math.min(W * (H > W ? .2 : .16), H * .17) * k, beat = t * Math.PI * 2 * 1.4;
+  // pentagramma ondulato, come una strada
+  ctx.strokeStyle = 'rgba(255,244,214,.55)'; ctx.lineWidth = Math.max(1.5, big * .025);
+  const span = Math.min(W * .86, big * 6.4);
+  for (let i = 0; i < 5; i++) {
+   ctx.beginPath();
+   for (let x = -span / 2; x <= span / 2; x += 6) { const y = cy + big * (.06 + i * .11) + Math.sin(x / span * 5 + t * 1.2) * big * .08; x === -span / 2 ? ctx.moveTo(cx + x, y) : ctx.lineTo(cx + x, y); }
+   ctx.stroke();
+  }
+  const word = (text, y, size, fill, offbeat) => {
+   ctx.font = `700 ${size}px Fredoka, Nunito, sans-serif`;
+   const widths = [...text].map(c => ctx.measureText(c).width + size * .04), total = widths.reduce((a, b) => a + b, 0);
+   let x = cx - total / 2;
+   [...text].forEach((c, i) => {
+    const off = offbeat.includes(i), hop = Math.abs(Math.sin(beat / 2 + (off ? Math.PI / 2 : 0))) * size * .09, tilt = off ? Math.sin(beat / 2 + 1) * .12 : 0;
+    ctx.save(); ctx.translate(x + widths[i] / 2, y - hop); ctx.rotate(tilt);
+    ctx.lineJoin = 'round'; ctx.lineWidth = size * .16; ctx.strokeStyle = '#2a1d2e'; ctx.strokeText(c, 0, 0);
+    ctx.fillStyle = fill(size); ctx.fillText(c, 0, 0);
+    ctx.restore();
+    x += widths[i];
+   });
+   return total;
+  };
+  word('FUORI', cy - big * .02, big * .78, () => '#fff4d6', [2]);
+  const grad = size => { const g = ctx.createLinearGradient(0, -size * .8, 0, 0); g.addColorStop(0, '#ffd166'); g.addColorStop(1, '#f0703e'); return g; };
+  const w2 = word('TEMPO', cy + big * .86, big, grad, [1, 4]);
+  // croma accanto alla parola
+  const nx = cx + w2 / 2 + big * .28, ny = cy + big * .55 + Math.sin(beat) * big * .06;
+  ctx.fillStyle = '#fff4d6'; ctx.strokeStyle = '#2a1d2e'; ctx.lineWidth = big * .05;
+  ctx.beginPath(); ctx.ellipse(nx, ny, big * .13, big * .095, -.4, 0, 7); ctx.stroke(); ctx.fill();
+  ctx.fillRect(nx + big * .09, ny - big * .62, big * .05, big * .62);
+  ctx.beginPath(); ctx.moveTo(nx + big * .14, ny - big * .62); ctx.quadraticCurveTo(nx + big * .38, ny - big * .4, nx + big * .26, ny - big * .2); ctx.lineWidth = big * .05; ctx.strokeStyle = '#fff4d6'; ctx.stroke();
+  // nastro col sottotitolo
+  const ry = cy + big * 1.3, label = 'un’estate in tour';
+  ctx.font = `700 ${big * .24}px Nunito, sans-serif`;
+  const lw = ctx.measureText(label).width + big * .6;
+  ctx.save(); ctx.translate(cx, ry); ctx.rotate(-.035);
+  ctx.fillStyle = '#2a1d2e'; ctx.fillRect(-lw / 2 + 3, -big * .17 + 4, lw, big * .36);
+  ctx.fillStyle = '#c0392b'; ctx.fillRect(-lw / 2, -big * .17, lw, big * .36);
+  ctx.fillStyle = '#fff4d6'; ctx.textBaseline = 'middle'; ctx.fillText(label, 0, big * .015);
+  ctx.restore();
   ctx.restore();
  };
 
@@ -150,7 +184,7 @@ export function playIntro({ audio, onStart }) {
    if (titleIn > 0) {
     const k = ease(titleIn / .8), bounce = titleIn < 1.2 ? Math.sin(titleIn * 9) * Math.exp(-titleIn * 4) * 18 : Math.sin(t * 1.6) * 3;
     ctx.fillStyle = `rgba(20,16,30,${Math.min(.35, titleIn * .3)})`; ctx.fillRect(0, 0, W, H);
-    title(W / 2, H * .34 - (1 - k) * H * .4 + bounce, 1, k);
+    title(W / 2, H * .3 - (1 - k) * H * .4 + bounce, 1, k, t);
     ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = Math.min(1, titleIn / 1.5) * .85;
     ctx.fillStyle = '#fff4d6'; ctx.font = `600 ${Math.max(11, Math.min(W, H) * .022)}px Nunito, sans-serif`;
     ctx.fillText('© B3PZ · Versione 0.7', W / 2, H - 22);

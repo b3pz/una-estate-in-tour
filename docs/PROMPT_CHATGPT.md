@@ -3,7 +3,7 @@
 Copia tutto il blocco qui sotto in una nuova chat di ChatGPT (con navigazione web e generazione di immagini attive).
 
 ```text
-Lavoriamo agli sprite del mio videogioco «Una estate in tour».
+Lavoriamo agli sprite del mio videogioco «Fuori Tempo» (un’estate in tour).
 
 1. Leggi le specifiche complete qui:
    https://raw.githubusercontent.com/b3pz/una-estate-in-tour/main/docs/SPRITE_PER_CHATGPT.md

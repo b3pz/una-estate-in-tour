@@ -296,7 +296,7 @@ function updateJournal() {
 
 function welcome() {
  // Menu principale, come sulle console portatili: dopo START si sceglie se cominciare o caricare.
- const p = panel('Una estate<br><em>in tour.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’avventura musicale · Versione 0.7</p>`, [{
+ const p = panel('Fuori<br><em>Tempo.</em>', `<p>Giugno. Un paese tra i campi.<br>La vostra band deve ancora suonare la prima nota.</p><p class="fine">Un’estate in tour · Versione 0.7</p>`, [{
   label: '▶ Nuova partita',
   run: () => saved ? panel('Nuova partita?', `<p>La nuova estate sostituirà la partita salvata su questo dispositivo. Puoi conservarla con Salva → Esporta nel telefono.</p>`, [{
    label: 'Comincia da capo',
